@@ -84,6 +84,49 @@ body{margin:0;background:linear-gradient(135deg,#d8d5d9,#f4dfe6,#cbc8cd);color:v
 .secure-bottom{min-height:58px;padding:10px 16px calc(10px + env(safe-area-inset-bottom));display:flex;flex-direction:column;justify-content:center;gap:3px;background:rgba(20,17,21,.92);position:relative;z-index:3}
 .secure-bottom span{font-size:11px;color:#f1c5d0}.secure-bottom small{font-size:10px;color:#9d969d}
 
+
+.media-message{width:210px;max-width:78%;border-radius:18px;overflow:hidden;background:rgba(255,255,255,.62);box-shadow:0 5px 14px rgba(80,70,76,.07)}
+.media-message img{display:block;width:100%;height:180px;object-fit:cover;pointer-events:none}.media-message video{display:block;width:100%;max-height:190px;background:#222}.media-caption{padding:8px 10px;font-size:10px;color:#77717a}
+.voice-message{display:flex;align-items:center;gap:10px;min-width:190px;padding:8px 10px}.voice-play{width:32px;height:32px;border:0;border-radius:50%;background:#e95f89;color:#fff}.voice-bars{display:flex;gap:2px;align-items:center;flex:1}.voice-bars i{display:block;width:3px;background:#c7bfc5;border-radius:3px}.voice-duration{font-size:10px;color:#77717a}
+.media-viewer{display:none;position:fixed;z-index:250;inset:0;background:#171419;color:#fff;max-width:520px;margin:auto}.media-viewer.show{display:flex;flex-direction:column}.media-viewer-bar{height:60px;display:flex;align-items:center;gap:12px;padding:env(safe-area-inset-top) 14px 0;background:#201b21}.media-viewer-bar button{border:0;background:rgba(255,255,255,.1);color:#fff;border-radius:12px;width:38px;height:38px;font-size:22px}.media-viewer-bar b{font-size:14px}.media-viewer>div:last-child{flex:1;display:grid;place-items:center;overflow:hidden}.media-viewer img,.media-viewer video{max-width:100%;max-height:100%;object-fit:contain}
+
+
+.voice-recorder{display:none;position:fixed;z-index:280;inset:0;background:rgba(35,28,34,.42);backdrop-filter:blur(8px);align-items:center;justify-content:center;padding:22px}.voice-recorder.show{display:flex}
+.voice-recorder-card{width:100%;max-width:360px;background:linear-gradient(160deg,#f8f5f7,#e8e4e8);border-radius:27px;padding:18px;text-align:center;box-shadow:0 20px 60px rgba(40,30,38,.25)}
+.voice-recorder-title{display:flex;align-items:center;justify-content:space-between}.voice-recorder-title button{border:0;background:#ded9de;border-radius:11px;width:34px;height:34px;font-size:22px;color:#655f66}.voice-recorder-title span{width:34px}
+.voice-record-icon{width:82px;height:82px;border-radius:50%;margin:24px auto 10px;display:grid;place-items:center;font-size:34px;background:linear-gradient(145deg,#f7c8d4,#e86b92);box-shadow:0 10px 30px rgba(210,72,115,.22)}
+.voice-record-icon.recording{animation:voicePulse 1.2s infinite}@keyframes voicePulse{50%{transform:scale(1.08);box-shadow:0 0 0 13px rgba(233,95,137,.13)}}
+.voice-timer{font-size:27px;font-weight:800;color:#3e3840}.voice-status{font-size:12px;color:#827b83;margin:5px 0 16px}.voice-recorder audio{width:100%;margin-bottom:10px}.voice-recorder-actions{display:flex;flex-direction:column;gap:8px}.voice-main-btn{height:48px;border:0;border-radius:15px;background:linear-gradient(135deg,#f18aa8,#e65b85);color:#fff;font-weight:800;font-size:14px}.voice-main-btn.stop{background:#59535b}.voice-main-btn.send{background:linear-gradient(135deg,#ef789a,#d94d79)}.voice-secondary{height:42px;border:0;border-radius:14px;background:transparent;color:#777079;font-weight:700}
+
+
+.friends-head{display:flex;gap:8px;align-items:center;margin:5px 0 12px}.friends-search{height:46px;flex:1;border:1px solid rgba(255,255,255,.85);background:rgba(255,255,255,.5);border-radius:15px;display:flex;align-items:center;padding:0 13px;gap:8px;color:#89838b}.friends-search input{border:0;outline:0;background:transparent;flex:1;font-size:13px;color:#332f35}.friend-add-top{width:46px;height:46px;border:0;border-radius:15px;background:linear-gradient(135deg,#f18aa8,#e65b85);color:#fff;font-size:24px}
+.friend-tabs{display:flex;gap:8px;margin-bottom:12px}.friend-tab{border:0;border-radius:18px;padding:8px 13px;background:#ddd9dd;color:#716b73;font-size:12px}.friend-tab.active{background:#f4b1c3;color:#8d3f59;font-weight:800}.friend-tab span{font-size:9px;background:#e95f89;color:#fff;border-radius:10px;padding:2px 5px;margin-left:3px}
+.friend-view{display:none}.friend-view.active{display:block}.friend-section-label{display:flex;justify-content:space-between;align-items:center;margin:10px 2px 4px}.friend-section-label b{font-size:14px}.friend-section-label small{font-size:11px;color:#89838b}
+.friend-row{display:flex;align-items:center;gap:11px;padding:12px 2px;border-bottom:1px solid rgba(180,174,181,.28)}.friend-avatar{width:50px;height:50px;border-radius:17px;display:grid;place-items:center;background:linear-gradient(145deg,#f4bccb,#bcb7bd);font-weight:800;color:#5e5760;position:relative;flex:none}.friend-avatar .online-dot{border-color:#f0edf0}.friend-info{min-width:0;flex:1}.friend-info b{font-size:14px}.friend-info small{display:block;color:#89838b;font-size:11px;margin-top:4px}.friend-actions{display:flex;gap:6px}.friend-actions button{height:34px;border:0;border-radius:11px;padding:0 10px;font-size:11px;font-weight:700;background:#ded9de;color:#5e5860}.friend-actions .accept,.friend-actions .chat-friend{background:#ed789a;color:#fff}
+.user-search-result{display:none;margin-top:12px;border-radius:18px;background:rgba(255,255,255,.5);border:1px solid rgba(255,255,255,.85);padding:12px}.user-search-result.show{display:block}.search-result-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;font-size:13px}.search-result-head button{border:0;background:#ded9de;border-radius:9px;width:28px;height:28px;font-size:18px}.search-user-card{display:flex;align-items:center;gap:10px;padding:6px}.search-user-card .friend-actions{margin-left:auto}
+.friend-profile-modal{display:none;position:fixed;z-index:230;inset:0;background:rgba(35,28,34,.3);backdrop-filter:blur(7px);align-items:flex-end;justify-content:center}.friend-profile-modal.show{display:flex}.friend-profile-sheet{position:relative;width:100%;max-width:520px;background:linear-gradient(160deg,#f8f5f7,#e8e4e8);border-radius:28px 28px 0 0;padding:20px 20px calc(24px + env(safe-area-inset-bottom));text-align:center}.close-friend-profile{position:absolute;right:18px;top:15px;width:34px;height:34px;border:0;border-radius:11px;background:#ded9de;font-size:21px}.friend-profile-avatar{width:92px;height:92px;border-radius:30px;margin:10px auto 11px;display:grid;place-items:center;background:linear-gradient(145deg,#f5bdcd,#aba6ad);font-size:28px;font-weight:800}.friend-profile-sheet h3{margin:0;font-size:20px}.friend-profile-sheet p{margin:5px 0 18px;color:#837c84;font-size:12px}.profile-friend-actions{display:flex;gap:8px}.profile-friend-actions button{flex:1;height:46px;border:0;border-radius:15px;font-weight:800}.profile-friend-actions .primary{background:linear-gradient(135deg,#f18aa8,#e65b85);color:#fff}.profile-friend-actions .danger{background:#e1dce1;color:#8d5362}
+
+
+.gallery-toolbar{margin:4px 0 13px}.gallery-title-row{display:flex;align-items:center;justify-content:space-between}.gallery-title-row b{font-size:18px}.gallery-title-row small{display:block;font-size:11px;color:#89838b;margin-top:3px}.gallery-upload{border:0;border-radius:14px;background:linear-gradient(135deg,#f18aa8,#e65b85);color:#fff;padding:10px 14px;font-weight:800;font-size:12px}.gallery-filter-row{display:flex;gap:7px;margin-top:13px;overflow:auto;padding-bottom:2px}.gallery-filter{border:0;border-radius:15px;background:#ded9de;color:#706a72;padding:8px 12px;font-size:11px;white-space:nowrap}.gallery-filter.active{background:#f4b1c3;color:#8d3f59;font-weight:800}
+.gallery-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}.gallery-item{position:relative;aspect-ratio:1;border-radius:16px;overflow:hidden;background:#d8d3d8}.gallery-item img,.gallery-item video{width:100%;height:100%;object-fit:cover;display:block;pointer-events:none}.gallery-item-badge{position:absolute;left:7px;bottom:7px;background:rgba(25,21,26,.58);backdrop-filter:blur(6px);color:#fff;border-radius:9px;padding:4px 6px;font-size:10px}.gallery-item-type{position:absolute;right:7px;top:7px;background:rgba(25,21,26,.58);color:#fff;border-radius:8px;padding:4px 6px;font-size:10px}
+.gallery-upload-modal{display:none;position:fixed;z-index:260;inset:0;background:rgba(35,28,34,.35);backdrop-filter:blur(7px);align-items:flex-end;justify-content:center}.gallery-upload-modal.show{display:flex}.gallery-upload-sheet{width:100%;max-width:520px;background:linear-gradient(160deg,#f8f5f7,#e8e4e8);border-radius:28px 28px 0 0;padding:22px 20px calc(24px + env(safe-area-inset-bottom));text-align:center;position:relative}.gallery-close{position:absolute;right:17px;top:15px;width:34px;height:34px;border:0;border-radius:11px;background:#ded9de;font-size:21px}.gallery-upload-sheet h3{margin:2px 0 4px;font-size:20px}.gallery-upload-sheet p{margin:0 0 17px;font-size:12px;color:#827b83}.gallery-main-btn{width:100%;height:48px;border:0;border-radius:15px;background:linear-gradient(135deg,#f18aa8,#e65b85);color:#fff;font-weight:800;font-size:13px;margin-top:10px}.gallery-main-btn:disabled{opacity:.45}.gallery-selected-info{margin-top:12px;padding:12px;border-radius:14px;background:rgba(255,255,255,.55);font-size:11px;color:#756e76;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.gallery-privacy-options{display:flex;gap:8px;margin-top:10px}.privacy-choice{flex:1;height:43px;border:1px solid transparent;border-radius:14px;background:#dfdade;color:#716a72;font-size:12px}.privacy-choice.active{background:#f5c3d0;border-color:#ef9ab2;color:#93435d;font-weight:800}
+.gallery-viewer{display:none;position:fixed;z-index:300;inset:0;background:#171419;color:#fff;max-width:520px;margin:auto;flex-direction:column}.gallery-viewer.show{display:flex}.gallery-viewer-bar{height:60px;padding:env(safe-area-inset-top) 12px 0;display:flex;align-items:center;gap:10px;background:#211c22}.gallery-viewer-bar button{width:38px;height:38px;border:0;border-radius:12px;background:rgba(255,255,255,.1);color:#fff;font-size:18px}.gallery-viewer-bar b{flex:1;font-size:13px}.gallery-viewer>div:nth-child(2){flex:1;display:grid;place-items:center;overflow:hidden}.gallery-viewer img,.gallery-viewer video{max-width:100%;max-height:100%;object-fit:contain}.gallery-viewer-meta{padding:11px 15px calc(11px + env(safe-area-inset-bottom));background:#211c22;font-size:11px;color:#b8b1b8}
+
+.secret-page-head{display:flex;justify-content:space-between;align-items:center;margin:5px 0 13px}.secret-page-head b{font-size:19px}.secret-page-head small{display:block;font-size:11px;color:#89838b;margin-top:3px}.secret-create-btn{border:0;border-radius:14px;background:linear-gradient(135deg,#f18aa8,#e65b85);color:#fff;padding:10px 14px;font-size:12px;font-weight:800}.secret-tabs{display:flex;gap:8px;margin-bottom:12px}.secret-tab{border:0;border-radius:16px;background:#ded9de;color:#716b73;padding:8px 12px;font-size:11px}.secret-tab.active{background:#f4b1c3;color:#8d3f59;font-weight:800}.secret-view{display:none}.secret-view.active{display:block}.secret-card{display:flex;gap:10px;padding:10px;margin-bottom:9px;border-radius:19px;background:rgba(255,255,255,.52);border:1px solid rgba(255,255,255,.82)}.secret-thumb{width:82px;height:82px;border-radius:15px;overflow:hidden;position:relative;flex:none;background:#b8b2b8}.secret-thumb img,.secret-thumb video{width:100%;height:100%;object-fit:cover;filter:blur(8px);transform:scale(1.08)}.secret-card.unlocked .secret-thumb img,.secret-card.unlocked .secret-thumb video{filter:none;transform:none}.secret-thumb span{position:absolute;inset:0;display:grid;place-items:center;font-size:21px}.secret-card-info{min-width:0;flex:1;display:flex;flex-direction:column;justify-content:center}.secret-card-info b{font-size:13px}.secret-card-info small{font-size:10px;color:#878088;margin-top:5px}.secret-card-price{font-size:12px;color:#b04b69;font-weight:800;margin-top:6px}.secret-card-action{align-self:center;border:0;border-radius:12px;padding:9px 11px;background:#e9e4e8;color:#716b73;font-size:10px;font-weight:800}.secret-card-action.primary{background:#ed789a;color:#fff}.secret-create-modal{display:none;position:fixed;z-index:270;inset:0;background:rgba(35,28,34,.36);backdrop-filter:blur(7px);align-items:flex-end;justify-content:center}.secret-create-modal.show{display:flex}.secret-create-sheet{position:relative;width:100%;max-width:520px;background:linear-gradient(160deg,#f8f5f7,#e8e4e8);border-radius:28px 28px 0 0;padding:22px 20px calc(24px + env(safe-area-inset-bottom));text-align:center}.secret-create-close{position:absolute;right:17px;top:15px;width:34px;height:34px;border:0;border-radius:11px;background:#ded9de;font-size:21px}.secret-create-sheet h3{margin:2px 0 4px;font-size:20px}.secret-create-sheet p{font-size:12px;color:#827b83;margin:0 0 16px}.secret-main-btn{width:100%;height:48px;border:0;border-radius:15px;background:linear-gradient(135deg,#f18aa8,#e65b85);color:#fff;font-size:13px;font-weight:800;margin-top:10px}.secret-main-btn:disabled{opacity:.45}.secret-create-preview{height:72px;margin-top:10px;border-radius:15px;background:rgba(255,255,255,.55);display:grid;place-items:center;font-size:11px;color:#777079;overflow:hidden}.secret-create-preview img,.secret-create-preview video{width:100%;height:100%;object-fit:cover;filter:blur(8px);transform:scale(1.05)}.secret-price-title{text-align:left;font-size:11px;color:#7e777f;margin:14px 2px 7px}.secret-price-options{display:grid;grid-template-columns:repeat(4,1fr);gap:7px}.secret-price-options button{height:38px;border:0;border-radius:12px;background:#dfdade;color:#716b73;font-size:11px}.secret-price-options button.active{background:#f4b1c3;color:#8d3f59;font-weight:800}.secret-create-sheet input[type=number]{width:100%;box-sizing:border-box;border:0;border-radius:13px;background:rgba(255,255,255,.62);padding:13px;margin-top:8px;outline:none}
+
+.profile-head{display:flex;align-items:center;justify-content:space-between;margin:5px 0 13px}.profile-head b{font-size:20px}.profile-head small{display:block;font-size:11px;color:#89838b;margin-top:3px}.gem-mini{font-size:25px}
+.gem-balance-card{border-radius:24px;padding:22px;background:linear-gradient(135deg,#ef8daa,#d95c83);color:#fff;box-shadow:0 13px 30px rgba(217,92,131,.2)}.gem-balance-label{font-size:11px;opacity:.85}.gem-balance{font-size:40px;font-weight:900;margin:7px 0}.gem-balance span{font-size:27px}.gem-balance-note{font-size:11px;opacity:.88}.gem-buy-btn{margin-top:17px;border:0;border-radius:14px;background:#fff;color:#c44f75;padding:11px 14px;font-size:12px;font-weight:900}
+.gem-tabs{display:flex;gap:8px;margin:15px 0 12px}.gem-tab{border:0;border-radius:16px;background:#ded9de;color:#716b73;padding:8px 14px;font-size:11px}.gem-tab.active{background:#f4b1c3;color:#8d3f59;font-weight:800}.gem-view{display:none}.gem-view.active{display:block}.gem-section-title{font-size:13px;font-weight:800;margin-bottom:9px}
+.gem-packages{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}.gem-package{position:relative;border:1px solid rgba(255,255,255,.9);border-radius:21px;background:rgba(255,255,255,.52);padding:15px 10px;color:#49434a;text-align:center}.gem-package span{font-size:27px;display:block}.gem-package b{font-size:25px;display:block;margin-top:3px}.gem-package small{font-size:10px;color:#878088;display:block;margin-top:1px}.gem-package em{display:block;font-style:normal;font-size:11px;font-weight:800;color:#bc4f6c;margin-top:10px}.gem-package i{position:absolute;top:-8px;left:50%;transform:translateX(-50%);font-style:normal;background:#e95f89;color:#fff;border-radius:10px;padding:3px 8px;font-size:9px}
+.gem-history-row{display:flex;align-items:center;gap:11px;padding:12px 2px;border-bottom:1px solid rgba(180,174,181,.28)}.gem-history-icon{width:42px;height:42px;border-radius:14px;background:#f3c0ce;display:grid;place-items:center;font-size:18px}.gem-history-info{flex:1}.gem-history-info b{font-size:12px}.gem-history-info small{display:block;font-size:10px;color:#89838b;margin-top:3px}.gem-history-amount{font-size:13px;font-weight:900;color:#c34d70}
+.gem-purchase-modal{display:none;position:fixed;z-index:280;inset:0;background:rgba(35,28,34,.38);backdrop-filter:blur(7px);align-items:flex-end;justify-content:center}.gem-purchase-modal.show{display:flex}.gem-purchase-sheet{position:relative;width:100%;max-width:520px;background:linear-gradient(160deg,#f8f5f7,#e8e4e8);border-radius:28px 28px 0 0;padding:25px 20px calc(26px + env(safe-area-inset-bottom));text-align:center}.gem-close{position:absolute;right:17px;top:15px;width:34px;height:34px;border:0;border-radius:11px;background:#ded9de;font-size:21px}.gem-purchase-icon{font-size:46px}.gem-purchase-sheet h3{margin:6px 0 4px}.gem-purchase-sheet p{font-size:12px;color:#827b83}.gem-payment-options{display:flex;gap:8px;margin:16px 0}.payment-choice{flex:1;height:46px;border:1px solid transparent;border-radius:14px;background:#ded9de;color:#706a72;font-size:11px}.payment-choice.active{background:#f5c3d0;border-color:#ef9ab2;color:#93435d;font-weight:800}.gem-confirm-btn{width:100%;height:49px;border:0;border-radius:15px;background:linear-gradient(135deg,#f18aa8,#e65b85);color:#fff;font-weight:900}
+
+
+.profile-page{padding-top:4px}.profile-top{display:flex;align-items:center;gap:12px}.profile-avatar-main{position:relative;width:78px;height:78px;border:0;border-radius:26px;background:linear-gradient(145deg,#f5b6c8,#aaa5ab);font-size:25px;font-weight:900;color:#544e55;overflow:hidden}.profile-avatar-main img{width:100%;height:100%;object-fit:cover}.profile-avatar-main i{position:absolute;right:3px;bottom:3px;font-style:normal;font-size:12px;background:#fff;border-radius:10px;padding:5px}.profile-top h2{margin:0;font-size:19px}.profile-top p{margin:4px 0 0;font-size:12px;color:#827b83}.profile-edit-btn{margin-left:auto;border:0;border-radius:12px;background:#e4dfe4;color:#6c656d;padding:9px 12px;font-size:11px;font-weight:800}
+.profile-stats{display:grid;grid-template-columns:repeat(3,1fr);margin:17px 0 16px;padding:13px 4px;border-radius:19px;background:rgba(255,255,255,.48)}.profile-stats div{text-align:center;border-right:1px solid rgba(160,154,161,.2)}.profile-stats div:last-child{border:0}.profile-stats b{display:block;font-size:15px}.profile-stats small{font-size:10px;color:#878088}
+.settings-group{margin-top:16px}.settings-group-title{font-size:11px;font-weight:900;color:#8a838b;margin:0 4px 5px}.setting-row{width:100%;display:flex;align-items:center;gap:10px;border:0;border-bottom:1px solid rgba(180,174,181,.25);padding:12px 3px;background:transparent;text-align:left}.setting-row>span{width:35px;height:35px;border-radius:12px;background:#f0c3cf;display:grid;place-items:center}.setting-row div{flex:1}.setting-row b{display:block;font-size:12px}.setting-row small{font-size:10px;color:#89838b;display:block;margin-top:3px}.setting-row em{font-size:23px;font-style:normal;color:#aaa3aa}.logout-btn{width:100%;height:47px;border:0;border-radius:15px;background:#e2dde2;color:#a04e65;font-weight:900;margin:22px 0}
+.profile-modal{display:none;position:fixed;z-index:290;inset:0;background:rgba(35,28,34,.36);backdrop-filter:blur(7px);align-items:flex-end;justify-content:center}.profile-modal.show{display:flex}.profile-sheet{position:relative;width:100%;max-width:520px;max-height:84vh;overflow:auto;background:linear-gradient(160deg,#f8f5f7,#e8e4e8);border-radius:28px 28px 0 0;padding:22px 20px calc(25px + env(safe-area-inset-bottom))}.profile-close{position:absolute;right:17px;top:15px;width:34px;height:34px;border:0;border-radius:11px;background:#ded9de;font-size:21px}.profile-sheet h3{margin:2px 0 15px}.profile-field{margin:11px 0}.profile-field label{display:block;font-size:11px;color:#7f7880;margin-bottom:5px}.profile-field input{width:100%;box-sizing:border-box;border:0;border-radius:13px;padding:13px;background:#fff;outline:none}.profile-save{width:100%;height:47px;border:0;border-radius:15px;background:linear-gradient(135deg,#f18aa8,#e65b85);color:#fff;font-weight:900;margin-top:8px}.toggle-row{display:flex;justify-content:space-between;align-items:center;padding:13px 0;border-bottom:1px solid rgba(180,174,181,.25);font-size:12px}.toggle{width:46px;height:27px;border:0;border-radius:20px;background:#c9c4c9;position:relative}.toggle i{position:absolute;width:21px;height:21px;background:#fff;border-radius:50%;top:3px;left:3px}.toggle.on{background:#ea7598}.toggle.on i{left:22px}.block-row{display:flex;align-items:center;gap:10px;padding:11px 0;border-bottom:1px solid rgba(180,174,181,.25)}.block-row button{margin-left:auto;border:0;border-radius:10px;padding:8px 10px;background:#e5dfe4;color:#8c5060;font-size:10px}
+
 </style>
 
 </head>
@@ -160,30 +203,118 @@ body{margin:0;background:linear-gradient(135deg,#d8d5d9,#f4dfe6,#cbc8cd);color:v
   </section>
 
   <section id="friends" class="panel">
-    <div class="topbar"><div class="brand">Friends</div><button class="icon-btn">＋</button></div>
-    <div class="search">⌕ <input placeholder="Cari teman / PINGGO ID" /></div>
-    <div class="drop-card"><div class="lock">👤</div><div><b>Tambah Teman</b><p>Masukkan PINGGO ID untuk terhubung.</p></div></div>
-    <div class="drop-card"><div class="lock">✉</div><div><b>Undangan</b><p>1 permintaan pertemanan baru.</p></div></div>
-    <div class="section-title"><b>Teman (120)</b></div>
-  </section>
+  <div class="friends-head">
+    <div class="friends-search"><span>⌕</span><input id="friendSearch" placeholder="Cari username atau PINGGO ID"></div>
+    <button id="openAddFriend" class="friend-add-top">＋</button>
+  </div>
+
+  <div class="friend-tabs">
+    <button class="friend-tab active" data-friend-view="friendsList">Friends</button>
+    <button class="friend-tab" data-friend-view="requestsView">Requests <span id="requestCount">2</span></button>
+    <button class="friend-tab" data-friend-view="sentView">Sent</button>
+  </div>
+
+  <div id="friendsList" class="friend-view active">
+    <div class="friend-section-label"><b>My Friends</b><small id="friendTotal">4 friends</small></div>
+    <div id="friendsContainer" class="friends-container"></div>
+    <div id="friendsEmpty" class="empty-card" style="display:none">Belum ada teman yang cocok.</div>
+  </div>
+
+  <div id="requestsView" class="friend-view">
+    <div class="friend-section-label"><b>Friend Requests</b><small>Masuk</small></div>
+    <div id="requestsContainer"></div>
+    <div id="requestsEmpty" class="empty-card" style="display:none">Tidak ada friend request.</div>
+  </div>
+
+  <div id="sentView" class="friend-view">
+    <div class="friend-section-label"><b>Sent Requests</b><small>Menunggu</small></div>
+    <div id="sentContainer"></div>
+    <div id="sentEmpty" class="empty-card" style="display:none">Tidak ada request terkirim.</div>
+  </div>
+
+  <div id="userSearchResult" class="user-search-result">
+    <div class="search-result-head"><b>Search Result</b><button id="closeSearchResult">×</button></div>
+    <div id="searchResultContent"></div>
+  </div>
+
+  <div id="friendProfileModal" class="friend-profile-modal">
+    <div class="friend-profile-sheet">
+      <button id="closeFriendProfile" class="close-friend-profile">×</button>
+      <div id="friendProfileContent"></div>
+    </div>
+  </div>
+</section>
 
   <section id="gallery" class="panel">
-    <div class="topbar"><div class="brand">Gallery</div><button class="icon-btn">＋</button></div>
-    <div class="tabs"><button class="tab active">Semua</button><button class="tab">Foto</button><button class="tab">Video</button><button class="tab">Secret Drop</button></div>
-    <div class="empty-card">Gallery dasar sudah siap.<br>Fitur upload foto/video akan kita tambahkan setelah tampilan utama selesai.</div>
-  </section>
+  <div class="gallery-toolbar">
+    <div class="gallery-title-row"><div><b>My Gallery</b><small id="galleryCount">0 items</small></div><button id="uploadGallery" class="gallery-upload">＋ Upload</button></div>
+    <div class="gallery-filter-row">
+      <button class="gallery-filter active" data-gallery-filter="all">All</button>
+      <button class="gallery-filter" data-gallery-filter="photo">Photos</button>
+      <button class="gallery-filter" data-gallery-filter="video">Videos</button>
+      <button class="gallery-filter" data-gallery-filter="private">Private</button>
+    </div>
+  </div>
+  <input id="galleryUploadInput" type="file" accept="image/*,video/*" multiple hidden>
+  <div id="galleryGrid" class="gallery-grid"></div>
+  <div id="galleryEmpty" class="empty-card">Belum ada foto atau video. Tekan Upload untuk mencoba.</div>
 
-  <section id="drop" class="panel">
-    <div class="topbar"><div class="brand">Secret Drop</div><button class="icon-btn">ⓘ</button></div>
-    <div class="tabs"><button class="tab active">Untukku</button><button class="tab">Dikirim</button><button class="tab">Dibeli</button></div>
-    <div class="drop-card"><div class="lock">🔒</div><div><b>Secret Drop</b><p>Konten private yang dikirim atau diunggah akan muncul di sini.</p></div></div>
-  </section>
+  <div id="galleryUploadModal" class="gallery-upload-modal">
+    <div class="gallery-upload-sheet">
+      <button id="closeGalleryUpload" class="gallery-close">×</button>
+      <h3>Upload ke Gallery</h3>
+      <p>Pilih foto atau video dari perangkat.</p>
+      <button id="chooseGalleryMedia" class="gallery-main-btn">Pilih dari Gallery</button>
+      <div id="gallerySelectedInfo" class="gallery-selected-info">Belum ada media dipilih</div>
+      <div id="galleryPrivacyOptions" class="gallery-privacy-options">
+        <button class="privacy-choice active" data-privacy="private">🔒 Private</button>
+        <button class="privacy-choice" data-privacy="public">🌐 Public</button>
+      </div>
+      <button id="saveGalleryMedia" class="gallery-main-btn" disabled>Simpan ke Gallery</button>
+    </div>
+  </div>
+
+  <div id="galleryViewer" class="gallery-viewer">
+    <div class="gallery-viewer-bar"><button id="closeGalleryViewer">←</button><b id="galleryViewerTitle">Gallery</b><button id="deleteGalleryMedia">🗑</button></div>
+    <div id="galleryViewerContent"></div>
+    <div id="galleryViewerMeta"></div>
+  </div>
+</section>
+
+  <section id="drop" class="panel"><div class="secret-page-head"><div><b>Secret Drop</b><small>Konten eksklusif & terkunci</small></div><button id="openSecretCreate" class="secret-create-btn">＋ Create</button></div>
+<div class="secret-tabs"><button class="secret-tab active" data-secret-view="secretSentView">Sent</button><button class="secret-tab" data-secret-view="secretReceivedView">Received</button><button class="secret-tab" data-secret-view="secretUnlockedView">Unlocked</button></div>
+<div id="secretSentView" class="secret-view active"><div id="secretSentList"></div><div id="secretSentEmpty" class="empty-card">Belum ada Secret Drop yang dikirim.</div></div>
+<div id="secretReceivedView" class="secret-view"><div id="secretReceivedList"></div><div id="secretReceivedEmpty" class="empty-card">Belum ada Secret Drop diterima.</div></div>
+<div id="secretUnlockedView" class="secret-view"><div id="secretUnlockedList"></div><div id="secretUnlockedEmpty" class="empty-card">Belum ada konten yang di-unlock.</div></div>
+<div id="secretCreateModal" class="secret-create-modal"><div class="secret-create-sheet"><button id="closeSecretCreate" class="secret-create-close">×</button><h3>Create Secret Drop</h3><p>Pilih foto atau video, lalu tentukan harga Heart Gem.</p><input id="secretCreateInput" type="file" accept="image/*,video/*" hidden><button id="chooseSecretCreate" class="secret-main-btn">Pilih Foto / Video</button><div id="secretCreatePreview" class="secret-create-preview">Belum ada media dipilih</div><div class="secret-price-title">Harga Unlock</div><div class="secret-price-options"><button data-secret-price="10">💗 10</button><button data-secret-price="25">💗 25</button><button data-secret-price="50" class="active">💗 50</button><button data-secret-price="100">💗 100</button></div><input id="secretCustomPrice" type="number" min="1" placeholder="Atau jumlah Heart Gem sendiri"><button id="publishSecretCreate" class="secret-main-btn" disabled>Publish Secret Drop 🔒</button></div></div></section>
 
   <section id="profile" class="panel">
-    <div class="topbar"><div class="brand">Profile</div><button class="icon-btn">⋮</button></div>
-    <div class="profile-head"><div class="big-avatar">E</div><h2>Edhysean</h2><p>PINGGO ID: edhysean</p></div>
-    <div class="wallet"><div><small>Saldo</small><b><span class="heart-gem"></span>1.250 Gem</b></div><button class="tab active">Beli Gem</button></div>
-  </section>
+  <div class="profile-page">
+    <div class="profile-top">
+      <button id="changeProfilePhoto" class="profile-avatar-main"><span id="profileAvatarText">ES</span><i>📷</i></button>
+      <input id="profilePhotoInput" type="file" accept="image/*" hidden>
+      <div><h2 id="profileDisplayName">Edhy Sean</h2><p id="profilePinggoId">@edhysean</p></div>
+      <button id="editProfileBtn" class="profile-edit-btn">Edit</button>
+    </div>
+    <div class="profile-stats"><div><b id="profileFriendsCount">0</b><small>Friends</small></div><div><b id="profileDropsCount">0</b><small>Secret Drops</small></div><div><b id="profileGemCount">500 💗</b><small>Heart Gem</small></div></div>
+
+    <div class="settings-group">
+      <div class="settings-group-title">Account</div>
+      <button class="setting-row" data-setting-open="account"><span>👤</span><div><b>Account Information</b><small>Nama & PINGGO ID</small></div><em>›</em></button>
+      <button class="setting-row" data-setting-open="privacy"><span>🔒</span><div><b>Privacy</b><small>Profile & Secret Drop</small></div><em>›</em></button>
+      <button class="setting-row" data-setting-open="blocked"><span>🚫</span><div><b>Blocked Users</b><small id="blockedCountLabel">0 user</small></div><em>›</em></button>
+    </div>
+    <div class="settings-group">
+      <div class="settings-group-title">App</div>
+      <button class="setting-row" data-setting-open="notifications"><span>🔔</span><div><b>Notifications</b><small>Chat & activity alerts</small></div><em>›</em></button>
+      <button class="setting-row" data-setting-open="appearance"><span>🎨</span><div><b>Appearance</b><small id="appearanceLabel">Pink & Gray</small></div><em>›</em></button>
+      <button class="setting-row" data-setting-open="about"><span>ℹ️</span><div><b>About PINGGO</b><small>Version & information</small></div><em>›</em></button>
+    </div>
+    <button id="demoLogout" class="logout-btn">Log Out (Demo)</button>
+  </div>
+
+  <div id="profileModal" class="profile-modal"><div class="profile-sheet"><button id="closeProfileModal" class="profile-close">×</button><div id="profileModalContent"></div></div></div>
+</section>
 </div>
 
 <button class="fab" onclick="alert('Tombol pesan baru — fungsi chat akan dibuat pada tahap berikutnya.')">＋</button>
@@ -417,6 +548,326 @@ document.addEventListener('visibilitychange',()=>{
   }
 });
 
+
+// COMPLETE CHAT: PHOTO, VIDEO, VOICE, STATUS & CHAT PREVIEW
+const chatPhotoFile=document.getElementById('chatPhotoFile');
+const chatVideoFile=document.getElementById('chatVideoFile');
+const mediaViewer=document.getElementById('mediaViewer');
+const mediaViewerContent=document.getElementById('mediaViewerContent');
+
+function addMediaMessage(file,type){
+  const url=URL.createObjectURL(file);
+  const row=document.createElement('div');
+  row.className='message-row outgoing';
+  const card=document.createElement('div');card.className='media-message';
+  let media;
+  if(type==='image'){media=document.createElement('img');media.src=url;}
+  else{media=document.createElement('video');media.src=url;media.controls=true;media.playsInline=true;}
+  media.addEventListener('click',()=>openMediaViewer(type,url));
+  const cap=document.createElement('div');cap.className='media-caption';
+  cap.textContent=(type==='image'?'📷 Foto':'🎥 Video')+' • '+new Date().toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit'})+' ✓';
+  card.append(media,cap);row.appendChild(card);chatMessages.appendChild(row);chatMessages.scrollTop=chatMessages.scrollHeight;
+  updateChatPreview(type==='image'?'📷 Foto':'🎥 Video');
+}
+
+function openMediaViewer(type,url){
+  mediaViewerContent.innerHTML='';
+  const el=document.createElement(type==='image'?'img':'video');
+  el.src=url;if(type==='video'){el.controls=true;el.autoplay=true;el.playsInline=true;}
+  mediaViewerContent.appendChild(el);mediaViewer.classList.add('show');
+}
+document.getElementById('closeMediaViewer').addEventListener('click',()=>{mediaViewer.classList.remove('show');mediaViewerContent.innerHTML='';});
+
+document.querySelectorAll('.attach-menu button').forEach(btn=>{
+  const label=btn.textContent.trim();
+  if(label.includes('Foto'))btn.addEventListener('click',()=>{attachMenu.classList.remove('show');chatPhotoFile.click();});
+  if(label.includes('Video'))btn.addEventListener('click',()=>{attachMenu.classList.remove('show');chatVideoFile.click();});
+  if(label.includes('Voice'))btn.addEventListener('click',()=>{attachMenu.classList.remove('show');sendDemoVoice();});
+});
+chatPhotoFile.addEventListener('change',()=>{const f=chatPhotoFile.files[0];if(f)addMediaMessage(f,'image');chatPhotoFile.value='';});
+chatVideoFile.addEventListener('change',()=>{const f=chatVideoFile.files[0];if(f)addMediaMessage(f,'video');chatVideoFile.value='';});
+
+function sendDemoVoice(){
+  const row=document.createElement('div');row.className='message-row outgoing';
+  const bubble=document.createElement('div');bubble.className='bubble voice-message';
+  const play=document.createElement('button');play.className='voice-play';play.textContent='▶';
+  const bars=document.createElement('div');bars.className='voice-bars';
+  [12,20,28,16,34,22,30,14,25,18,11].forEach(h=>{const i=document.createElement('i');i.style.height=h+'px';bars.appendChild(i);});
+  const duration=document.createElement('span');duration.className='voice-duration';duration.textContent='0:08 ✓';
+  play.addEventListener('click',()=>{play.textContent=play.textContent==='▶'?'❚❚':'▶';});
+  bubble.append(play,bars,duration);row.appendChild(bubble);chatMessages.appendChild(row);chatMessages.scrollTop=chatMessages.scrollHeight;
+  updateChatPreview('🎙 Voice message');
+}
+
+function updateChatPreview(text){
+  const firstChat=document.querySelector('[data-open-chat="Cinta"] .preview');
+  if(firstChat)firstChat.textContent=text;
+}
+
+
+// REAL VOICE RECORDING
+const voiceRecorder=document.getElementById('voiceRecorder');
+const voiceTimer=document.getElementById('voiceTimer');
+const voiceStatus=document.getElementById('voiceStatus');
+const voicePreview=document.getElementById('voicePreview');
+const startVoiceBtn=document.getElementById('startVoice');
+const stopVoiceBtn=document.getElementById('stopVoice');
+const sendVoiceBtn=document.getElementById('sendVoice');
+const redoVoiceBtn=document.getElementById('redoVoice');
+const voiceIcon=document.getElementById('voiceRecordIcon');
+let mediaRecorder=null,voiceChunks=[],voiceStream=null,voiceBlob=null,voiceUrl=null,voiceInterval=null,voiceSeconds=0;
+
+function resetVoiceRecorder(){
+  if(voiceStream)voiceStream.getTracks().forEach(t=>t.stop());
+  voiceStream=null;mediaRecorder=null;voiceChunks=[];voiceBlob=null;
+  if(voiceUrl){URL.revokeObjectURL(voiceUrl);voiceUrl=null;}
+  clearInterval(voiceInterval);voiceSeconds=0;voiceTimer.textContent='00:00';
+  voicePreview.pause();voicePreview.removeAttribute('src');voicePreview.style.display='none';
+  startVoiceBtn.style.display='block';stopVoiceBtn.style.display='none';sendVoiceBtn.style.display='none';redoVoiceBtn.style.display='none';
+  voiceStatus.textContent='Siap merekam';voiceIcon.classList.remove('recording');
+}
+function openVoiceRecorder(){resetVoiceRecorder();voiceRecorder.classList.add('show');}
+document.querySelectorAll('.attach-menu button').forEach(btn=>{
+  if(btn.textContent.trim().includes('Voice'))btn.addEventListener('click',()=>{attachMenu.classList.remove('show');openVoiceRecorder();});
+});
+document.getElementById('cancelVoice').addEventListener('click',()=>{if(mediaRecorder&&mediaRecorder.state==='recording')mediaRecorder.stop();resetVoiceRecorder();voiceRecorder.classList.remove('show');});
+
+startVoiceBtn.addEventListener('click',async()=>{
+  if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){alert('Browser ini tidak mendukung perekaman suara.');return;}
+  try{
+    voiceStream=await navigator.mediaDevices.getUserMedia({audio:true});
+    const options=MediaRecorder.isTypeSupported('audio/webm;codecs=opus')?{mimeType:'audio/webm;codecs=opus'}:undefined;
+    mediaRecorder=new MediaRecorder(voiceStream,options);voiceChunks=[];
+    mediaRecorder.ondataavailable=e=>{if(e.data.size>0)voiceChunks.push(e.data);};
+    mediaRecorder.onstop=()=>{
+      voiceBlob=new Blob(voiceChunks,{type:mediaRecorder.mimeType||'audio/webm'});
+      voiceUrl=URL.createObjectURL(voiceBlob);voicePreview.src=voiceUrl;voicePreview.style.display='block';
+      voiceStream.getTracks().forEach(t=>t.stop());voiceStream=null;
+      voiceStatus.textContent='Voice siap dikirim';sendVoiceBtn.style.display='block';redoVoiceBtn.style.display='block';
+    };
+    mediaRecorder.start();voiceSeconds=0;voiceStatus.textContent='Sedang merekam...';voiceIcon.classList.add('recording');
+    startVoiceBtn.style.display='none';stopVoiceBtn.style.display='block';
+    voiceInterval=setInterval(()=>{voiceSeconds++;const m=String(Math.floor(voiceSeconds/60)).padStart(2,'0'),s=String(voiceSeconds%60).padStart(2,'0');voiceTimer.textContent=m+':'+s;},1000);
+  }catch(err){alert('Izin mikrofon diperlukan untuk merekam voice message.');}
+});
+stopVoiceBtn.addEventListener('click',()=>{if(mediaRecorder&&mediaRecorder.state==='recording'){clearInterval(voiceInterval);voiceIcon.classList.remove('recording');stopVoiceBtn.style.display='none';voiceStatus.textContent='Memproses voice...';mediaRecorder.stop();}});
+redoVoiceBtn.addEventListener('click',()=>resetVoiceRecorder());
+
+sendVoiceBtn.addEventListener('click',()=>{
+  if(!voiceUrl)return;
+  const duration=voiceTimer.textContent;
+  const row=document.createElement('div');row.className='message-row outgoing';
+  const bubble=document.createElement('div');bubble.className='bubble voice-message';
+  const audio=new Audio(voiceUrl);const play=document.createElement('button');play.className='voice-play';play.textContent='▶';
+  const bars=document.createElement('div');bars.className='voice-bars';
+  [12,20,28,16,34,22,30,14,25,18,11].forEach(h=>{const i=document.createElement('i');i.style.height=h+'px';bars.appendChild(i);});
+  const durationEl=document.createElement('span');durationEl.className='voice-duration';durationEl.textContent=duration+' ✓';
+  play.addEventListener('click',()=>{if(audio.paused){audio.play();play.textContent='❚❚';}else{audio.pause();play.textContent='▶';}});
+  audio.addEventListener('ended',()=>play.textContent='▶');
+  bubble.append(play,bars,durationEl);row.appendChild(bubble);chatMessages.appendChild(row);chatMessages.scrollTop=chatMessages.scrollHeight;
+  updateChatPreview('🎙 Voice message');voiceRecorder.classList.remove('show');
+  // keep URL alive for this sent message, reset state without revoking it
+  voicePreview.pause();voiceStream=null;mediaRecorder=null;voiceChunks=[];voiceBlob=null;voiceUrl=null;
+});
+
+
+// FRIENDS - FULLY INTERACTIVE LOCAL PROTOTYPE
+const friendsState={
+ friends:[
+  {id:'cinta',name:'Cinta',pinggo:'@cinta',online:true},
+  {id:'dika',name:'Dika',pinggo:'@dika.surf',online:false},
+  {id:'nadya',name:'Nadya',pinggo:'@nadya.bali',online:true},
+  {id:'rama',name:'Rama',pinggo:'@rama.wave',online:false}
+ ],
+ requests:[
+  {id:'salsa',name:'Salsa',pinggo:'@salsa',online:true},
+  {id:'bagus',name:'Bagus',pinggo:'@bagus.kuta',online:false}
+ ],
+ sent:[{id:'reno',name:'Reno',pinggo:'@reno.id',online:false}],
+ users:[
+  {id:'salsa',name:'Salsa',pinggo:'@salsa',online:true},
+  {id:'bagus',name:'Bagus',pinggo:'@bagus.kuta',online:false},
+  {id:'reno',name:'Reno',pinggo:'@reno.id',online:false},
+  {id:'putri',name:'Putri',pinggo:'@putri.bali',online:true},
+  {id:'arya',name:'Arya',pinggo:'@arya.surf',online:true}
+ ]
+};
+const friendsContainer=document.getElementById('friendsContainer');
+const requestsContainer=document.getElementById('requestsContainer');
+const sentContainer=document.getElementById('sentContainer');
+const friendSearch=document.getElementById('friendSearch');
+const searchResult=document.getElementById('userSearchResult');
+const searchResultContent=document.getElementById('searchResultContent');
+
+function initials(n){return n.split(' ').map(x=>x[0]).join('').slice(0,2).toUpperCase()}
+function avatar(u){return `<div class="friend-avatar">${initials(u.name)}${u.online?'<div class="online-dot"></div>':''}</div>`}
+function renderFriends(){
+ const q=(friendSearch?.value||'').toLowerCase();
+ const list=friendsState.friends.filter(u=>(u.name+' '+u.pinggo).toLowerCase().includes(q));
+ friendsContainer.innerHTML=list.map(u=>`<div class="friend-row" data-user="${u.id}">${avatar(u)}<div class="friend-info"><b>${u.name}</b><small>${u.online?'Online':'Offline'} • ${u.pinggo}</small></div><div class="friend-actions"><button class="chat-friend" data-chat="${u.id}">Chat</button><button data-profile="${u.id}">⋮</button></div></div>`).join('');
+ document.getElementById('friendsEmpty').style.display=list.length?'none':'block';
+ document.getElementById('friendTotal').textContent=friendsState.friends.length+' friends';
+ renderRequests();renderSent();
+}
+function renderRequests(){
+ requestsContainer.innerHTML=friendsState.requests.map(u=>`<div class="friend-row">${avatar(u)}<div class="friend-info"><b>${u.name}</b><small>${u.pinggo}</small></div><div class="friend-actions"><button class="accept" data-accept="${u.id}">Accept</button><button data-decline="${u.id}">Decline</button></div></div>`).join('');
+ document.getElementById('requestsEmpty').style.display=friendsState.requests.length?'none':'block';
+ document.getElementById('requestCount').textContent=friendsState.requests.length;
+}
+function renderSent(){
+ sentContainer.innerHTML=friendsState.sent.map(u=>`<div class="friend-row">${avatar(u)}<div class="friend-info"><b>${u.name}</b><small>Request sent • ${u.pinggo}</small></div><div class="friend-actions"><button data-cancel-request="${u.id}">Cancel</button></div></div>`).join('');
+ document.getElementById('sentEmpty').style.display=friendsState.sent.length?'none':'block';
+}
+function getUser(id){return [...friendsState.friends,...friendsState.requests,...friendsState.sent,...friendsState.users].find(u=>u.id===id)}
+
+document.querySelectorAll('.friend-tab').forEach(btn=>btn.addEventListener('click',()=>{
+ document.querySelectorAll('.friend-tab').forEach(x=>x.classList.remove('active'));btn.classList.add('active');
+ document.querySelectorAll('.friend-view').forEach(x=>x.classList.remove('active'));document.getElementById(btn.dataset.friendView).classList.add('active');
+}));
+
+friendSearch.addEventListener('input',()=>{
+ const q=friendSearch.value.trim().toLowerCase();renderFriends();
+ if(!q){searchResult.classList.remove('show');return}
+ const found=friendsState.users.filter(u=>(u.name+' '+u.pinggo).toLowerCase().includes(q)&&!friendsState.friends.some(f=>f.id===u.id));
+ searchResultContent.innerHTML=found.length?found.map(u=>`<div class="search-user-card">${avatar(u)}<div class="friend-info"><b>${u.name}</b><small>${u.pinggo}</small></div><div class="friend-actions"><button class="accept" data-add="${u.id}">Add Friend</button></div></div>`).join(''):'<div class="empty-card">User tidak ditemukan.</div>';
+ searchResult.classList.add('show');
+});
+document.getElementById('closeSearchResult').addEventListener('click',()=>{friendSearch.value='';searchResult.classList.remove('show');renderFriends();});
+
+document.getElementById('openAddFriend').addEventListener('click',()=>{friendSearch.focus();friendSearch.placeholder='Ketik username atau PINGGO ID...';});
+
+document.addEventListener('click',e=>{
+ const accept=e.target.closest('[data-accept]');if(accept){const id=accept.dataset.accept;const u=friendsState.requests.find(x=>x.id===id);if(u){friendsState.requests=friendsState.requests.filter(x=>x.id!==id);if(!friendsState.friends.some(x=>x.id===id))friendsState.friends.push(u);renderFriends()}return}
+ const decline=e.target.closest('[data-decline]');if(decline){friendsState.requests=friendsState.requests.filter(x=>x.id!==decline.dataset.decline);renderFriends();return}
+ const cancel=e.target.closest('[data-cancel-request]');if(cancel){friendsState.sent=friendsState.sent.filter(x=>x.id!==cancel.dataset.cancelRequest);renderFriends();return}
+ const add=e.target.closest('[data-add]');if(add){const u=getUser(add.dataset.add);if(u&&!friendsState.sent.some(x=>x.id===u.id)&&!friendsState.friends.some(x=>x.id===u.id)){friendsState.sent.push(u);searchResult.classList.remove('show');friendSearch.value='';renderFriends();document.querySelector('[data-friend-view="sentView"]').click()}return}
+ const chat=e.target.closest('[data-chat]');if(chat){document.querySelector('[data-target="chats"]').click();const u=getUser(chat.dataset.chat);if(u&&u.id==='cinta')document.querySelector('[data-open-chat="Cinta"]')?.click();else alert('Demo: chat dengan '+(u?.name||'teman')+' siap dibuka saat backend multi-user dibuat.');return}
+ const profile=e.target.closest('[data-profile]');if(profile){openFriendProfile(profile.dataset.profile);return}
+});
+
+function openFriendProfile(id){
+ const u=getUser(id);if(!u)return;
+ document.getElementById('friendProfileContent').innerHTML=`<div class="friend-profile-avatar">${initials(u.name)}</div><h3>${u.name}</h3><p>${u.pinggo} • ${u.online?'Online':'Offline'}</p><div class="profile-friend-actions"><button class="primary" data-profile-chat="${u.id}">Chat</button><button class="danger" data-block="${u.id}">Block</button><button class="danger" data-remove="${u.id}">Remove</button></div>`;
+ document.getElementById('friendProfileModal').classList.add('show');
+}
+document.getElementById('closeFriendProfile').addEventListener('click',()=>document.getElementById('friendProfileModal').classList.remove('show'));
+document.addEventListener('click',e=>{
+ const remove=e.target.closest('[data-remove]');if(remove){friendsState.friends=friendsState.friends.filter(x=>x.id!==remove.dataset.remove);document.getElementById('friendProfileModal').classList.remove('show');renderFriends();return}
+ const block=e.target.closest('[data-block]');if(block){friendsState.friends=friendsState.friends.filter(x=>x.id!==block.dataset.block);document.getElementById('friendProfileModal').classList.remove('show');renderFriends();alert('User diblokir pada prototype ini.');return}
+ const pc=e.target.closest('[data-profile-chat]');if(pc){document.getElementById('friendProfileModal').classList.remove('show');document.querySelector('[data-target="chats"]').click();alert('Demo: percakapan '+(getUser(pc.dataset.profileChat)?.name||'teman')+' akan memakai room sendiri setelah backend multi-user dibuat.');}
+});
+renderFriends();
+
+
+// GALLERY - FULLY INTERACTIVE LOCAL PROTOTYPE
+const galleryState=[];
+let galleryFilter='all', gallerySelectedFiles=[], galleryPrivacy='private', viewingGalleryId=null;
+const galleryGrid=document.getElementById('galleryGrid'), galleryEmpty=document.getElementById('galleryEmpty');
+const galleryInput=document.getElementById('galleryUploadInput');
+
+function renderGallery(){
+ const items=galleryState.filter(x=>galleryFilter==='all'||x.type===galleryFilter||(galleryFilter==='private'&&x.privacy==='private'));
+ galleryGrid.innerHTML=items.map(x=>`<button class="gallery-item" data-gallery-open="${x.id}" aria-label="Open media">${x.type==='photo'?`<img src="${x.url}" alt="">`:`<video src="${x.url}" muted preload="metadata"></video>`}<span class="gallery-item-type">${x.type==='photo'?'📷':'▶'}</span><span class="gallery-item-badge">${x.privacy==='private'?'🔒 Private':'🌐 Public'}</span></button>`).join('');
+ galleryEmpty.style.display=items.length?'none':'block';
+ document.getElementById('galleryCount').textContent=galleryState.length+' item'+(galleryState.length===1?'':'s');
+}
+function openGalleryUpload(){gallerySelectedFiles=[];galleryPrivacy='private';document.getElementById('gallerySelectedInfo').textContent='Belum ada media dipilih';document.getElementById('saveGalleryMedia').disabled=true;document.querySelectorAll('.privacy-choice').forEach(x=>x.classList.toggle('active',x.dataset.privacy==='private'));document.getElementById('galleryUploadModal').classList.add('show');}
+document.getElementById('uploadGallery').addEventListener('click',openGalleryUpload);
+document.getElementById('closeGalleryUpload').addEventListener('click',()=>document.getElementById('galleryUploadModal').classList.remove('show'));
+document.getElementById('chooseGalleryMedia').addEventListener('click',()=>galleryInput.click());
+galleryInput.addEventListener('change',()=>{
+ gallerySelectedFiles=[...galleryInput.files];
+ document.getElementById('gallerySelectedInfo').textContent=gallerySelectedFiles.length?gallerySelectedFiles.length+' media dipilih • '+gallerySelectedFiles.map(f=>f.name).join(', '):'Belum ada media dipilih';
+ document.getElementById('saveGalleryMedia').disabled=!gallerySelectedFiles.length;
+});
+document.querySelectorAll('.privacy-choice').forEach(btn=>btn.addEventListener('click',()=>{galleryPrivacy=btn.dataset.privacy;document.querySelectorAll('.privacy-choice').forEach(x=>x.classList.toggle('active',x===btn));}));
+document.getElementById('saveGalleryMedia').addEventListener('click',()=>{
+ gallerySelectedFiles.forEach(file=>galleryState.unshift({id:'g'+Date.now()+Math.random(),name:file.name,type:file.type.startsWith('video/')?'video':'photo',privacy:galleryPrivacy,url:URL.createObjectURL(file),date:new Date().toLocaleString('id-ID')}));
+ document.getElementById('galleryUploadModal').classList.remove('show');galleryInput.value='';renderGallery();
+});
+document.querySelectorAll('.gallery-filter').forEach(btn=>btn.addEventListener('click',()=>{galleryFilter=btn.dataset.galleryFilter;document.querySelectorAll('.gallery-filter').forEach(x=>x.classList.toggle('active',x===btn));renderGallery();}));
+document.addEventListener('click',e=>{
+ const open=e.target.closest('[data-gallery-open]');if(open){const x=galleryState.find(i=>i.id===open.dataset.galleryOpen);if(!x)return;viewingGalleryId=x.id;document.getElementById('galleryViewerTitle').textContent=x.name;document.getElementById('galleryViewerContent').innerHTML=x.type==='photo'?`<img src="${x.url}" alt="">`:`<video src="${x.url}" controls autoplay playsinline></video>`;document.getElementById('galleryViewerMeta').className='gallery-viewer-meta';document.getElementById('galleryViewerMeta').textContent=(x.privacy==='private'?'🔒 Private':'🌐 Public')+' • '+x.date;document.getElementById('galleryViewer').classList.add('show');}
+});
+document.getElementById('closeGalleryViewer').addEventListener('click',()=>{document.getElementById('galleryViewer').classList.remove('show');document.getElementById('galleryViewerContent').innerHTML='';});
+document.getElementById('deleteGalleryMedia').addEventListener('click',()=>{if(!viewingGalleryId)return;const i=galleryState.findIndex(x=>x.id===viewingGalleryId);if(i>=0){URL.revokeObjectURL(galleryState[i].url);galleryState.splice(i,1);}document.getElementById('galleryViewer').classList.remove('show');document.getElementById('galleryViewerContent').innerHTML='';renderGallery();});
+renderGallery();
+
+
+// SECRET DROP MAIN MENU
+const secretState={sent:[],received:[],unlocked:[]};let secretCreateFile=null,secretCreatePrice=50;
+const secretCreateInput=document.getElementById('secretCreateInput');
+function secretCard(x,kind){const unlocked=!!x.unlocked,media=x.type==='image'?`<img src="${x.url}" alt="">`:`<video src="${x.url}" muted></video>`;let action=kind==='received'&&!unlocked?`<button class="secret-card-action primary" data-secret-unlock="${x.id}">Unlock</button>`:unlocked?`<button class="secret-card-action primary" data-secret-view-item="${x.id}">Open</button>`:`<button class="secret-card-action" data-secret-preview="${x.id}">Preview</button>`;return `<div class="secret-card ${unlocked?'unlocked':''}"><div class="secret-thumb">${media}<span>${unlocked?'🔓':'🔒'}</span></div><div class="secret-card-info"><b>${x.name}</b><small>${kind==='sent'?'Sent':kind==='received'?'Received':'Unlocked'} • ${x.date}</small><div class="secret-card-price">💗 ${x.price} Heart Gem</div></div>${action}</div>`}
+function renderSecret(){[['sent','secretSentList','secretSentEmpty'],['received','secretReceivedList','secretReceivedEmpty'],['unlocked','secretUnlockedList','secretUnlockedEmpty']].forEach(([k,l,e])=>{document.getElementById(l).innerHTML=secretState[k].map(x=>secretCard(x,k)).join('');document.getElementById(e).style.display=secretState[k].length?'none':'block'})}
+document.querySelectorAll('.secret-tab').forEach(b=>b.addEventListener('click',()=>{document.querySelectorAll('.secret-tab').forEach(x=>x.classList.remove('active'));b.classList.add('active');document.querySelectorAll('.secret-view').forEach(x=>x.classList.remove('active'));document.getElementById(b.dataset.secretView).classList.add('active')}));
+document.getElementById('openSecretCreate').onclick=()=>{secretCreateFile=null;secretCreatePrice=50;document.getElementById('secretCreatePreview').textContent='Belum ada media dipilih';document.getElementById('publishSecretCreate').disabled=true;document.getElementById('secretCreateModal').classList.add('show')};
+document.getElementById('closeSecretCreate').onclick=()=>document.getElementById('secretCreateModal').classList.remove('show');
+document.getElementById('chooseSecretCreate').onclick=()=>secretCreateInput.click();
+secretCreateInput.onchange=()=>{secretCreateFile=secretCreateInput.files[0]||null;if(!secretCreateFile)return;const u=URL.createObjectURL(secretCreateFile);document.getElementById('secretCreatePreview').innerHTML=secretCreateFile.type.startsWith('image/')?`<img src="${u}" alt="">`:`<video src="${u}" muted></video>`;document.getElementById('publishSecretCreate').disabled=false};
+document.querySelectorAll('.secret-price-options button').forEach(b=>b.onclick=()=>{secretCreatePrice=Number(b.dataset.secretPrice);document.getElementById('secretCustomPrice').value='';document.querySelectorAll('.secret-price-options button').forEach(x=>x.classList.toggle('active',x===b))});
+document.getElementById('secretCustomPrice').oninput=e=>{if(Number(e.target.value)>0){secretCreatePrice=Number(e.target.value);document.querySelectorAll('.secret-price-options button').forEach(x=>x.classList.remove('active'))}};
+document.getElementById('publishSecretCreate').onclick=()=>{if(!secretCreateFile)return;const x={id:'s'+Date.now()+Math.random(),name:secretCreateFile.name,type:secretCreateFile.type.startsWith('image/')?'image':'video',url:URL.createObjectURL(secretCreateFile),price:secretCreatePrice,date:new Date().toLocaleString('id-ID'),unlocked:false};secretState.sent.unshift(x);secretState.received.unshift({...x,id:'r'+Date.now()+Math.random(),name:x.name+' (Demo Received)'});document.getElementById('secretCreateModal').classList.remove('show');renderSecret()};
+function openStandaloneSecret(x){const viewer=document.getElementById('secureViewer'),area=document.getElementById('secureMediaArea');area.innerHTML=x.type==='image'?`<img src="${x.url}" alt="">`:`<video src="${x.url}" controls autoplay playsinline controlsList="nodownload noremoteplayback" disablepictureinpicture></video>`;document.getElementById('dynamicWatermark').textContent='PINGGO • @edhysean • '+new Date().toLocaleString('id-ID');viewer.classList.add('show')}
+document.addEventListener('click',e=>{const u=e.target.closest('[data-secret-unlock]');if(u){const x=secretState.received.find(i=>i.id===u.dataset.secretUnlock);if(!x)return;x.unlocked=true;secretState.unlocked.unshift(x);renderSecret();document.querySelector('[data-secret-view="secretUnlockedView"]').click();openStandaloneSecret(x);return}const o=e.target.closest('[data-secret-view-item]');if(o){const x=secretState.unlocked.find(i=>i.id===o.dataset.secretViewItem);if(x)openStandaloneSecret(x);return}const p=e.target.closest('[data-secret-preview]');if(p){const x=secretState.sent.find(i=>i.id===p.dataset.secretPreview);if(x)openStandaloneSecret(x)}});
+renderSecret();
+
+
+// HEART GEM WALLET - FULLY INTERACTIVE LOCAL PROTOTYPE
+const gemState={balance:500,history:[]};let selectedGemPackage=null,selectedPayment='Demo Payment';
+function renderGem(){document.getElementById('gemBalance').innerHTML=gemState.balance+' <span>💗</span>';const h=gemState.history;document.getElementById('gemHistoryList').innerHTML=h.map(x=>`<div class="gem-history-row"><div class="gem-history-icon">${x.type==='buy'?'💗':'🔓'}</div><div class="gem-history-info"><b>${x.title}</b><small>${x.date}</small></div><div class="gem-history-amount">${x.amount>0?'+':''}${x.amount} 💗</div></div>`).join('');document.getElementById('gemHistoryEmpty').style.display=h.length?'none':'block'}
+function openGemPurchase(pkg){selectedGemPackage=pkg||{gem:50,price:10000};document.getElementById('gemPurchaseTitle').textContent=selectedGemPackage.gem+' 💗 Heart Gem';document.getElementById('gemPurchaseText').textContent='Harga demo: Rp'+selectedGemPackage.price.toLocaleString('id-ID')+' • saldo akan langsung ditambahkan untuk testing.';document.getElementById('gemPurchaseModal').classList.add('show')}
+document.querySelectorAll('.gem-tab').forEach(b=>b.addEventListener('click',()=>{document.querySelectorAll('.gem-tab').forEach(x=>x.classList.remove('active'));b.classList.add('active');document.querySelectorAll('.gem-view').forEach(x=>x.classList.remove('active'));document.getElementById(b.dataset.gemView).classList.add('active')}));
+document.querySelectorAll('.gem-package').forEach(b=>b.addEventListener('click',()=>openGemPurchase({gem:Number(b.dataset.gemPackage),price:Number(b.dataset.gemPrice)})));
+document.getElementById('openBuyGem').onclick=()=>openGemPurchase(null);
+document.getElementById('closeGemPurchase').onclick=()=>document.getElementById('gemPurchaseModal').classList.remove('show');
+document.querySelectorAll('.payment-choice').forEach(b=>b.addEventListener('click',()=>{selectedPayment=b.dataset.payment;document.querySelectorAll('.payment-choice').forEach(x=>x.classList.toggle('active',x===b))}));
+document.getElementById('confirmGemPurchase').onclick=()=>{if(!selectedGemPackage)return;gemState.balance+=selectedGemPackage.gem;gemState.history.unshift({type:'buy',title:'Purchase '+selectedGemPackage.gem+' Heart Gem • '+selectedPayment,amount:selectedGemPackage.gem,date:new Date().toLocaleString('id-ID')});document.getElementById('gemPurchaseModal').classList.remove('show');renderGem();};
+renderGem();
+
+// Hook Secret Drop unlock into the real demo wallet balance and prevent unlock when insufficient.
+document.addEventListener('click',function(e){
+ const btn=e.target.closest('[data-secret-unlock]');if(!btn)return;
+ const item=secretState?.received?.find(i=>i.id===btn.dataset.secretUnlock);if(!item||item.unlocked)return;
+ if(gemState.balance<item.price){e.preventDefault();e.stopImmediatePropagation();alert('Heart Gem tidak cukup. Beli Heart Gem terlebih dahulu.');document.querySelector('[data-target="profile"]')?.click();return}
+ gemState.balance-=item.price;gemState.history.unshift({type:'unlock',title:'Unlock Secret Drop: '+item.name,amount:-item.price,date:new Date().toLocaleString('id-ID')});renderGem();
+},{capture:true});
+
+
+// PROFILE & SETTINGS - FULLY INTERACTIVE LOCAL PROTOTYPE
+const profileState={name:'Edhy Sean',id:'@edhysean',photo:null,privacy:true,secretPrivate:true,notifications:true,appearance:'Pink & Gray',blocked:[]};
+function renderProfile(){
+ document.getElementById('profileDisplayName').textContent=profileState.name;document.getElementById('profilePinggoId').textContent=profileState.id;
+ const av=document.getElementById('profileAvatarText');const holder=document.getElementById('changeProfilePhoto');if(profileState.photo){av.outerHTML=`<img id="profileAvatarText" src="${profileState.photo}" alt="">`}else{const cur=document.getElementById('profileAvatarText');if(cur.tagName==='IMG')cur.outerHTML=`<span id="profileAvatarText">${profileState.name.split(' ').map(x=>x[0]).join('').slice(0,2).toUpperCase()}</span>`;else cur.textContent=profileState.name.split(' ').map(x=>x[0]).join('').slice(0,2).toUpperCase()}
+ document.getElementById('profileFriendsCount').textContent=(typeof friendsState!=='undefined'?friendsState.friends.length:0);document.getElementById('profileDropsCount').textContent=(typeof secretState!=='undefined'?secretState.sent.length:0);document.getElementById('profileGemCount').textContent=(typeof gemState!=='undefined'?gemState.balance:0)+' 💗';document.getElementById('blockedCountLabel').textContent=profileState.blocked.length+' user';document.getElementById('appearanceLabel').textContent=profileState.appearance;
+}
+function toggleHtml(key,label,on){return `<div class="toggle-row"><span>${label}</span><button class="toggle ${on?'on':''}" data-toggle="${key}"><i></i></button></div>`}
+function openProfileSetting(type){
+ const c=document.getElementById('profileModalContent');
+ if(type==='account')c.innerHTML=`<h3>Account Information</h3><div class="profile-field"><label>Display Name</label><input id="editName" value="${profileState.name}"></div><div class="profile-field"><label>PINGGO ID</label><input id="editPinggoId" value="${profileState.id}"></div><button class="profile-save" id="saveAccount">Save Changes</button>`;
+ else if(type==='privacy')c.innerHTML=`<h3>Privacy</h3>${toggleHtml('privacy','Private Profile',profileState.privacy)}${toggleHtml('secretPrivate','Secret Drop Private by Default',profileState.secretPrivate)}`;
+ else if(type==='notifications')c.innerHTML=`<h3>Notifications</h3>${toggleHtml('notifications','Chat & Activity Notifications',profileState.notifications)}`;
+ else if(type==='blocked')c.innerHTML=`<h3>Blocked Users</h3>${profileState.blocked.length?profileState.blocked.map(u=>`<div class="block-row"><span class="friend-avatar">${u.name.slice(0,1)}</span><div><b>${u.name}</b><small>${u.pinggo}</small></div><button data-unblock="${u.id}">Unblock</button></div>`).join(''):'<div class="empty-card">Belum ada user diblokir.</div>'}`;
+ else if(type==='appearance')c.innerHTML=`<h3>Appearance</h3><div class="profile-field"><label>Tema aplikasi</label><button class="profile-save" data-theme="Pink & Gray">Pink & Gray</button><button class="profile-save" data-theme="White & Gray" style="background:#ddd;color:#555">White & Gray</button></div>`;
+ else c.innerHTML=`<h3>About PINGGO</h3><p style="font-size:12px;color:#777079;line-height:1.6">PINGGO adalah aplikasi social messaging dengan Chat, Friends, Gallery, Secret Drop dan Heart Gem.</p><div class="empty-card">PINGGO Prototype • Version 1.0</div>`;
+ document.getElementById('profileModal').classList.add('show');
+}
+document.getElementById('editProfileBtn').onclick=()=>openProfileSetting('account');
+document.getElementById('changeProfilePhoto').onclick=()=>document.getElementById('profilePhotoInput').click();
+document.getElementById('profilePhotoInput').onchange=e=>{const f=e.target.files[0];if(f){profileState.photo=URL.createObjectURL(f);renderProfile()}};
+document.querySelectorAll('[data-setting-open]').forEach(b=>b.onclick=()=>openProfileSetting(b.dataset.settingOpen));
+document.getElementById('closeProfileModal').onclick=()=>document.getElementById('profileModal').classList.remove('show');
+document.addEventListener('click',e=>{
+ const save=e.target.closest('#saveAccount');if(save){profileState.name=document.getElementById('editName').value.trim()||profileState.name;let id=document.getElementById('editPinggoId').value.trim()||profileState.id;if(!id.startsWith('@'))id='@'+id;profileState.id=id;document.getElementById('profileModal').classList.remove('show');renderProfile();return}
+ const t=e.target.closest('[data-toggle]');if(t){const k=t.dataset.toggle;profileState[k]=!profileState[k];t.classList.toggle('on',profileState[k]);return}
+ const theme=e.target.closest('[data-theme]');if(theme){profileState.appearance=theme.dataset.theme;document.getElementById('profileModal').classList.remove('show');renderProfile();return}
+ const unblock=e.target.closest('[data-unblock]');if(unblock){profileState.blocked=profileState.blocked.filter(x=>x.id!==unblock.dataset.unblock);openProfileSetting('blocked');renderProfile()}
+});
+document.getElementById('demoLogout').onclick=()=>alert('Demo logout berhasil. Backend login akan ditambahkan saat Supabase dihubungkan.');
+renderProfile();
+
+// Sync profile counters after Friends, Secret Drop, and Gem actions.
+document.addEventListener('click',()=>setTimeout(renderProfile,0));
+
 </script>
 
 <input id="secretFile" type="file" accept="image/*,video/*" hidden>
@@ -491,6 +942,31 @@ document.addEventListener('visibilitychange',()=>{
   <div class="secure-bottom">
     <span>🔒 Protected Content</span>
     <small>Download & share tidak tersedia</small>
+  </div>
+</div>
+
+
+<input id="chatPhotoFile" type="file" accept="image/*" hidden>
+<input id="chatVideoFile" type="file" accept="video/*" hidden>
+<div id="mediaViewer" class="media-viewer">
+  <div class="media-viewer-bar"><button id="closeMediaViewer">←</button><b>Media</b></div>
+  <div id="mediaViewerContent"></div>
+</div>
+
+
+<div id="voiceRecorder" class="voice-recorder">
+  <div class="voice-recorder-card">
+    <div class="voice-recorder-title"><button id="cancelVoice">×</button><b>Voice Message</b><span></span></div>
+    <div id="voiceRecordIcon" class="voice-record-icon">🎙</div>
+    <div id="voiceTimer" class="voice-timer">00:00</div>
+    <div id="voiceStatus" class="voice-status">Siap merekam</div>
+    <audio id="voicePreview" controls style="display:none"></audio>
+    <div class="voice-recorder-actions">
+      <button id="startVoice" class="voice-main-btn">Mulai Rekam</button>
+      <button id="stopVoice" class="voice-main-btn stop" style="display:none">Stop Rekam</button>
+      <button id="sendVoice" class="voice-main-btn send" style="display:none">Kirim Voice</button>
+      <button id="redoVoice" class="voice-secondary" style="display:none">Rekam Ulang</button>
+    </div>
   </div>
 </div>
 
