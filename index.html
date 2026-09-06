@@ -1226,86 +1226,77 @@ document.addEventListener('click',()=>setTimeout(renderProfile,0));
 
 <script>
 (function(){
-  const SUPABASE_URL='https://fgvsqzjfrouypgudhrsc.supabase.co';
-  const SUPABASE_KEY='sb_publishable_ojLOMPCW07M068trjToZ7w_PFu4XUw_';
+  function status(m){const e=document.getElementById('authStatus');if(e)e.textContent=m||'';}
+  function id(v){return (v||'').trim().toUpperCase().replace(/\s+/g,'');}
+  function email(pid){return pid.toLowerCase()+'@pinggo.local';}
 
-  function status(m){ const el=document.getElementById('authStatus'); if(el) el.textContent=m||''; }
-  function normalizeId(v){ return (v||'').trim().toUpperCase().replace(/\s+/g,''); }
-  function internalEmail(pinggoId){ return normalizeId(pinggoId).toLowerCase()+'@pinggo.local'; }
-
-  async function db(){
+  async function getDb(){
     if(window.pinggoDb) return window.pinggoDb;
-    if(window.__pinggoSupabaseReady){
-      await window.__pinggoSupabaseReady;
-      for(let i=0;i<80;i++){
-        if(window.pinggoDb) return window.pinggoDb;
-        await new Promise(r=>setTimeout(r,50));
-      }
+    if(window.__pinggoSupabaseReady) await window.__pinggoSupabaseReady;
+    for(let i=0;i<100;i++){
+      if(window.pinggoDb) return window.pinggoDb;
+      await new Promise(r=>setTimeout(r,50));
     }
-    throw new Error('Koneksi PINGGO belum siap. Coba buka ulang halaman.');
+    throw new Error('Koneksi PINGGO belum siap. Refresh lalu coba lagi.');
   }
 
-  async function getProfile(userId){
-    const client=await db();
-    const {data,error}=await client.from('profiles').select('pinggo_id,display_name').eq('id',userId).single();
-    if(error) throw error;
-    return data;
+  function mode(m){
+    if(typeof authMode==='function') return authMode(m);
+    document.getElementById('authLoginForm').style.display=m==='login'?'block':'none';
+    document.getElementById('authRegisterForm').style.display=m==='register'?'block':'none';
   }
 
-  async function startSession(user){
-    if(typeof startPinggoSession==='function'){
-      await startPinggoSession(user);
-    }else{
-      document.getElementById('authScreen')?.classList.add('hide');
+  async function makePinggoId(db){
+    for(let i=0;i<100;i++){
+      const candidate='PG13'+String(Math.floor(Math.random()*10000)).padStart(4,'0');
+      const {data,error}=await db.from('profiles').select('id').eq('pinggo_id',candidate).maybeSingle();
+      if(error) throw error;
+      if(!data) return candidate;
     }
+    throw new Error('Tidak bisa membuat PINGGO ID. Coba lagi.');
   }
 
   async function register(){
-    const name=(document.getElementById('registerName').value||'').trim() || 'PINGGO User';
-    const password=document.getElementById('registerPassword').value||'';
     const btn=document.getElementById('registerBtn');
+    const name=(document.getElementById('registerName').value||'').trim();
+    const password=document.getElementById('registerPassword').value||'';
 
-    if(password.length<6){ status('Password minimal 6 karakter.'); return; }
+    if(!name){status('Masukkan nama.');return;}
+    if(password.length<6){status('Password minimal 6 karakter.');return;}
 
     btn.disabled=true;
     btn.textContent='Creating...';
-    status('Membuat akun dan PINGGO ID...');
+    status('Membuat akun...');
 
     try{
-      const client=await db();
+      const db=await getDb();
+      const pinggoId=await makePinggoId(db);
 
-      // Generate a unique PINGGO ID first: PG13 + 4 digits.
-      let pinggoId='';
-      for(let i=0;i<60;i++){
-        const n=String(Math.floor(Math.random()*10000)).padStart(4,'0');
-        const candidate='PG13'+n;
-        const {data:exists}=await client.from('profiles').select('id').eq('pinggo_id',candidate).maybeSingle();
-        if(!exists){ pinggoId=candidate; break; }
-      }
-      if(!pinggoId) throw new Error('PINGGO ID sedang penuh. Coba Create Account lagi.');
-
-      const {data,error}=await client.auth.signUp({
-        email:internalEmail(pinggoId),
-        password,
-        options:{data:{display_name:name}}
+      const {data,error}=await db.auth.signUp({
+        email:email(pinggoId),
+        password:password,
+        options:{
+          data:{
+            display_name:name,
+            pinggo_id:pinggoId
+          }
+        }
       });
       if(error) throw error;
-      if(!data?.user) throw new Error('Akun belum berhasil dibuat.');
+      if(!data?.user) throw new Error('Akun gagal dibuat.');
 
-      let profile=null;
-      for(let i=0;i<25;i++){
-        profile=await getProfile(data.user.id).catch(()=>null);
-        if(profile?.pinggo_id) break;
-        await new Promise(r=>setTimeout(r,120));
-      }
-      if(!profile?.pinggo_id) throw new Error('PINGGO ID belum berhasil dibuat. Coba Login kembali.');
+      // Show the ID immediately and persist it in the UI.
+      status('BERHASIL! PINGGO ID kamu: '+pinggoId);
+      const profileId=document.getElementById('profilePinggoId');
+      if(profileId) profileId.textContent='@'+pinggoId;
 
-      // Give the user a clear identity immediately.
-      status('Akun berhasil dibuat. PINGGO ID kamu: '+profile.pinggo_id);
-
-      // Keep PINGGO ID visible long enough to copy, then enter app if session exists.
       if(data.session){
-        setTimeout(()=>startSession(data.user),900);
+        if(typeof startPinggoSession==='function') await startPinggoSession(data.user);
+        else document.getElementById('authScreen').classList.add('hide');
+      }else{
+        // Account exists, but this project requires email confirmation.
+        // The internal email is not user-facing, so explain the exact configuration issue.
+        status('Akun dibuat: '+pinggoId+'. Namun Login belum aktif karena Supabase meminta konfirmasi email internal.');
       }
     }catch(err){
       status(err?.message||'Create Account gagal.');
@@ -1316,46 +1307,32 @@ document.addEventListener('click',()=>setTimeout(renderProfile,0));
   }
 
   async function login(){
-    const pinggoId=normalizeId(document.getElementById('loginPinggoId').value);
-    const password=document.getElementById('loginPassword').value||'';
     const btn=document.getElementById('loginBtn');
+    const pinggoId=id(document.getElementById('loginPinggoId').value);
+    const password=document.getElementById('loginPassword').value||'';
 
-    if(!/^PG13\d{4,}$/.test(pinggoId)){
-      status('Masukkan PINGGO ID yang benar. Contoh: PG132875');
-      return;
-    }
-    if(!password){ status('Masukkan password.'); return; }
+    if(!/^PG13\d{4,}$/.test(pinggoId)){status('Masukkan PINGGO ID. Contoh: PG132875');return;}
+    if(!password){status('Masukkan password.');return;}
 
-    btn.disabled=true;
-    btn.textContent='Login...';
-    status('Login...');
-
+    btn.disabled=true;btn.textContent='Login...';status('Login...');
     try{
-      const client=await db();
-      const {data,error}=await client.auth.signInWithPassword({
-        email:internalEmail(pinggoId),
-        password:password
-      });
+      const db=await getDb();
+      const {data,error}=await db.auth.signInWithPassword({email:email(pinggoId),password});
       if(error) throw error;
-      if(!data?.user) throw new Error('Login gagal.');
-      await startSession(data.user);
-    }catch(err){
-      status(err?.message||'Login gagal.');
-    }finally{
-      btn.disabled=false;
-      btn.textContent='Login';
-    }
+      if(typeof startPinggoSession==='function') await startPinggoSession(data.user);
+      else document.getElementById('authScreen').classList.add('hide');
+    }catch(err){status(err?.message||'Login gagal.');}
+    finally{btn.disabled=false;btn.textContent='Login';}
   }
 
   function bind(){
-    const lt=document.querySelector('[data-auth-mode="login"]');
-    const rt=document.querySelector('[data-auth-mode="register"]');
-    if(lt) lt.onclick=(e)=>{e.preventDefault();authMode('login');};
-    if(rt) rt.onclick=(e)=>{e.preventDefault();authMode('register');};
-    document.getElementById('registerBtn').onclick=(e)=>{e.preventDefault();register();};
-    document.getElementById('loginBtn').onclick=(e)=>{e.preventDefault();login();};
+    document.querySelectorAll('.auth-tab').forEach(b=>b.onclick=(e)=>{e.preventDefault();mode(b.dataset.authMode);});
+    const r=document.getElementById('registerBtn');
+    const l=document.getElementById('loginBtn');
+    if(r) r.onclick=(e)=>{e.preventDefault();register();};
+    if(l) l.onclick=(e)=>{e.preventDefault();login();};
   }
-  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',bind); else bind();
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',bind);else bind();
 })();
 </script>
 
