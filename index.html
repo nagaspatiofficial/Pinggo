@@ -197,7 +197,148 @@ body{
 </style><style>
 #authScreen{pointer-events:auto!important;z-index:2147483647!important}
 #authScreen button,#authScreen input{pointer-events:auto!important;touch-action:manipulation!important}
-</style></head>
+</style>
+<style>
+/* PINGGO refined Pink + Gray palette */
+:root{
+  --pinggo-pink:#ec3f86;
+  --pinggo-pink-dark:#c92b69;
+  --pinggo-pink-soft:#f8a0c2;
+  --pinggo-gray:#5f6268;
+  --pinggo-gray-dark:#3f4247;
+  --pinggo-gray-light:#eef0f2;
+}
+
+/* Stronger pink background */
+body{
+  background:linear-gradient(135deg,#f7c4d8 0%,#f19abc 48%,#dfe1e4 100%) !important;
+}
+
+/* Buttons: gray by default, visible pink when pressed/active */
+button,
+.auth-primary,
+.auth-tab,
+.nav-item,
+.tab,
+.action-btn{
+  transition:background-color .16s ease, color .16s ease, transform .08s ease,
+             box-shadow .16s ease, border-color .16s ease, opacity .16s ease !important;
+  -webkit-tap-highlight-color:transparent !important;
+  touch-action:manipulation !important;
+}
+
+/* Main action buttons */
+.auth-primary,
+button.auth-primary{
+  background:var(--pinggo-gray) !important;
+  color:#fff !important;
+  border:1px solid var(--pinggo-gray-dark) !important;
+}
+.auth-primary:hover{background:#74777d !important;}
+.auth-primary:active,
+.auth-primary.pressed{
+  background:var(--pinggo-pink) !important;
+  border-color:var(--pinggo-pink-dark) !important;
+  color:#fff !important;
+  transform:scale(.975) !important;
+  box-shadow:0 3px 10px rgba(201,43,105,.28) !important;
+}
+.auth-primary:focus-visible{
+  outline:2px solid var(--pinggo-pink) !important;
+  outline-offset:2px !important;
+}
+
+/* Login/Register tabs */
+.auth-tab{
+  color:var(--pinggo-gray) !important;
+}
+.auth-tab.active{
+  color:var(--pinggo-pink-dark) !important;
+  border-color:var(--pinggo-pink) !important;
+}
+.auth-tab:active{
+  background:rgba(236,63,134,.14) !important;
+  color:var(--pinggo-pink-dark) !important;
+  transform:scale(.98) !important;
+}
+
+/* Generic buttons get a clear press feedback */
+button:active,
+.nav-item:active,
+.tab:active,
+.action-btn:active{
+  background-color:var(--pinggo-pink) !important;
+  color:#fff !important;
+  transform:scale(.97) !important;
+}
+
+/* Keep disabled buttons visually clear */
+button:disabled{
+  opacity:.65 !important;
+  cursor:not-allowed !important;
+  transform:none !important;
+}
+
+/* Inputs gain a subtle pink focus */
+input:focus{
+  border-color:var(--pinggo-pink) !important;
+  box-shadow:0 0 0 3px rgba(236,63,134,.14) !important;
+}
+
+/* Active navigation / selected controls */
+.active,
+.selected,
+[aria-selected="true"]{
+  accent-color:var(--pinggo-pink);
+}
+</style>
+
+<script>
+/* iOS-friendly press feedback: :active can be too brief, so keep a short pink flash */
+document.addEventListener('pointerdown',function(e){
+  const b=e.target.closest('button,.auth-tab,.nav-item,.tab,.action-btn');
+  if(!b || b.disabled) return;
+  b.classList.add('pressed');
+},{passive:true});
+
+function clearPinggoPressed(e){
+  const b=e.target.closest && e.target.closest('button,.auth-tab,.nav-item,.tab,.action-btn');
+  if(b) setTimeout(()=>b.classList.remove('pressed'),140);
+}
+document.addEventListener('pointerup',clearPinggoPressed,{passive:true});
+document.addEventListener('pointercancel',clearPinggoPressed,{passive:true});
+</script>
+
+
+<style>
+#edseanFooter{
+  position:fixed;
+  left:0;
+  right:0;
+  bottom:10px;
+  z-index:9999;
+  text-align:center;
+  pointer-events:none;
+  font-size:10px;
+  font-weight:600;
+  letter-spacing:1.6px;
+  color:rgba(70,72,78,.55);
+  font-family:inherit;
+}
+#edseanFooter span{
+  letter-spacing:2px;
+}
+</style>
+
+
+<style>
+/* PINGGO: background only — all existing font colors remain unchanged */
+body{
+  background:linear-gradient(135deg,#f8b6d0 0%,#f28ab6 52%,#e7e7e9 100%) !important;
+}
+</style>
+
+</head>
 <body>
 <div class="app">
   <section id="chats" class="panel active">
@@ -1335,6 +1476,25 @@ document.addEventListener('click',()=>setTimeout(renderProfile,0));
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',bind);else bind();
 })();
 </script>
+
+
+<div id="edseanFooter">© 2026 <span>·</span> EDSEAN COMPANY</div>
+
+
+<style id="pinggo-final-background">
+html, body {
+  background: #f28ab6 !important;
+  background-image: none !important;
+}
+body::before, body::after {
+  background: transparent !important;
+  background-image: none !important;
+}
+#authScreen, .auth-screen, .screen, .app, #app {
+  background: transparent !important;
+  background-image: none !important;
+}
+</style>
 
 </body>
 </html>
