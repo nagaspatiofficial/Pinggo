@@ -1505,9 +1505,18 @@ document.addEventListener('click',()=>setTimeout(renderProfile,0));
   }
 
   function mode(m){
+    // Visual state: only the selected Login/Register tab stays pink.
+    document.querySelectorAll('.auth-tab').forEach(function(tab){
+      tab.classList.toggle('active', tab.dataset.authMode===m);
+    });
+
+    // Keep the original page behavior unchanged.
     if(typeof authMode==='function') return authMode(m);
-    document.getElementById('authLoginForm').style.display=m==='login'?'block':'none';
-    document.getElementById('authRegisterForm').style.display=m==='register'?'block':'none';
+
+    const loginForm=document.getElementById('authLoginForm');
+    const registerForm=document.getElementById('authRegisterForm');
+    if(loginForm) loginForm.style.display=m==='login'?'block':'none';
+    if(registerForm) registerForm.style.display=m==='register'?'block':'none';
   }
 
   async function makePinggoId(db){
