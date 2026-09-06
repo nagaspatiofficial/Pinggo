@@ -1530,47 +1530,47 @@ document.addEventListener('click',()=>setTimeout(renderProfile,0));
 
     btn.disabled=true;
     btn.textContent='Creating...';
-    status('Menyiapkan akun PINGGO...');
+    status('Membuat PINGGO ID...');
 
     try{
-      const db=await getDb();
-      const pinggoId=await makePinggoId(db);
-
-      // Show the generated ID immediately after it has been reserved as the account identity.
-      const {data,error}=await db.auth.signUp({
-        email:email(pinggoId),
-        password:password,
-        options:{
-          data:{
-            display_name:name,
-            pinggo_id:pinggoId
-          }
+      // Registration now goes directly to the PINGGO server function.
+      // It no longer depends on the browser Supabase library being ready.
+      const response=await fetch(
+        'https://fgvsqzjfrouypgudhrsc.supabase.co/functions/v1/pinggo-register',
+        {
+          method:'POST',
+          headers:{
+            'Content-Type':'application/json',
+            'apikey':'sb_publishable_ojLOMPCW07M068trjToZ7w_PFu4XUw_'
+          },
+          body:JSON.stringify({name:name,password:password})
         }
-      });
-      if(error) throw error;
-      if(!data || !data.user) throw new Error('Akun gagal dibuat. Coba lagi.');
+      );
 
-      const successHtml =
-        '<div style="font-weight:700;margin-bottom:8px">Akun berhasil dibuat</div>' +
-        '<div style="font-size:12px;margin-bottom:5px">PINGGO ID kamu</div>' +
-        '<div style="font-size:24px;font-weight:800;letter-spacing:1.5px">' + pinggoId + '</div>' +
-        '<div style="font-size:12px;margin-top:8px">Simpan ID ini untuk login.</div>';
-
-      const st=document.getElementById('authStatus');
-      if(st){
-        st.innerHTML=successHtml;
-        st.style.color='#3f4247';
+      const result=await response.json().catch(()=>({}));
+      if(!response.ok || !result.ok){
+        throw new Error(result.error||'Create Account gagal.');
       }
 
-      // Persist the ID in profile UI if the element exists.
+      const pinggoId=result.pinggo_id;
+
+      // Immediately display the ID prominently to the user.
+      const st=document.getElementById('authStatus');
+      if(st){
+        st.innerHTML=
+          '<div style="font-weight:700;margin-bottom:8px">Akun berhasil dibuat</div>'+
+          '<div style="font-size:12px;margin-bottom:5px">PINGGO ID kamu</div>'+
+          '<div style="font-size:26px;font-weight:800;letter-spacing:2px">'+pinggoId+'</div>'+
+          '<div style="font-size:12px;margin-top:8px">Simpan ID ini untuk login.</div>';
+      }
+
+      // Keep the ID in the profile display too.
       const profileId=document.getElementById('profilePinggoId');
       if(profileId) profileId.textContent='@'+pinggoId;
 
-      // Copy the generated ID for the user when supported.
-      try{ if(navigator.clipboard) await navigator.clipboard.writeText(pinggoId); }catch(_){}
+      try{if(navigator.clipboard)await navigator.clipboard.writeText(pinggoId);}catch(_){}
 
-      // Keep the success message visible instead of immediately hiding the auth screen.
-      // The user can now see and save/copy the PINGGO ID before logging in.
+      btn.disabled=false;
       btn.textContent='Account Created';
     }catch(err){
       status(err?.message||'Create Account gagal.');
