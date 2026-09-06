@@ -1926,5 +1926,62 @@ body{
 }
 </style>
 
+
+<!-- EXACT FIX: bottom navigation is outside .app, so use global nav selectors -->
+<style id="pinggo-exact-nav-footer-fix">
+/* BOTTOM NAV: NEVER paint the active item as a pink box */
+.bottom-nav .nav-item,
+.bottom-nav .nav-item.active,
+.bottom-nav .nav-item:hover,
+.bottom-nav .nav-item:active,
+.bottom-nav .nav-item:focus,
+.bottom-nav .nav-item:focus-visible{
+  background:transparent !important;
+  background-color:transparent !important;
+  background-image:none !important;
+  box-shadow:none !important;
+  border-color:transparent !important;
+  outline:none !important;
+}
+
+/* Remove any decorative background layer behind the active menu */
+.bottom-nav .nav-item::before,
+.bottom-nav .nav-item::after,
+.bottom-nav .nav-item.active::before,
+.bottom-nav .nav-item.active::after{
+  content:none !important;
+  display:none !important;
+  background:none !important;
+  box-shadow:none !important;
+}
+
+/* Inactive icons stay neutral */
+.bottom-nav .nav-item .nav-icon{
+  color:#5f5d64 !important;
+}
+
+/* Active state: ONLY THE ICON becomes pink */
+.bottom-nav .nav-item.active .nav-icon{
+  color:#d94b83 !important;
+}
+
+/* Labels remain normal, including active label */
+.bottom-nav .nav-item span,
+.bottom-nav .nav-item.active span{
+  color:#4a4850 !important;
+  background:transparent !important;
+}
+
+/* EDSEAN COMPANY is hidden throughout the logged-in app */
+#edseanFooter{
+  display:none !important;
+}
+
+/* It appears only while the Login/Register screen is open */
+#authScreen:not(.hide) ~ #edseanFooter{
+  display:block !important;
+}
+</style>
+
 </body>
 </html>
