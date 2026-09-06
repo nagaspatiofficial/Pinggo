@@ -461,6 +461,78 @@ body,
 }
 </style>
 
+
+<style id="pinggo-three-button-active">
+/* The two top mode buttons start gray */
+.auth-tabs .auth-tab{
+  background:#b8b8b8 !important;
+  color:#404040 !important;
+}
+
+/* Only the selected mode is pink */
+.auth-tabs .auth-tab.active{
+  background:#e94f91 !important;
+  border-color:#d63d7c !important;
+  color:#ffffff !important;
+}
+
+/* While touching either mode button, show pink immediately */
+.auth-tabs .auth-tab:active,
+.auth-tabs .auth-tab.pressed{
+  background:#e94f91 !important;
+  border-color:#d63d7c !important;
+  color:#ffffff !important;
+}
+
+/* The bottom action button remains gray by default */
+#loginBtn,
+#registerBtn{
+  background:#5f6268 !important;
+  color:#ffffff !important;
+}
+
+/* Bottom button turns pink only while being pressed */
+#loginBtn:active,
+#registerBtn:active,
+#loginBtn.pressed,
+#registerBtn.pressed{
+  background:#e94f91 !important;
+  border-color:#d63d7c !important;
+  color:#ffffff !important;
+}
+</style>
+
+<script id="pinggo-three-button-active-script">
+(function(){
+  function setMode(mode){
+    document.querySelectorAll('.auth-tabs .auth-tab').forEach(function(btn){
+      const isActive = btn.dataset.authMode === mode;
+      btn.classList.toggle('active', isActive);
+    });
+
+    const loginForm=document.getElementById('authLoginForm');
+    const registerForm=document.getElementById('authRegisterForm');
+    if(loginForm) loginForm.style.display = mode==='login' ? 'block' : 'none';
+    if(registerForm) registerForm.style.display = mode==='register' ? 'block' : 'none';
+  }
+
+  function bindPinggoButtons(){
+    document.querySelectorAll('.auth-tabs .auth-tab').forEach(function(btn){
+      btn.addEventListener('click',function(e){
+        e.preventDefault();
+        setMode(btn.dataset.authMode);
+      });
+    });
+  }
+
+  if(document.readyState==='loading'){
+    document.addEventListener('DOMContentLoaded',bindPinggoButtons);
+  }else{
+    bindPinggoButtons();
+  }
+})();
+</script>
+
 </head>
 <body>
 <div class="app">
