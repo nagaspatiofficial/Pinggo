@@ -194,6 +194,9 @@ body{
 #authScreen{pointer-events:auto!important;z-index:2147483647!important}
 #authScreen *{pointer-events:auto!important}
 #loginBtn,#registerBtn,.auth-tab{touch-action:manipulation!important;cursor:pointer!important}
+</style><style>
+#authScreen{pointer-events:auto!important;z-index:2147483647!important}
+#authScreen button,#authScreen input{pointer-events:auto!important;touch-action:manipulation!important}
 </style></head>
 <body>
 <div class="app">
@@ -394,21 +397,61 @@ body{
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
-/* PINGGO SUPABASE: AUTH + PROFILE + WALLET SYNC */
+/* PINGGO SUPABASE AUTH - single source of truth */
 const PINGGO_SUPABASE_URL='https://fgvsqzjfrouypgudhrsc.supabase.co';
 const PINGGO_SUPABASE_KEY='sb_publishable_ojLOMPCW07M068trjToZ7w_PFu4XUw_';
 window.pinggoDb=supabase.createClient(PINGGO_SUPABASE_URL,PINGGO_SUPABASE_KEY);
 let pinggoUser=null;
-function authStatus(m){document.getElementById('authStatus').textContent=m||''}
-function authMode(m){document.querySelectorAll('.auth-tab').forEach(b=>b.classList.toggle('active',b.dataset.authMode===m));document.getElementById('authLoginForm').style.display=m==='login'?'block':'none';document.getElementById('authRegisterForm').style.display=m==='register'?'block':'none';authStatus('')}
-async function loadOnlineProfile(){if(!pinggoUser)return;const {data}=await window.pinggoDb.from('profiles').select('*').eq('id',pinggoUser.id).single();if(data){profileState.name=data.display_name||profileState.name;profileState.id='@'+data.pinggo_id;profileState.photo=data.avatar_url||null;profileState.privacy=data.private_profile;profileState.secretPrivate=data.secret_private_default;profileState.notifications=data.notifications_enabled;profileState.appearance=data.appearance||'Pink & Gray';renderProfile()}}
-async function loadOnlineWallet(){if(!pinggoUser)return;const {data}=await window.pinggoDb.from('wallets').select('balance').eq('user_id',pinggoUser.id).single();if(data){gemState.balance=data.balance;renderGem();renderProfile()}}
-async function startPinggoSession(u){pinggoUser=u;document.getElementById('authScreen').classList.add('hide');await loadOnlineProfile();await loadOnlineWallet()}
-document.querySelectorAll('.auth-tab').forEach(b=>b.onclick=()=>authMode(b.dataset.authMode));
-document.getElementById('loginBtn').onclick=async()=>{const phone=loginPhone.value.trim(),password=loginPassword.value;if(!phone||!password){authStatus('Masukkan nomor HP dan password.');return}authStatus('Login...');const {data,error}=await window.pinggoDb.auth.signInWithPassword({phone,password});if(error){authStatus(error.message);return}await startPinggoSession(data.user)};
-document.getElementById('registerBtn').onclick=async()=>{const name=registerName.value.trim()||'PINGGO User',phone=registerPhone.value.trim(),password=registerPassword.value;if(!phone||password.length<6){authStatus('Lengkapi data. Password minimal 6 karakter.');return}authStatus('Membuat akun...');const {data,error}=await window.pinggoDb.auth.signUp({phone,password,options:{data:{display_name:name,phone}}});if(error){authStatus(error.message);return}if(data.session)await startPinggoSession(data.user);else authStatus('Akun dibuat. Cek email untuk konfirmasi, lalu login.')};
-(async()=>{const {data:{session}}=await window.pinggoDb.auth.getSession();if(session?.user)await startPinggoSession(session.user)})();
-document.getElementById('demoLogout').onclick=async()=>{await window.pinggoDb.auth.signOut();pinggoUser=null;document.getElementById('authScreen').classList.remove('hide');authStatus('Kamu sudah logout.')};
+
+function authStatus(m){
+  const el=document.getElementById('authStatus');
+  if(el) el.textContent=m||'';
+}
+function normalizePinggoPhone(v){
+  v=(v||'').trim().replace(/[\s()-]/g,'');
+  if(v.startsWith('08')) return '+62'+v.slice(1);
+  if(v.startsWith('62')) return '+'+v;
+  return v;
+}
+function authMode(m){
+  document.querySelectorAll('.auth-tab').forEach(b=>b.classList.toggle('active',b.dataset.authMode===m));
+  const login=document.getElementById('authLoginForm');
+  const reg=document.getElementById('authRegisterForm');
+  if(login) login.style.display=m==='login'?'block':'none';
+  if(reg) reg.style.display=m==='register'?'block':'none';
+  authStatus('');
+}
+async function loadOnlineProfile(){
+  if(!pinggoUser) return;
+  const {data}=await window.pinggoDb.from('profiles').select('*').eq('id',pinggoUser.id).single();
+  if(data && typeof profileState!=='undefined'){
+    profileState.name=data.display_name||profileState.name;
+    profileState.id='@'+data.pinggo_id;
+    profileState.photo=data.avatar_url||null;
+    profileState.privacy=data.private_profile;
+    profileState.secretPrivate=data.secret_private_default;
+    profileState.notifications=data.notifications_enabled;
+    profileState.appearance=data.appearance||'Pink & Gray';
+    if(typeof renderProfile==='function') renderProfile();
+  }
+}
+async function loadOnlineWallet(){
+  if(!pinggoUser) return;
+  const {data}=await window.pinggoDb.from('wallets').select('balance').eq('user_id',pinggoUser.id).single();
+  if(data && typeof gemState!=='undefined'){
+    gemState.balance=data.balance;
+    if(typeof renderGem==='function') renderGem();
+    if(typeof renderProfile==='function') renderProfile();
+  }
+}
+async function startPinggoSession(u){
+  pinggoUser=u;
+  const screen=document.getElementById('authScreen');
+  if(screen) screen.classList.add('hide');
+  try{ await loadOnlineProfile(); }catch(e){ console.warn(e); }
+  try{ await loadOnlineWallet(); }catch(e){ console.warn(e); }
+}
+
 
 
 async function copyPinggoId(){const id=(profileState?.id||'').replace(/^@/,'');if(!id)return;try{await navigator.clipboard.writeText(id);alert('PINGGO ID copied: '+id)}catch(e){const t=document.createElement('textarea');t.value=id;document.body.appendChild(t);t.select();document.execCommand('copy');t.remove();alert('PINGGO ID copied: '+id)}}
@@ -1146,75 +1189,99 @@ document.addEventListener('click',()=>setTimeout(renderProfile,0));
 
 <div id="pcModal" class="pc-modal"><div class="pc-card"><div class="pc-head"><button id="pcBack">‹</button><div><b id="pcName">Chat</b><small id="pcId"></small></div><button id="pcClose">×</button></div><div id="pcMessages" class="pc-messages"></div><div class="pc-compose"><input id="pcInput" placeholder="Message..."><button id="pcSend">Send</button></div></div></div>
 
+
+
+
 <script>
 (function(){
-  const status = (m)=>{const el=document.getElementById('authStatus'); if(el) el.textContent=m||'';};
-  const normalizePhone=(v)=>{
-    v=(v||'').trim().replace(/[\s()-]/g,'');
-    if(v.startsWith('08')) return '+62'+v.slice(1);
-    if(v.startsWith('62')) return '+'+v;
-    return v;
-  };
-  function setMode(mode){
-    const login=document.getElementById('authLoginForm');
-    const reg=document.getElementById('authRegisterForm');
-    if(login) login.style.display=mode==='login'?'block':'none';
-    if(reg) reg.style.display=mode==='register'?'block':'none';
-    document.querySelectorAll('.auth-tab').forEach(b=>b.classList.toggle('active',b.dataset.authMode===mode));
-    status('');
-  }
-  async function waitForClient(){
-    for(let i=0;i<100;i++){
-      if(window.pinggoDb && typeof window.pinggoDb.auth?.signUp==='function') return window.pinggoDb;
-      await new Promise(r=>setTimeout(r,50));
-    }
-    throw new Error('Koneksi PINGGO belum siap. Periksa koneksi internet lalu refresh.');
-  }
-  document.addEventListener('DOMContentLoaded',()=>{
-    document.querySelectorAll('.auth-tab').forEach(b=>{
-      b.onclick=(e)=>{e.preventDefault();setMode(b.dataset.authMode);};
-    });
-    const rb=document.getElementById('registerBtn');
-    if(rb) rb.onclick=async(e)=>{
+  function bindAuth(){
+    const loginTab=document.querySelector('[data-auth-mode="login"]');
+    const registerTab=document.querySelector('[data-auth-mode="register"]');
+    const loginBtn=document.getElementById('loginBtn');
+    const registerBtn=document.getElementById('registerBtn');
+
+    if(loginTab) loginTab.onclick=(e)=>{e.preventDefault();authMode('login');};
+    if(registerTab) registerTab.onclick=(e)=>{e.preventDefault();authMode('register');};
+
+    if(registerBtn) registerBtn.onclick=async(e)=>{
       e.preventDefault();
-      const name=(document.getElementById('registerName')?.value||'').trim()||'PINGGO User';
-      const phone=normalizePhone(document.getElementById('registerPhone')?.value);
-      const password=document.getElementById('registerPassword')?.value||'';
-      if(!phone || password.length<6){status('Isi nomor HP. Password minimal 6 karakter.');return;}
-      rb.disabled=true; status('Membuat akun...');
+      const name=(document.getElementById('registerName').value||'').trim()||'PINGGO User';
+      const phone=normalizePinggoPhone(document.getElementById('registerPhone').value);
+      const password=document.getElementById('registerPassword').value||'';
+
+      if(!phone){authStatus('Masukkan nomor HP.');return;}
+      if(password.length<6){authStatus('Password minimal 6 karakter.');return;}
+      if(!window.pinggoDb){authStatus('Supabase belum terhubung. Coba buka ulang halaman.');return;}
+
+      registerBtn.disabled=true;
+      registerBtn.textContent='Creating...';
+      authStatus('Membuat akun...');
+
       try{
-        const db=await waitForClient();
-        const {data,error}=await db.auth.signUp({phone,password,options:{data:{display_name:name,phone}}});
+        const {data,error}=await window.pinggoDb.auth.signUp({
+          phone:phone,
+          password:password,
+          options:{data:{display_name:name}}
+        });
         if(error) throw error;
-        if(data?.user){
-          status(data.session?'Akun berhasil dibuat. Masuk ke PINGGO...':'Akun berhasil dibuat. Silakan verifikasi nomor HP jika diminta.');
+
+        if(data && data.user){
           if(data.session){
-            const screen=document.getElementById('authScreen');
-            if(screen) screen.classList.add('hide');
+            authStatus('Akun berhasil dibuat.');
+            await startPinggoSession(data.user);
+          }else{
+            authStatus('Akun berhasil dibuat. Verifikasi nomor HP jika diminta, lalu Login.');
+            authMode('login');
           }
-        }else status('Akun belum berhasil dibuat. Coba lagi.');
-      }catch(err){status(err?.message||'Create Account gagal.');}
-      finally{rb.disabled=false;}
-    };
-    const lb=document.getElementById('loginBtn');
-    if(lb) lb.onclick=async(e)=>{
-      e.preventDefault();
-      const phone=normalizePhone(document.getElementById('loginPhone')?.value);
-      const password=document.getElementById('loginPassword')?.value||'';
-      if(!phone||!password){status('Masukkan nomor HP dan password.');return;}
-      lb.disabled=true; status('Login...');
-      try{
-        const db=await waitForClient();
-        const {data,error}=await db.auth.signInWithPassword({phone,password});
-        if(error) throw error;
-        if(data?.user){
-          const screen=document.getElementById('authScreen');
-          if(screen) screen.classList.add('hide');
+        }else{
+          throw new Error('Supabase tidak mengembalikan akun baru.');
         }
-      }catch(err){status(err?.message||'Login gagal.');}
-      finally{lb.disabled=false;}
+      }catch(err){
+        authStatus(err && err.message ? err.message : 'Create Account gagal.');
+      }finally{
+        registerBtn.disabled=false;
+        registerBtn.textContent='Create Account';
+      }
     };
-  });
+
+    if(loginBtn) loginBtn.onclick=async(e)=>{
+      e.preventDefault();
+      const phone=normalizePinggoPhone(document.getElementById('loginPhone').value);
+      const password=document.getElementById('loginPassword').value||'';
+
+      if(!phone||!password){authStatus('Masukkan nomor HP dan password.');return;}
+      loginBtn.disabled=true;
+      loginBtn.textContent='Login...';
+      authStatus('Login...');
+
+      try{
+        const {data,error}=await window.pinggoDb.auth.signInWithPassword({phone,password});
+        if(error) throw error;
+        await startPinggoSession(data.user);
+      }catch(err){
+        authStatus(err && err.message ? err.message : 'Login gagal.');
+      }finally{
+        loginBtn.disabled=false;
+        loginBtn.textContent='Login';
+      }
+    };
+
+    const logout=document.getElementById('demoLogout');
+    if(logout) logout.onclick=async()=>{
+      await window.pinggoDb.auth.signOut();
+      pinggoUser=null;
+      document.getElementById('authScreen').classList.remove('hide');
+      authMode('login');
+      authStatus('Kamu sudah logout.');
+    };
+
+    window.pinggoDb.auth.getSession().then(async ({data})=>{
+      if(data && data.session && data.session.user) await startPinggoSession(data.session.user);
+    }).catch(()=>{});
+  }
+
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',bindAuth);
+  else bindAuth();
 })();
 </script>
 
