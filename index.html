@@ -1548,6 +1548,8 @@ document.addEventListener('click',()=>setTimeout(renderProfile,0));
         'https://fgvsqzjfrouypgudhrsc.supabase.co/functions/v1/pinggo-register',
         {
           method:'POST',
+          mode:'cors',
+          cache:'no-store',
           headers:{
             'Content-Type':'application/json',
             'apikey':'sb_publishable_ojLOMPCW07M068trjToZ7w_PFu4XUw_'
@@ -1556,9 +1558,11 @@ document.addEventListener('click',()=>setTimeout(renderProfile,0));
         }
       );
 
-      const result=await response.json().catch(()=>({}));
+      const raw=await response.text();
+      let result={};
+      try{ result=raw?JSON.parse(raw):{}; }catch(_){}
       if(!response.ok || !result.ok){
-        throw new Error(result.error||'Create Account gagal.');
+        throw new Error(result.error||('Create Account gagal. Server menjawab '+response.status+'.'));
       }
 
       const pinggoId=result.pinggo_id;
