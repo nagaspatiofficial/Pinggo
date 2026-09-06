@@ -1530,12 +1530,13 @@ document.addEventListener('click',()=>setTimeout(renderProfile,0));
 
     btn.disabled=true;
     btn.textContent='Creating...';
-    status('Membuat akun...');
+    status('Menyiapkan akun PINGGO...');
 
     try{
       const db=await getDb();
       const pinggoId=await makePinggoId(db);
 
+      // Show the generated ID immediately after it has been reserved as the account identity.
       const {data,error}=await db.auth.signUp({
         email:email(pinggoId),
         password:password,
@@ -1547,24 +1548,32 @@ document.addEventListener('click',()=>setTimeout(renderProfile,0));
         }
       });
       if(error) throw error;
-      if(!data?.user) throw new Error('Akun gagal dibuat.');
+      if(!data || !data.user) throw new Error('Akun gagal dibuat. Coba lagi.');
 
-      // Show the ID immediately and persist it in the UI.
-      status('BERHASIL! PINGGO ID kamu: '+pinggoId);
+      const successHtml =
+        '<div style="font-weight:700;margin-bottom:8px">Akun berhasil dibuat</div>' +
+        '<div style="font-size:12px;margin-bottom:5px">PINGGO ID kamu</div>' +
+        '<div style="font-size:24px;font-weight:800;letter-spacing:1.5px">' + pinggoId + '</div>' +
+        '<div style="font-size:12px;margin-top:8px">Simpan ID ini untuk login.</div>';
+
+      const st=document.getElementById('authStatus');
+      if(st){
+        st.innerHTML=successHtml;
+        st.style.color='#3f4247';
+      }
+
+      // Persist the ID in profile UI if the element exists.
       const profileId=document.getElementById('profilePinggoId');
       if(profileId) profileId.textContent='@'+pinggoId;
 
-      if(data.session){
-        if(typeof startPinggoSession==='function') await startPinggoSession(data.user);
-        else document.getElementById('authScreen').classList.add('hide');
-      }else{
-        // Account exists, but this project requires email confirmation.
-        // The internal email is not user-facing, so explain the exact configuration issue.
-        status('Akun dibuat: '+pinggoId+'. Namun Login belum aktif karena Supabase meminta konfirmasi email internal.');
-      }
+      // Copy the generated ID for the user when supported.
+      try{ if(navigator.clipboard) await navigator.clipboard.writeText(pinggoId); }catch(_){}
+
+      // Keep the success message visible instead of immediately hiding the auth screen.
+      // The user can now see and save/copy the PINGGO ID before logging in.
+      btn.textContent='Account Created';
     }catch(err){
       status(err?.message||'Create Account gagal.');
-    }finally{
       btn.disabled=false;
       btn.textContent='Create Account';
     }
