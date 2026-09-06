@@ -184,6 +184,10 @@ body{
 }
 
 .pinggo-id-actions{display:flex;gap:8px;margin:8px 0 14px}.pinggo-id-actions button{border:0;border-radius:10px;padding:8px 11px;background:#777;color:#fff;font-size:11px;font-weight:800}
+
+.pf-modal{display:none;position:fixed;z-index:9998;inset:0;background:rgba(0,0,0,.35);align-items:flex-end;justify-content:center}.pf-modal.show{display:flex}.pf-card{width:min(100%,520px);max-height:88vh;overflow:auto;background:#f7e4e9;border-radius:26px 26px 0 0;padding:18px}.pf-head{display:flex;justify-content:space-between;align-items:center;font-size:20px;color:#444}.pf-head button{border:0;background:#aaa;color:#fff;width:32px;height:32px;border-radius:50%;font-size:22px}.pf-tabs{display:flex;gap:8px;margin:15px 0}.pf-tab{border:0;background:#d2d2d2;color:#555;padding:9px 13px;border-radius:12px;font-weight:800}.pf-tab.active{background:#707070;color:#fff}.pf-search{display:flex;gap:8px}.pf-search input{flex:1;border:0;background:#fff;padding:13px;border-radius:12px;outline:none}.pf-search button,.pf-action{border:0;background:#707070;color:#fff;padding:11px 14px;border-radius:12px;font-weight:800}.pf-result,.pf-row{margin-top:12px;background:rgba(255,255,255,.78);border-radius:16px;padding:13px;display:flex;align-items:center;justify-content:space-between;gap:10px}.pf-user{display:flex;align-items:center;gap:10px}.pf-avatar{width:40px;height:40px;border-radius:50%;background:#aaa;display:flex;align-items:center;justify-content:center;font-weight:900;color:#fff}.pf-meta b{display:block;color:#444}.pf-meta small{color:#777}.pf-list{margin-top:12px}.pf-empty{padding:22px;text-align:center;color:#777}.pf-secondary{background:#b5b5b5!important;color:#444!important}
+
+.pc-modal{display:none;position:fixed;z-index:10000;inset:0;background:#f3d8df}.pc-modal.show{display:block}.pc-card{height:100%;display:flex;flex-direction:column}.pc-head{padding:14px;display:flex;align-items:center;gap:12px;background:#e7c0cb}.pc-head button{border:0;border-radius:10px;background:#777;color:#fff;width:34px;height:34px;font-size:22px}.pc-head div{flex:1}.pc-head small{display:block;color:#666;font-size:10px}.pc-messages{flex:1;overflow:auto;padding:14px}.pc-msg{max-width:78%;margin:7px 0;padding:10px 12px;border-radius:15px;background:#fff;color:#444}.pc-msg.me{margin-left:auto;background:#aaa;color:#fff}.pc-time{font-size:9px;opacity:.65;margin-top:4px}.pc-compose{display:flex;gap:8px;padding:10px;background:#ead4da}.pc-compose input{flex:1;border:0;border-radius:18px;padding:13px;outline:none}.pc-compose button{border:0;border-radius:16px;padding:0 18px;background:#666;color:#fff;font-weight:800}
 </style>
 
 </head>
@@ -406,6 +410,75 @@ async function copyPinggoId(){const id=(profileState?.id||'').replace(/^@/,'');i
 async function sharePinggoId(){const id=(profileState?.id||'').replace(/^@/,'');if(!id)return;const text='Add me on PINGGO: '+id;if(navigator.share){try{await navigator.share({title:'My PINGGO ID',text})}catch(e){}}else{await copyPinggoId()}}
 function addPinggoIdActions(){const id=profileState?.id;if(!id)return;[...document.querySelectorAll('button,div,span,p')].forEach(el=>{if(el.dataset.pinggoActionsAdded)return;const t=(el.textContent||'').trim();if(t!==id&&t!==id.replace(/^@/,''))return;el.dataset.pinggoActionsAdded='1';const w=document.createElement('div');w.className='pinggo-id-actions';w.innerHTML='<button type="button">Copy ID</button><button type="button">Share ID</button>';el.insertAdjacentElement('afterend',w);w.children[0].onclick=copyPinggoId;w.children[1].onclick=sharePinggoId})}
 const _loadOnlineProfile=loadOnlineProfile;loadOnlineProfile=async function(){await _loadOnlineProfile();setTimeout(addPinggoIdActions,80)};
+
+
+/* PINGGO ONLINE FRIENDS */
+let pfFriendCache=[],pfRequestCache=[];
+function pfEsc(s){return String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function pfAvatar(name){return pfEsc((name||'?').trim().charAt(0).toUpperCase())}
+function openPinggoFriends(){document.getElementById('pinggoFriendsModal').classList.add('show');loadPinggoFriends()}
+function closePinggoFriends(){document.getElementById('pinggoFriendsModal').classList.remove('show')}
+document.getElementById('pfClose').onclick=closePinggoFriends;
+
+async function searchPinggoFriend(){
+ if(!pinggoUser){alert('Please login first');return}
+ const id=document.getElementById('pfSearchInput').value.trim();
+ const box=document.getElementById('pfSearchResult');
+ if(!id){box.innerHTML='<div class="pf-empty">Enter a PINGGO ID</div>';return}
+ box.innerHTML='<div class="pf-empty">Searching...</div>';
+ const {data,error}=await pinggoDb.rpc('find_profile_by_pinggo_id',{p_pinggo_id:id});
+ if(error||!data||!data.length){box.innerHTML='<div class="pf-empty">PINGGO user not found</div>';return}
+ const u=data[0];
+ if(u.id===pinggoUser.id){box.innerHTML='<div class="pf-empty">This is your PINGGO ID</div>';return}
+ box.innerHTML='<div class="pf-result"><div class="pf-user"><div class="pf-avatar">'+pfAvatar(u.display_name)+'</div><div class="pf-meta"><b>'+pfEsc(u.display_name)+'</b><small>'+pfEsc(u.pinggo_id)+'</small></div></div><button class="pf-action" id="pfAddFound">Add Friend</button></div>';
+ document.getElementById('pfAddFound').onclick=async()=>{
+   const btn=document.getElementById('pfAddFound');btn.textContent='Sending...';btn.disabled=true;
+   const {error}=await pinggoDb.rpc('send_friend_request',{p_other:u.id});
+   if(error){btn.textContent='Unavailable';alert(error.message);return}
+   btn.textContent='Request Sent';await loadPinggoFriends();
+ };
+}
+document.getElementById('pfSearchBtn').onclick=searchPinggoFriend;
+document.getElementById('pfSearchInput').addEventListener('keydown',e=>{if(e.key==='Enter')searchPinggoFriend()});
+
+async function loadPinggoFriends(){
+ if(!pinggoUser)return;
+ const {data,error}=await pinggoDb.from('friends').select('*').or('requester_id.eq.'+pinggoUser.id+',addressee_id.eq.'+pinggoUser.id).order('created_at',{ascending:false});
+ if(error)return;
+ pfFriendCache=data||[];
+ const otherIds=[...new Set(pfFriendCache.flatMap(x=>[x.requester_id,x.addressee_id]).filter(x=>x!==pinggoUser.id))];
+ let profiles={};
+ if(otherIds.length){const {data:p}=await pinggoDb.from('profiles').select('id,display_name,pinggo_id,avatar_url').in('id',otherIds);(p||[]).forEach(x=>profiles[x.id]=x);window.__pfLastProfiles=Object.values(profiles)}
+ const accepted=pfFriendCache.filter(x=>x.status==='accepted');
+ const incoming=pfFriendCache.filter(x=>x.status==='pending'&&x.addressee_id===pinggoUser.id);
+ const friendsBox=document.getElementById('pfFriendsList');
+ friendsBox.innerHTML=accepted.length?accepted.map(x=>{const u=profiles[x.requester_id===pinggoUser.id?x.addressee_id:x.requester_id];return '<div class="pf-row"><div class="pf-user"><div class="pf-avatar">'+pfAvatar(u?.display_name)+'</div><div class="pf-meta"><b>'+pfEsc(u?.display_name||'PINGGO User')+'</b><small>'+pfEsc(u?.pinggo_id||'')+'</small></div></div><button class="pf-action pf-secondary">Friend</button></div>'}).join(''):'<div class="pf-empty">No friends yet. Search using PINGGO ID.</div>';
+ const reqBox=document.getElementById('pfRequestsList');
+ reqBox.innerHTML=incoming.length?incoming.map(x=>{const u=profiles[x.requester_id];return '<div class="pf-row"><div class="pf-user"><div class="pf-avatar">'+pfAvatar(u?.display_name)+'</div><div class="pf-meta"><b>'+pfEsc(u?.display_name||'PINGGO User')+'</b><small>'+pfEsc(u?.pinggo_id||'')+'</small></div></div><div><button class="pf-action" onclick="respondPinggoFriend(\\''+x.id+'\\',true)">Accept</button><button class="pf-action pf-secondary" onclick="respondPinggoFriend(\\''+x.id+'\\',false)">Decline</button></div></div>'}).join(''):'<div class="pf-empty">No friend requests.</div>';
+ document.getElementById('pfReqCount').textContent=incoming.length?'('+incoming.length+')':'';
+}
+async function respondPinggoFriend(id,accept){const {error}=await pinggoDb.rpc('respond_friend_request',{p_request:id,p_accept:accept});if(error)alert(error.message);await loadPinggoFriends()}
+document.querySelectorAll('.pf-tab').forEach(b=>b.onclick=()=>{document.querySelectorAll('.pf-tab').forEach(x=>x.classList.remove('active'));b.classList.add('active');const req=b.dataset.pfTab==='requests';document.getElementById('pfFriendsView').style.display=req?'none':'block';document.getElementById('pfRequestsView').style.display=req?'block':'none'});
+/* Hook existing Friends navigation/button to online Friends modal */
+document.addEventListener('click',e=>{
+ const t=e.target.closest('button,a,.nav-item,.tab');
+ if(!t)return;
+ const label=(t.textContent||'').trim().toLowerCase();
+ if(label==='friends'||label==='friend'){e.preventDefault();openPinggoFriends()}
+});
+pinggoDb.channel('pinggo-friends-live').on('postgres_changes',{event:'*',schema:'public',table:'friends'},()=>{if(pinggoUser)loadPinggoFriends()}).subscribe();
+
+
+let pcConversation=null,pcOther=null,pcChannel=null;
+function openPinggoChat(u){pcOther=u;document.getElementById('pcName').textContent=u.display_name||'PINGGO User';document.getElementById('pcId').textContent=u.pinggo_id||'';document.getElementById('pcModal').classList.add('show');startPinggoChat()}
+function closePinggoChat(){document.getElementById('pcModal').classList.remove('show');if(pcChannel){pinggoDb.removeChannel(pcChannel);pcChannel=null}pcConversation=null}
+pcClose.onclick=closePinggoChat;pcBack.onclick=closePinggoChat;
+async function startPinggoChat(){if(!pcOther||!pinggoUser)return;const {data,error}=await pinggoDb.rpc('get_or_create_direct_conversation',{p_other:pcOther.id});if(error){alert(error.message);return}pcConversation=data;await loadPinggoMessages();if(pcChannel)pinggoDb.removeChannel(pcChannel);pcChannel=pinggoDb.channel('chat-'+pcConversation).on('postgres_changes',{event:'INSERT',schema:'public',table:'messages',filter:'conversation_id=eq.'+pcConversation},p=>{appendPinggoMessage(p.new)}).subscribe()}
+function appendPinggoMessage(m){const box=document.getElementById('pcMessages');if(box.querySelector('[data-mid="'+m.id+'"]'))return;const d=document.createElement('div');d.className='pc-msg '+(m.sender_id===pinggoUser.id?'me':'');d.dataset.mid=m.id;d.innerHTML='<div>'+pfEsc(m.body||'')+'</div><div class="pc-time">'+new Date(m.created_at).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})+'</div>';box.appendChild(d);box.scrollTop=box.scrollHeight}
+async function loadPinggoMessages(){const box=document.getElementById('pcMessages');box.innerHTML='<div class="pf-empty">Loading messages...</div>';const {data,error}=await pinggoDb.from('messages').select('*').eq('conversation_id',pcConversation).is('deleted_at',null).order('created_at',{ascending:true});box.innerHTML='';if(error){box.innerHTML='<div class="pf-empty">Unable to load messages</div>';return}(data||[]).forEach(appendPinggoMessage)}
+async function sendPinggoMessage(){const input=document.getElementById('pcInput'),body=input.value.trim();if(!body||!pcConversation)return;input.value='';const {error}=await pinggoDb.from('messages').insert({conversation_id:pcConversation,sender_id:pinggoUser.id,body});if(error){alert(error.message);input.value=body}}
+pcSend.onclick=sendPinggoMessage;pcInput.addEventListener('keydown',e=>{if(e.key==='Enter')sendPinggoMessage()});
+const _oldLoadFriends=loadPinggoFriends;loadPinggoFriends=async function(){await _oldLoadFriends();document.querySelectorAll('.pf-row').forEach(row=>{const name=row.querySelector('.pf-meta b')?.textContent;const id=row.querySelector('.pf-meta small')?.textContent;if(!name||!id||row.querySelector('.pc-open'))return;const u=Object.values(window.__pfProfiles||{}).find(x=>x.pinggo_id===id);});document.querySelectorAll('#pfFriendsList .pf-row').forEach((row,i)=>{if(row.querySelector('.pc-open'))return;const id=row.querySelector('.pf-meta small')?.textContent;const u=(window.__pfLastProfiles||[]).find(x=>x.pinggo_id===id);if(u){const b=document.createElement('button');b.className='pf-action pc-open';b.textContent='Chat';b.onclick=()=>openPinggoChat(u);row.appendChild(b)}})};
 
 </script>
 <script>
@@ -1052,5 +1125,20 @@ document.addEventListener('click',()=>setTimeout(renderProfile,0));
 </div>
 
 <div id="authScreen" class="auth-screen"><div class="auth-card"><div class="auth-logo">PINGGO</div><p class="auth-tagline">Chat. Share. Keep It Secret.</p><div class="auth-tabs"><button class="auth-tab active" data-auth-mode="login">Login</button><button class="auth-tab" data-auth-mode="register">Register</button></div><div id="authLoginForm"><input id="loginPhone" type="tel" inputmode="tel" placeholder="Nomor HP (contoh: +628123456789)"><input id="loginPassword" type="password" placeholder="Password"><button id="loginBtn" class="auth-primary">Login</button></div><div id="authRegisterForm" style="display:none"><input id="registerName" placeholder="Display Name"><input id="registerPhone" type="tel" inputmode="tel" placeholder="Nomor HP (contoh: +628123456789)"><input id="registerPassword" type="password" placeholder="Password minimal 6 karakter"><button id="registerBtn" class="auth-primary">Create Account</button></div><div id="authStatus" class="auth-status"></div></div></div>
+
+<div id="pinggoFriendsModal" class="pf-modal">
+ <div class="pf-card">
+  <div class="pf-head"><strong>Friends</strong><button id="pfClose">×</button></div>
+  <div class="pf-tabs"><button class="pf-tab active" data-pf-tab="friends">Friends</button><button class="pf-tab" data-pf-tab="requests">Requests <span id="pfReqCount"></span></button></div>
+  <div id="pfFriendsView">
+   <div class="pf-search"><input id="pfSearchInput" placeholder="Enter PINGGO ID"><button id="pfSearchBtn">Search</button></div>
+   <div id="pfSearchResult"></div>
+   <div id="pfFriendsList" class="pf-list"></div>
+  </div>
+  <div id="pfRequestsView" style="display:none"><div id="pfRequestsList" class="pf-list"></div></div>
+ </div>
+</div>
+
+<div id="pcModal" class="pc-modal"><div class="pc-card"><div class="pc-head"><button id="pcBack">‹</button><div><b id="pcName">Chat</b><small id="pcId"></small></div><button id="pcClose">×</button></div><div id="pcMessages" class="pc-messages"></div><div class="pc-compose"><input id="pcInput" placeholder="Message..."><button id="pcSend">Send</button></div></div></div>
 </body>
 </html>
