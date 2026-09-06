@@ -23,6 +23,67 @@ body{margin:0;background:linear-gradient(135deg,#d8d5d9,#f4dfe6,#cbc8cd);color:v
 .panel{display:none}.panel.active{display:block}.empty-card{margin-top:25px;padding:28px 18px;border:1px dashed #c6c0c7;border-radius:20px;text-align:center;color:#827c84;background:rgba(255,255,255,.28)}
 .drop-card{margin-top:12px;border:1px solid rgba(255,255,255,.75);border-radius:18px;padding:15px;display:flex;align-items:center;gap:12px;background:rgba(255,255,255,.48);box-shadow:0 8px 24px rgba(87,72,80,.05)}.lock{width:46px;height:46px;border-radius:15px;background:linear-gradient(145deg,#f9d8e1,#c8c4c9);display:grid;place-items:center;font-size:20px}.drop-card b{font-size:14px}.drop-card p{margin:4px 0 0;color:var(--muted);font-size:12px}
 .profile-head{text-align:center;padding:28px 0 18px}.big-avatar{width:92px;height:92px;border-radius:30px;margin:auto;display:grid;place-items:center;background:linear-gradient(145deg,#f7b9ca,#aaa6ac);font-size:30px;font-weight:800}.profile-head h2{margin:13px 0 4px;font-size:21px}.profile-head p{margin:0;color:var(--muted);font-size:13px}.wallet{border:1px solid rgba(255,255,255,.75);border-radius:19px;padding:15px;display:flex;align-items:center;justify-content:space-between;margin-top:16px;background:rgba(255,255,255,.5)}.wallet b{font-size:18px}.wallet small{display:block;color:var(--muted);margin-bottom:4px}
+
+.chat-room{display:none;position:fixed;z-index:50;left:50%;transform:translateX(-50%);top:0;width:100%;max-width:520px;height:100dvh;background:linear-gradient(160deg,#f5f2f4 0%,#ece9ed 58%,#dedbe0 100%);padding:env(safe-area-inset-top) 14px env(safe-area-inset-bottom)}
+.chat-room.open{display:flex;flex-direction:column}
+.chat-room-header{height:63px;display:flex;align-items:center;gap:10px;border-bottom:1px solid rgba(180,174,181,.25)}
+.back-chat{border:0;background:transparent;font-size:27px;width:36px;color:#38333a}
+.room-avatar{width:40px;height:40px;border-radius:14px;background:linear-gradient(145deg,#f5c0cf,#bab6bb);display:grid;place-items:center;font-weight:800;position:relative}
+.room-user{min-width:0;flex:1;display:flex;flex-direction:column;gap:3px}.room-user b{font-size:15px}.room-user small{font-size:11px;color:#77727a}.room-user small span{display:inline-block;width:7px;height:7px;background:#37b56d;border-radius:50%;margin-right:4px}
+.room-actions{display:flex;gap:2px}.room-actions button{border:0;background:transparent;font-size:19px;width:33px;color:#514b53}
+.chat-messages{flex:1;overflow:auto;padding:18px 4px 12px;display:flex;flex-direction:column;gap:9px}
+.chat-date{align-self:center;font-size:10px;color:#858087;background:rgba(255,255,255,.5);padding:5px 10px;border-radius:12px;margin-bottom:5px}
+.message-row{display:flex}.message-row.outgoing{justify-content:flex-end}
+.bubble{max-width:78%;padding:11px 13px;border-radius:17px 17px 17px 5px;background:rgba(255,255,255,.66);font-size:14px;line-height:1.35;box-shadow:0 5px 14px rgba(80,70,76,.045)}
+.outgoing .bubble{border-radius:17px 17px 5px 17px;background:linear-gradient(135deg,#f4b0c3,#ed789a)}
+.bubble small{display:inline-block;font-size:9px;color:#77717a;margin-left:7px;white-space:nowrap}
+.outgoing .bubble small{color:#7f4c5d}
+.chat-composer{display:flex;align-items:center;gap:8px;padding:9px 2px 10px}
+.plus-message,.send-message{border:0;width:42px;height:42px;border-radius:14px;background:rgba(255,255,255,.62);font-size:22px;color:#514b53}
+.send-message{background:linear-gradient(135deg,#f28aaa,#e75c87);color:white;font-size:19px}
+.composer-input{height:42px;flex:1;border:1px solid rgba(255,255,255,.85);background:rgba(255,255,255,.52);border-radius:15px;display:flex;align-items:center;padding-left:14px}.composer-input input{flex:1;min-width:0;border:0;outline:0;background:transparent;font-size:14px;color:#302c32}.composer-input button{border:0;background:transparent;font-size:18px;color:#807982;width:40px}
+.attach-menu{display:none;position:absolute;left:14px;right:14px;bottom:65px;padding:10px;border-radius:20px;background:rgba(248,246,248,.95);border:1px solid rgba(255,255,255,.9);box-shadow:0 14px 35px rgba(72,58,66,.14);grid-template-columns:repeat(4,1fr);gap:6px}
+.attach-menu.show{display:grid}.attach-menu button{border:0;background:transparent;color:#5b555d;font-size:10px;display:flex;flex-direction:column;align-items:center;gap:6px;padding:6px}.attach-menu button span{width:42px;height:42px;border-radius:14px;background:#e4e0e4;display:grid;place-items:center;font-size:18px}.attach-menu button:last-child span{background:#f6cbd6}
+
+
+.secret-modal{display:none;position:fixed;z-index:120;inset:0;background:rgba(35,28,34,.28);backdrop-filter:blur(7px);align-items:flex-end;justify-content:center}
+.secret-modal.show{display:flex}
+.secret-sheet{width:100%;max-width:520px;background:linear-gradient(160deg,#f8f5f7,#e8e4e8);border-radius:28px 28px 0 0;padding:10px 18px calc(20px + env(safe-area-inset-bottom));box-shadow:0 -18px 55px rgba(45,35,43,.18)}
+.secret-handle{width:42px;height:4px;background:#c9c4c9;border-radius:10px;margin:2px auto 15px}
+.secret-title-row{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:15px}.secret-title-row h3{margin:0;font-size:20px}.secret-title-row p{margin:4px 0 0;color:#89838b;font-size:12px}.secret-title-row button{border:0;background:#ddd8dd;border-radius:12px;width:34px;height:34px;font-size:24px;color:#5e5860}
+.secret-picker{width:100%;min-height:78px;border:1px solid rgba(255,255,255,.9);background:rgba(255,255,255,.52);border-radius:19px;padding:10px;display:flex;align-items:center;gap:12px;text-align:left;margin-bottom:17px}
+.secret-preview-placeholder{width:58px;height:58px;border-radius:15px;background:linear-gradient(145deg,#f6c9d5,#c9c4ca);display:grid;place-items:center;font-size:23px;overflow:hidden;flex:none}.secret-preview-placeholder img,.secret-preview-placeholder video{width:100%;height:100%;object-fit:cover;filter:blur(9px);transform:scale(1.08)}
+.secret-picker-copy{flex:1;min-width:0}.secret-picker-copy b{display:block;font-size:14px;color:#3d373f}.secret-picker-copy span{display:block;color:#89838b;font-size:11px;line-height:1.35;margin-top:4px}.pick-arrow{font-size:28px;color:#9d969e}
+.secret-label{display:block;font-size:12px;font-weight:700;color:#5e5760;margin:13px 2px 8px}
+.gem-price-row{display:grid;grid-template-columns:repeat(4,1fr);gap:7px}.price-btn{height:43px;border:1px solid transparent;border-radius:13px;background:#dcd8dd;color:#655f67;font-weight:700;font-size:12px}.price-btn.active{background:#f8cbd6;border-color:#ef9ab1;color:#9c405b}
+.custom-price{height:46px;border:1px solid rgba(255,255,255,.9);background:rgba(255,255,255,.56);border-radius:14px;display:flex;align-items:center;padding:0 13px}.custom-price input{flex:1;border:0;outline:0;background:transparent;font-size:13px;color:#403a42;padding-left:4px}
+.secret-info{display:flex;gap:9px;background:rgba(255,255,255,.38);border-radius:14px;padding:11px;margin:15px 0}.secret-info span{font-size:17px}.secret-info p{margin:0;color:#7f7880;font-size:11px;line-height:1.4}
+.send-secret{width:100%;height:49px;border:0;border-radius:16px;background:linear-gradient(135deg,#f18aa8,#e65b85);color:#fff;font-size:14px;font-weight:800;box-shadow:0 10px 24px rgba(202,66,110,.2)}
+.secret-message{width:245px;max-width:100%;border-radius:19px;overflow:hidden;background:rgba(255,255,255,.62);border:1px solid rgba(255,255,255,.85);box-shadow:0 8px 20px rgba(75,60,68,.08)}
+.secret-thumb{height:120px;background:linear-gradient(135deg,#e7dfe3,#bcb7bc);position:relative;overflow:hidden}.secret-thumb img,.secret-thumb video{width:100%;height:100%;object-fit:cover;filter:blur(13px);transform:scale(1.08);opacity:.72}.secret-thumb .secret-lock-overlay{position:absolute;inset:0;display:grid;place-items:center;background:rgba(40,31,39,.16);font-size:30px}
+.secret-meta{padding:10px 11px}.secret-meta b{display:block;font-size:12px;color:#403a42}.secret-meta .unlock-price{display:flex;align-items:center;font-size:12px;font-weight:800;color:#a44966;margin-top:5px}.secret-meta small{font-size:9px;color:#827b83;margin-top:5px;display:block}
+
+
+.unlock-modal{display:none;position:fixed;z-index:150;inset:0;background:rgba(37,30,37,.34);backdrop-filter:blur(7px);align-items:flex-end;justify-content:center}
+.unlock-modal.show{display:flex}
+.unlock-sheet{width:100%;max-width:520px;background:linear-gradient(160deg,#f8f5f7,#e8e4e8);border-radius:28px 28px 0 0;padding:10px 22px calc(24px + env(safe-area-inset-bottom));text-align:center;box-shadow:0 -18px 55px rgba(45,35,43,.18)}
+.unlock-icon{width:64px;height:64px;border-radius:22px;background:linear-gradient(145deg,#f7cbd6,#c9c4ca);display:grid;place-items:center;font-size:27px;margin:4px auto 13px}
+.unlock-sheet h3{margin:0;font-size:20px}.unlock-sheet>p{font-size:12px;color:#817a82;line-height:1.45;margin:7px auto 16px;max-width:290px}
+.unlock-price-box,.unlock-balance{border-radius:17px;background:rgba(255,255,255,.56);border:1px solid rgba(255,255,255,.85);padding:12px 14px;display:flex;align-items:center;justify-content:space-between;text-align:left;margin-top:8px}
+.unlock-price-box span,.unlock-balance span{font-size:11px;color:#827b83}.unlock-price-box b,.unlock-balance b{font-size:14px;color:#a54663}
+.confirm-unlock{width:100%;height:50px;border:0;border-radius:16px;background:linear-gradient(135deg,#f18aa8,#e65b85);color:white;font-size:14px;font-weight:800;margin-top:17px;box-shadow:0 10px 24px rgba(202,66,110,.2)}
+.cancel-unlock{border:0;background:transparent;color:#827b83;font-size:13px;padding:13px}
+.secure-viewer{display:none;position:fixed;z-index:200;inset:0;background:#1f1b20;color:white;max-width:520px;margin:auto;overflow:hidden;user-select:none;-webkit-user-select:none}
+.secure-viewer.show{display:flex;flex-direction:column}
+.secure-topbar{height:64px;padding:env(safe-area-inset-top) 14px 0;display:flex;align-items:center;gap:12px;background:rgba(20,17,21,.86);position:relative;z-index:3}
+.secure-topbar button{width:38px;height:38px;border:0;border-radius:13px;background:rgba(255,255,255,.1);color:white;font-size:23px}
+.secure-title{display:flex;flex-direction:column;gap:2px;flex:1}.secure-title b{font-size:13px;letter-spacing:.8px}.secure-title small{font-size:10px;color:#bcb5bc}.secure-lock{font-size:18px}
+.secure-media-area{position:relative;flex:1;display:grid;place-items:center;overflow:hidden;background:#181519}
+.secure-media-area img,.secure-media-area video{width:100%;height:100%;object-fit:contain;pointer-events:none;-webkit-user-drag:none}
+.dynamic-watermark{position:absolute;z-index:4;left:12%;top:24%;font-size:13px;font-weight:800;color:rgba(255,255,255,.58);text-shadow:0 1px 3px rgba(0,0,0,.45);transform:rotate(-18deg);pointer-events:none;white-space:nowrap;transition:left 1.2s ease,top 1.2s ease}
+.secure-bottom{min-height:58px;padding:10px 16px calc(10px + env(safe-area-inset-bottom));display:flex;flex-direction:column;justify-content:center;gap:3px;background:rgba(20,17,21,.92);position:relative;z-index:3}
+.secure-bottom span{font-size:11px;color:#f1c5d0}.secure-bottom small{font-size:10px;color:#9d969d}
+
 </style>
 
 </head>
@@ -42,13 +103,59 @@ body{margin:0;background:linear-gradient(135deg,#d8d5d9,#f4dfe6,#cbc8cd);color:v
       <button class="tab">Grup</button><button class="tab">Favorit</button>
     </div>
     <div class="section-title"><b>Pesan</b><small>Semua chat</small></div>
-    <div class="chat-list">
-      <div class="chat"><div class="avatar">C<div class="online-dot"></div></div><div class="chat-main"><div class="name-row"><span class="name">Cinta</span><span class="time">09:24</span></div><div class="preview">Oke, sampai nanti 😊</div></div><div class="badge">2</div></div>
-      <div class="chat"><div class="avatar">BC</div><div class="chat-main"><div class="name-row"><span class="name">Bali Crew</span><span class="time">08:41</span></div><div class="preview">Rama: 📷 Foto</div></div></div>
-      <div class="chat"><div class="avatar">D</div><div class="chat-main"><div class="name-row"><span class="name">Dika</span><span class="time">Kemarin</span></div><div class="preview">Siap bro</div></div></div>
-      <div class="chat"><div class="avatar">P</div><div class="chat-main"><div class="name-row"><span class="name">PINGGO Team</span><span class="time">Sen</span></div><div class="preview">Update baru sudah tersedia</div></div></div>
-      <div class="chat"><div class="avatar">N<div class="online-dot"></div></div><div class="chat-main"><div class="name-row"><span class="name">Nadya</span><span class="time">Sen</span></div><div class="preview">🎙 Voice message</div></div></div>
-      <div class="chat"><div class="avatar">SB</div><div class="chat-main"><div class="name-row"><span class="name">Surf Bali</span><span class="time">Min</span></div><div class="preview">Oke 👌</div></div></div>
+    <div id="chatHome">
+      <div class="chat-list">
+        <div class="chat" data-open-chat="Cinta"><div class="avatar">C<div class="online-dot"></div></div><div class="chat-main"><div class="name-row"><span class="name">Cinta</span><span class="time">09:24</span></div><div class="preview">Oke, sampai nanti 😊</div></div><div class="badge">2</div></div>
+        <div class="chat"><div class="avatar">BC</div><div class="chat-main"><div class="name-row"><span class="name">Bali Crew</span><span class="time">08:41</span></div><div class="preview">Rama: 📷 Foto</div></div></div>
+        <div class="chat"><div class="avatar">D</div><div class="chat-main"><div class="name-row"><span class="name">Dika</span><span class="time">Kemarin</span></div><div class="preview">Siap bro</div></div></div>
+        <div class="chat"><div class="avatar">P</div><div class="chat-main"><div class="name-row"><span class="name">PINGGO Team</span><span class="time">Sen</span></div><div class="preview">Update baru sudah tersedia</div></div></div>
+        <div class="chat"><div class="avatar">N<div class="online-dot"></div></div><div class="chat-main"><div class="name-row"><span class="name">Nadya</span><span class="time">Sen</span></div><div class="preview">🎙 Voice message</div></div></div>
+        <div class="chat"><div class="avatar">SB</div><div class="chat-main"><div class="name-row"><span class="name">Surf Bali</span><span class="time">Min</span></div><div class="preview">Oke 👌</div></div></div>
+      </div>
+    </div>
+
+    <div id="chatRoom" class="chat-room">
+      <div class="chat-room-header">
+        <button class="back-chat" id="backChat">←</button>
+        <div class="room-avatar">C<div class="online-dot"></div></div>
+        <div class="room-user"><b>Cinta</b><small><span></span> Online</small></div>
+        <div class="room-actions"><button>⌕</button><button>☎</button><button>⋮</button></div>
+      </div>
+
+      <div class="chat-messages" id="chatMessages">
+        <div class="chat-date">Hari ini</div>
+        <div class="message-row incoming">
+          <div class="bubble">Haii <small>09:20</small></div>
+        </div>
+        <div class="message-row incoming">
+          <div class="bubble">Lagi apa? <small>09:20</small></div>
+        </div>
+        <div class="message-row outgoing">
+          <div class="bubble">Lagi kerja nih <small>09:21 ✓✓</small></div>
+        </div>
+        <div class="message-row incoming">
+          <div class="bubble">Nanti malam ketemu? <small>09:22</small></div>
+        </div>
+        <div class="message-row outgoing">
+          <div class="bubble">Bisa 😊 <small>09:22 ✓✓</small></div>
+        </div>
+      </div>
+
+      <div class="chat-composer">
+        <button class="plus-message" id="plusMessage">＋</button>
+        <div class="composer-input">
+          <input id="messageInput" type="text" placeholder="Tulis pesan..." autocomplete="off">
+          <button id="emojiBtn">☺</button>
+        </div>
+        <button class="send-message" id="sendMessage">➤</button>
+      </div>
+
+      <div class="attach-menu" id="attachMenu">
+        <button><span>📷</span>Foto</button>
+        <button><span>🎥</span>Video</button>
+        <button><span>🎙</span>Voice</button>
+        <button id="secretDropStart"><span>🔒</span>Secret Drop</button>
+      </div>
     </div>
   </section>
 
@@ -109,6 +216,283 @@ document.querySelectorAll('.tab').forEach(tab=>{
     tab.classList.add('active');
   });
 });
+
+const chatRoom=document.getElementById('chatRoom');
+const chatMessages=document.getElementById('chatMessages');
+const messageInput=document.getElementById('messageInput');
+const attachMenu=document.getElementById('attachMenu');
+
+document.querySelector('[data-open-chat="Cinta"]').addEventListener('click',()=>{
+  chatRoom.classList.add('open');
+  setTimeout(()=>chatMessages.scrollTop=chatMessages.scrollHeight,50);
+});
+document.getElementById('backChat').addEventListener('click',()=>chatRoom.classList.remove('open'));
+
+function sendMessage(){
+  const text=messageInput.value.trim();
+  if(!text) return;
+  const row=document.createElement('div');
+  row.className='message-row outgoing';
+  const bubble=document.createElement('div');
+  bubble.className='bubble';
+  const now=new Date().toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit'});
+  bubble.innerHTML='';
+  bubble.append(document.createTextNode(text+' '));
+  const small=document.createElement('small');
+  small.textContent=now+' ✓';
+  bubble.appendChild(small);
+  row.appendChild(bubble);
+  chatMessages.appendChild(row);
+  messageInput.value='';
+  chatMessages.scrollTop=chatMessages.scrollHeight;
+}
+document.getElementById('sendMessage').addEventListener('click',sendMessage);
+messageInput.addEventListener('keydown',e=>{if(e.key==='Enter')sendMessage()});
+document.getElementById('plusMessage').addEventListener('click',()=>attachMenu.classList.toggle('show'));
+const secretModal=document.getElementById('secretModal');
+const secretFile=document.getElementById('secretFile');
+const secretPreview=document.getElementById('secretPreview');
+const customSecretPrice=document.getElementById('customSecretPrice');
+let selectedSecretPrice=10;
+let selectedSecretFile=null;
+let selectedSecretURL=null;
+
+document.getElementById('secretDropStart').addEventListener('click',()=>{
+  attachMenu.classList.remove('show');
+  secretModal.classList.add('show');
+});
+document.getElementById('closeSecretModal').addEventListener('click',()=>secretModal.classList.remove('show'));
+document.getElementById('pickSecretFile').addEventListener('click',()=>secretFile.click());
+
+document.querySelectorAll('.price-btn').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    document.querySelectorAll('.price-btn').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    selectedSecretPrice=Number(btn.dataset.price);
+    customSecretPrice.value='';
+  });
+});
+customSecretPrice.addEventListener('input',()=>{
+  if(customSecretPrice.value>0){
+    document.querySelectorAll('.price-btn').forEach(b=>b.classList.remove('active'));
+    selectedSecretPrice=Number(customSecretPrice.value);
+  }
+});
+secretFile.addEventListener('change',()=>{
+  const file=secretFile.files[0];
+  if(!file)return;
+  selectedSecretFile=file;
+  if(selectedSecretURL)URL.revokeObjectURL(selectedSecretURL);
+  selectedSecretURL=URL.createObjectURL(file);
+  secretPreview.innerHTML='';
+  if(file.type.startsWith('image/')){
+    const img=document.createElement('img');img.src=selectedSecretURL;secretPreview.appendChild(img);
+  }else{
+    const video=document.createElement('video');video.src=selectedSecretURL;video.muted=true;video.playsInline=true;secretPreview.appendChild(video);
+  }
+});
+
+document.getElementById('sendSecretDrop').addEventListener('click',()=>{
+  if(!selectedSecretFile){alert('Pilih foto atau video terlebih dahulu.');return;}
+  const price=Number(customSecretPrice.value)||selectedSecretPrice||10;
+  const row=document.createElement('div');
+  row.className='message-row outgoing';
+  const card=document.createElement('div');
+  card.className='secret-message';
+  card.dataset.price=String(price);
+  card.dataset.type=selectedSecretFile.type.startsWith('image/')?'image':'video';
+  card.dataset.url=selectedSecretURL;
+
+  const thumb=document.createElement('div');
+  thumb.className='secret-thumb';
+  if(selectedSecretFile.type.startsWith('image/')){
+    const img=document.createElement('img');img.src=selectedSecretURL;thumb.appendChild(img);
+  }else{
+    const video=document.createElement('video');video.src=selectedSecretURL;video.muted=true;video.playsInline=true;thumb.appendChild(video);
+  }
+  const overlay=document.createElement('div');
+  overlay.className='secret-lock-overlay';overlay.textContent='🔒';thumb.appendChild(overlay);
+
+  const meta=document.createElement('div');
+  meta.className='secret-meta';
+  const title=document.createElement('b');title.textContent='SECRET DROP';
+  const priceLine=document.createElement('div');priceLine.className='unlock-price';
+  priceLine.innerHTML='<span class="heart-gem"></span>'+price+' Heart Gem';
+  const note=document.createElement('small');note.textContent='Terkunci • Menunggu penerima Unlock';
+  meta.append(title,priceLine,note);
+  card.append(thumb,meta);row.appendChild(card);chatMessages.appendChild(row);
+  chatMessages.scrollTop=chatMessages.scrollHeight;
+
+  secretModal.classList.remove('show');
+  selectedSecretFile=null;secretFile.value='';customSecretPrice.value='';
+  secretPreview.innerHTML='🔒';
+  document.querySelectorAll('.price-btn').forEach((b,i)=>b.classList.toggle('active',i===0));
+  selectedSecretPrice=10;
+});
+
+// SECRET DROP UNLOCK + SECURE VIEWER
+const unlockModal=document.getElementById('unlockModal');
+const secureViewer=document.getElementById('secureViewer');
+const secureMediaArea=document.getElementById('secureMediaArea');
+const unlockPriceEl=document.getElementById('unlockPrice');
+const userGemBalanceEl=document.getElementById('userGemBalance');
+const dynamicWatermark=document.getElementById('dynamicWatermark');
+let pendingSecretDrop=null;
+let currentGemBalance=1250;
+let watermarkTimer=null;
+
+function formatGem(n){return n.toLocaleString('id-ID');}
+
+function openUnlock(card){
+  pendingSecretDrop=card;
+  const price=Number(card.dataset.price||0);
+  unlockPriceEl.textContent=formatGem(price);
+  userGemBalanceEl.textContent=formatGem(currentGemBalance);
+  unlockModal.classList.add('show');
+}
+
+function openSecureViewer(card){
+  secureMediaArea.innerHTML='';
+  const type=card.dataset.type;
+  const url=card.dataset.url;
+  if(type==='image'){
+    const img=document.createElement('img');
+    img.src=url;img.draggable=false;
+    secureMediaArea.appendChild(img);
+  }else{
+    const video=document.createElement('video');
+    video.src=url;video.controls=true;video.controlsList='nodownload noremoteplayback';video.disablePictureInPicture=true;video.playsInline=true;video.autoplay=true;
+    secureMediaArea.appendChild(video);
+  }
+  const user='edhysean';
+  const now=new Date().toLocaleString('id-ID',{dateStyle:'short',timeStyle:'short'});
+  dynamicWatermark.textContent='PINGGO • @'+user+' • '+now;
+  secureViewer.classList.add('show');
+
+  clearInterval(watermarkTimer);
+  watermarkTimer=setInterval(()=>{
+    dynamicWatermark.style.left=(8+Math.random()*55)+'%';
+    dynamicWatermark.style.top=(12+Math.random()*70)+'%';
+  },2600);
+}
+
+document.addEventListener('click',e=>{
+  const card=e.target.closest('.secret-message');
+  if(card && card.dataset.url)openUnlock(card);
+});
+
+document.getElementById('cancelUnlock').addEventListener('click',()=>unlockModal.classList.remove('show'));
+
+document.getElementById('confirmUnlock').addEventListener('click',()=>{
+  if(!pendingSecretDrop)return;
+  const price=Number(pendingSecretDrop.dataset.price||0);
+  if(currentGemBalance<price){alert('Heart Gem kamu tidak cukup.');return;}
+  currentGemBalance-=price;
+  userGemBalanceEl.textContent=formatGem(currentGemBalance);
+  unlockModal.classList.remove('show');
+
+  const note=pendingSecretDrop.querySelector('small');
+  if(note)note.textContent='🔓 Unlocked';
+  const overlay=pendingSecretDrop.querySelector('.secret-lock-overlay');
+  if(overlay)overlay.textContent='🔓';
+
+  openSecureViewer(pendingSecretDrop);
+  pendingSecretDrop=null;
+});
+
+document.getElementById('closeViewer').addEventListener('click',()=>{
+  secureViewer.classList.remove('show');
+  secureMediaArea.innerHTML='';
+  clearInterval(watermarkTimer);
+});
+
+secureViewer.addEventListener('contextmenu',e=>e.preventDefault());
+secureViewer.addEventListener('dragstart',e=>e.preventDefault());
+
+document.addEventListener('visibilitychange',()=>{
+  if(document.hidden && secureViewer.classList.contains('show')){
+    secureMediaArea.style.filter='blur(18px)';
+  }else{
+    secureMediaArea.style.filter='none';
+  }
+});
+
 </script>
+
+<input id="secretFile" type="file" accept="image/*,video/*" hidden>
+<div id="secretModal" class="secret-modal">
+  <div class="secret-sheet">
+    <div class="secret-handle"></div>
+    <div class="secret-title-row">
+      <div>
+        <h3>🔒 Secret Drop</h3>
+        <p>Kirim konten dalam keadaan terkunci.</p>
+      </div>
+      <button id="closeSecretModal">×</button>
+    </div>
+
+    <button id="pickSecretFile" class="secret-picker">
+      <div id="secretPreview" class="secret-preview-placeholder">🔒</div>
+      <div class="secret-picker-copy">
+        <b>Pilih Foto atau Video</b>
+        <span>Konten akan tetap terkunci sebelum dibuka.</span>
+      </div>
+      <div class="pick-arrow">›</div>
+    </button>
+
+    <label class="secret-label">Harga Unlock</label>
+    <div class="gem-price-row">
+      <button class="price-btn active" data-price="10"><span class="heart-gem"></span>10</button>
+      <button class="price-btn" data-price="25"><span class="heart-gem"></span>25</button>
+      <button class="price-btn" data-price="50"><span class="heart-gem"></span>50</button>
+      <button class="price-btn" data-price="100"><span class="heart-gem"></span>100</button>
+    </div>
+
+    <label class="secret-label">Atau masukkan jumlah</label>
+    <div class="custom-price"><span class="heart-gem"></span><input id="customSecretPrice" type="number" min="1" placeholder="Jumlah Heart Gem"></div>
+
+    <div class="secret-info">
+      <span>🔐</span>
+      <p>Penerima hanya melihat konten terkunci. Konten baru terbuka setelah melakukan Unlock.</p>
+    </div>
+
+    <button id="sendSecretDrop" class="send-secret">Kirim Secret Drop <span>🔒</span></button>
+  </div>
+</div>
+
+
+<div id="unlockModal" class="unlock-modal">
+  <div class="unlock-sheet">
+    <div class="secret-handle"></div>
+    <div class="unlock-icon">🔒</div>
+    <h3>Secret Drop Terkunci</h3>
+    <p>Konten eksklusif ini hanya bisa dibuka dengan Heart Gem.</p>
+    <div class="unlock-price-box">
+      <span>Harga Unlock</span>
+      <b><span class="heart-gem"></span><span id="unlockPrice">0</span> Heart Gem</b>
+    </div>
+    <div class="unlock-balance">
+      <span>Saldo kamu</span>
+      <b><span class="heart-gem"></span><span id="userGemBalance">1.250</span></b>
+    </div>
+    <button id="confirmUnlock" class="confirm-unlock">Unlock Sekarang 🔓</button>
+    <button id="cancelUnlock" class="cancel-unlock">Nanti saja</button>
+  </div>
+</div>
+
+<div id="secureViewer" class="secure-viewer">
+  <div class="secure-topbar">
+    <button id="closeViewer">←</button>
+    <div class="secure-title"><b>SECRET DROP</b><small>Secure Viewer</small></div>
+    <div class="secure-lock">🔒</div>
+  </div>
+  <div id="secureMediaArea" class="secure-media-area"></div>
+  <div id="dynamicWatermark" class="dynamic-watermark"></div>
+  <div class="secure-bottom">
+    <span>🔒 Protected Content</span>
+    <small>Download & share tidak tersedia</small>
+  </div>
+</div>
+
 </body>
 </html>
