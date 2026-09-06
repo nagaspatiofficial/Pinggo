@@ -1737,5 +1737,84 @@ body{
 }
 </style>
 
+
+<!-- VISIBILITY FIX ONLY — LOGIN/REGISTER AREA NOT TOUCHED -->
+<style id="pinggo-buttons-visible-no-pink-active">
+/*
+  IMPORTANT:
+  This block intentionally targets only the logged-in application UI.
+  No .auth*, #authScreen, login button, register button, login form,
+  register form, or login JavaScript is changed.
+*/
+
+/* Make application buttons and their icons/text clearly visible. */
+.app button,
+.app [role="button"],
+.app .icon-btn,
+.app .top-btn,
+.app .nav-item,
+.app .chip,
+.app .filter,
+.app .floating-action,
+.app .fab{
+  color:#35343a !important;
+  opacity:1 !important;
+}
+
+/* Neutral gray button surface inside the application. */
+.app .icon-btn,
+.app .top-btn,
+.app .chip,
+.app .filter,
+.app .nav-item,
+.app .floating-action,
+.app .fab{
+  background:rgba(214,214,218,.96) !important;
+  border-color:rgba(105,105,112,.42) !important;
+}
+
+/* Do NOT fill buttons pink when clicked or active. */
+.app button:active,
+.app [role="button"]:active,
+.app .icon-btn:active,
+.app .top-btn:active,
+.app .chip:active,
+.app .filter:active,
+.app .nav-item:active,
+.app .floating-action:active,
+.app .fab:active,
+.app .active,
+.app .selected{
+  background:rgba(214,214,218,.96) !important;
+  color:#35343a !important;
+  transform:none !important;
+  box-shadow:none !important;
+}
+
+/* Navigation icons and labels must remain readable. */
+.app .bottom-nav,
+.app .bottom-nav *{
+  opacity:1 !important;
+}
+.app .bottom-nav .nav-item,
+.app .bottom-nav .nav-item.active{
+  background:transparent !important;
+  color:#4a4850 !important;
+}
+.app .bottom-nav .nav-item svg,
+.app .bottom-nav .nav-item i,
+.app .bottom-nav .nav-item span{
+  color:inherit !important;
+  fill:currentColor !important;
+  stroke:currentColor !important;
+}
+
+/* Floating + button: visible neutral gray, no pink active fill. */
+.app .fab,
+.app .floating-action{
+  color:#35343a !important;
+}
+</style>
+
 </body>
 </html>
