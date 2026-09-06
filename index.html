@@ -1885,5 +1885,46 @@ body{
 }
 </style>
 
+
+<!-- FINAL NAV FIX: the app uses .nav-icon text and temporary .pressed class -->
+<style id="pinggo-nav-icon-only-final">
+/* Remove the old pink box from BOTH persistent active and temporary pressed states. */
+.app .bottom-nav .nav-item,
+.app .bottom-nav .nav-item.active,
+.app .bottom-nav .nav-item.pressed,
+.app .bottom-nav .nav-item:active,
+.app .bottom-nav .nav-item.active::before,
+.app .bottom-nav .nav-item.active::after,
+.app .bottom-nav .nav-item.pressed::before,
+.app .bottom-nav .nav-item.pressed::after{
+  background:transparent !important;
+  background-color:transparent !important;
+  background-image:none !important;
+  border-color:transparent !important;
+  box-shadow:none !important;
+}
+
+/* The app icon is .nav-icon text, not SVG. Pink ONLY this icon. */
+.app .bottom-nav .nav-item.active .nav-icon,
+.app .bottom-nav .nav-item.pressed .nav-icon,
+.app .bottom-nav .nav-item:active .nav-icon{
+  color:#d94b83 !important;
+}
+
+/* Menu labels remain neutral. */
+.app .bottom-nav .nav-item.active > span,
+.app .bottom-nav .nav-item.pressed > span,
+.app .bottom-nav .nav-item:active > span{
+  color:#4a4850 !important;
+  background:transparent !important;
+}
+
+/* No pink block can return after touch animation. */
+.app .bottom-nav .nav-item{
+  transition:color .15s ease !important;
+  transform:none !important;
+}
+</style>
+
 </body>
 </html>
