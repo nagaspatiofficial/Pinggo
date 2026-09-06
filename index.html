@@ -188,11 +188,13 @@ body{
 .pf-modal{display:none;position:fixed;z-index:9998;inset:0;background:rgba(0,0,0,.35);align-items:flex-end;justify-content:center}.pf-modal.show{display:flex}.pf-card{width:min(100%,520px);max-height:88vh;overflow:auto;background:#f7e4e9;border-radius:26px 26px 0 0;padding:18px}.pf-head{display:flex;justify-content:space-between;align-items:center;font-size:20px;color:#444}.pf-head button{border:0;background:#aaa;color:#fff;width:32px;height:32px;border-radius:50%;font-size:22px}.pf-tabs{display:flex;gap:8px;margin:15px 0}.pf-tab{border:0;background:#d2d2d2;color:#555;padding:9px 13px;border-radius:12px;font-weight:800}.pf-tab.active{background:#707070;color:#fff}.pf-search{display:flex;gap:8px}.pf-search input{flex:1;border:0;background:#fff;padding:13px;border-radius:12px;outline:none}.pf-search button,.pf-action{border:0;background:#707070;color:#fff;padding:11px 14px;border-radius:12px;font-weight:800}.pf-result,.pf-row{margin-top:12px;background:rgba(255,255,255,.78);border-radius:16px;padding:13px;display:flex;align-items:center;justify-content:space-between;gap:10px}.pf-user{display:flex;align-items:center;gap:10px}.pf-avatar{width:40px;height:40px;border-radius:50%;background:#aaa;display:flex;align-items:center;justify-content:center;font-weight:900;color:#fff}.pf-meta b{display:block;color:#444}.pf-meta small{color:#777}.pf-list{margin-top:12px}.pf-empty{padding:22px;text-align:center;color:#777}.pf-secondary{background:#b5b5b5!important;color:#444!important}
 
 .pc-modal{display:none;position:fixed;z-index:10000;inset:0;background:#f3d8df}.pc-modal.show{display:block}.pc-card{height:100%;display:flex;flex-direction:column}.pc-head{padding:14px;display:flex;align-items:center;gap:12px;background:#e7c0cb}.pc-head button{border:0;border-radius:10px;background:#777;color:#fff;width:34px;height:34px;font-size:22px}.pc-head div{flex:1}.pc-head small{display:block;color:#666;font-size:10px}.pc-messages{flex:1;overflow:auto;padding:14px}.pc-msg{max-width:78%;margin:7px 0;padding:10px 12px;border-radius:15px;background:#fff;color:#444}.pc-msg.me{margin-left:auto;background:#aaa;color:#fff}.pc-time{font-size:9px;opacity:.65;margin-top:4px}.pc-compose{display:flex;gap:8px;padding:10px;background:#ead4da}.pc-compose input{flex:1;border:0;border-radius:18px;padding:13px;outline:none}.pc-compose button{border:0;border-radius:16px;padding:0 18px;background:#666;color:#fff;font-weight:800}
+</style>
 
-/* LOGIN CLICK FIX */
-.auth-screen{pointer-events:auto!important;z-index:2147483647!important}
-.auth-card{pointer-events:auto!important}
-.auth-card button,.auth-card input{pointer-events:auto!important}
+
+<style>
+#authScreen{pointer-events:auto!important;z-index:999999!important}
+#authScreen button,#authScreen input{pointer-events:auto!important;touch-action:manipulation!important}
+#loginBtn,#registerBtn,.auth-tab{cursor:pointer!important}
 </style>
 
 </head>
@@ -1022,13 +1024,7 @@ document.addEventListener('click',e=>{
  const theme=e.target.closest('[data-theme]');if(theme){profileState.appearance=theme.dataset.theme;document.getElementById('profileModal').classList.remove('show');renderProfile();return}
  const unblock=e.target.closest('[data-unblock]');if(unblock){profileState.blocked=profileState.blocked.filter(x=>x.id!==unblock.dataset.unblock);openProfileSetting('blocked');renderProfile()}
 });
-document.getElementById('demoLogout').onclick=async()=>{
-      if(typeof pinggoDb!=='undefined') await pinggoDb.auth.signOut();
-      if(typeof pinggoUser!=='undefined') pinggoUser=null;
-      document.getElementById('authScreen').classList.remove('hide');
-      if(typeof authMode==='function') authMode('login');
-      if(typeof authStatus==='function') authStatus('Kamu sudah logout.');
-    };
+document.getElementById('demoLogout').onclick=()=>alert('Demo logout berhasil. Backend login akan ditambahkan saat Supabase dihubungkan.');
 renderProfile();
 
 // Sync profile counters after Friends, Secret Drop, and Gem actions.
@@ -1152,5 +1148,77 @@ document.addEventListener('click',()=>setTimeout(renderProfile,0));
 </div>
 
 <div id="pcModal" class="pc-modal"><div class="pc-card"><div class="pc-head"><button id="pcBack">‹</button><div><b id="pcName">Chat</b><small id="pcId"></small></div><button id="pcClose">×</button></div><div id="pcMessages" class="pc-messages"></div><div class="pc-compose"><input id="pcInput" placeholder="Message..."><button id="pcSend">Send</button></div></div></div>
+
+<script>
+(function(){
+  function ready(){
+    const loginTab = document.querySelector('[data-auth-mode="login"]');
+    const registerTab = document.querySelector('[data-auth-mode="register"]');
+    const loginForm = document.getElementById('authLoginForm');
+    const registerForm = document.getElementById('authRegisterForm');
+    const status = document.getElementById('authStatus');
+    const loginBtn = document.getElementById('loginBtn');
+    const registerBtn = document.getElementById('registerBtn');
+
+    function setStatus(msg){ if(status) status.textContent = msg || ''; }
+    function mode(m){
+      if(loginForm) loginForm.style.display = m === 'login' ? 'block' : 'none';
+      if(registerForm) registerForm.style.display = m === 'register' ? 'block' : 'none';
+      if(loginTab) loginTab.classList.toggle('active',m==='login');
+      if(registerTab) registerTab.classList.toggle('active',m==='register');
+      setStatus('');
+    }
+
+    if(loginTab) loginTab.onclick = function(e){ e.preventDefault(); e.stopPropagation(); mode('login'); };
+    if(registerTab) registerTab.onclick = function(e){ e.preventDefault(); e.stopPropagation(); mode('register'); };
+
+    if(loginBtn) loginBtn.onclick = async function(e){
+      e.preventDefault(); e.stopPropagation();
+      const phoneEl=document.getElementById('loginPhone');
+      const passEl=document.getElementById('loginPassword');
+      const phone=(phoneEl?.value||'').trim();
+      const password=passEl?.value||'';
+      if(!phone || !password){ setStatus('Masukkan nomor HP dan password.'); return; }
+      if(typeof window.pinggoDb==='undefined'){ setStatus('Koneksi login belum siap. Refresh halaman.'); return; }
+      loginBtn.disabled=true; setStatus('Login...');
+      try{
+        const {data,error}=await window.pinggoDb.auth.signInWithPassword({phone,password});
+        if(error) throw error;
+        if(!data.user) throw new Error('Login gagal.');
+        if(typeof window.startPinggoSession==='function') await window.startPinggoSession(data.user);
+        else document.getElementById('authScreen')?.classList.add('hide');
+      }catch(err){ setStatus(err.message || 'Login gagal.'); }
+      finally{ loginBtn.disabled=false; }
+    };
+
+    if(registerBtn) registerBtn.onclick = async function(e){
+      e.preventDefault(); e.stopPropagation();
+      const name=(document.getElementById('registerName')?.value||'').trim() || 'PINGGO User';
+      const phone=(document.getElementById('registerPhone')?.value||'').trim();
+      const password=document.getElementById('registerPassword')?.value||'';
+      if(!phone || password.length<6){ setStatus('Isi nomor HP. Password minimal 6 karakter.'); return; }
+      if(typeof window.pinggoDb==='undefined'){ setStatus('Koneksi register belum siap. Refresh halaman.'); return; }
+      registerBtn.disabled=true; setStatus('Membuat akun...');
+      try{
+        const {data,error}=await window.pinggoDb.auth.signUp({
+          phone,password,options:{data:{display_name:name,phone}}
+        });
+        if(error) throw error;
+        if(data.session && data.user){
+          if(typeof window.startPinggoSession==='function') await window.startPinggoSession(data.user);
+          else document.getElementById('authScreen')?.classList.add('hide');
+        }else{
+          setStatus('Akun dibuat. Silakan verifikasi nomor HP jika diminta.');
+        }
+      }catch(err){ setStatus(err.message || 'Register gagal.'); }
+      finally{ registerBtn.disabled=false; }
+    };
+  }
+
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',ready);
+  else ready();
+})();
+</script>
+
 </body>
 </html>
