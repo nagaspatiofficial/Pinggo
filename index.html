@@ -190,14 +190,11 @@ body{
 .pc-modal{display:none;position:fixed;z-index:10000;inset:0;background:#f3d8df}.pc-modal.show{display:block}.pc-card{height:100%;display:flex;flex-direction:column}.pc-head{padding:14px;display:flex;align-items:center;gap:12px;background:#e7c0cb}.pc-head button{border:0;border-radius:10px;background:#777;color:#fff;width:34px;height:34px;font-size:22px}.pc-head div{flex:1}.pc-head small{display:block;color:#666;font-size:10px}.pc-messages{flex:1;overflow:auto;padding:14px}.pc-msg{max-width:78%;margin:7px 0;padding:10px 12px;border-radius:15px;background:#fff;color:#444}.pc-msg.me{margin-left:auto;background:#aaa;color:#fff}.pc-time{font-size:9px;opacity:.65;margin-top:4px}.pc-compose{display:flex;gap:8px;padding:10px;background:#ead4da}.pc-compose input{flex:1;border:0;border-radius:18px;padding:13px;outline:none}.pc-compose button{border:0;border-radius:16px;padding:0 18px;background:#666;color:#fff;font-weight:800}
 </style>
 
-
 <style>
-#authScreen{pointer-events:auto!important;z-index:999999!important}
-#authScreen button,#authScreen input{pointer-events:auto!important;touch-action:manipulation!important}
-#loginBtn,#registerBtn,.auth-tab{cursor:pointer!important}
-</style>
-
-</head>
+#authScreen{pointer-events:auto!important;z-index:2147483647!important}
+#authScreen *{pointer-events:auto!important}
+#loginBtn,#registerBtn,.auth-tab{touch-action:manipulation!important;cursor:pointer!important}
+</style></head>
 <body>
 <div class="app">
   <section id="chats" class="panel active">
@@ -400,18 +397,18 @@ body{
 /* PINGGO SUPABASE: AUTH + PROFILE + WALLET SYNC */
 const PINGGO_SUPABASE_URL='https://fgvsqzjfrouypgudhrsc.supabase.co';
 const PINGGO_SUPABASE_KEY='sb_publishable_ojLOMPCW07M068trjToZ7w_PFu4XUw_';
-const pinggoDb=supabase.createClient(PINGGO_SUPABASE_URL,PINGGO_SUPABASE_KEY);
+window.pinggoDb=supabase.createClient(PINGGO_SUPABASE_URL,PINGGO_SUPABASE_KEY);
 let pinggoUser=null;
 function authStatus(m){document.getElementById('authStatus').textContent=m||''}
 function authMode(m){document.querySelectorAll('.auth-tab').forEach(b=>b.classList.toggle('active',b.dataset.authMode===m));document.getElementById('authLoginForm').style.display=m==='login'?'block':'none';document.getElementById('authRegisterForm').style.display=m==='register'?'block':'none';authStatus('')}
-async function loadOnlineProfile(){if(!pinggoUser)return;const {data}=await pinggoDb.from('profiles').select('*').eq('id',pinggoUser.id).single();if(data){profileState.name=data.display_name||profileState.name;profileState.id='@'+data.pinggo_id;profileState.photo=data.avatar_url||null;profileState.privacy=data.private_profile;profileState.secretPrivate=data.secret_private_default;profileState.notifications=data.notifications_enabled;profileState.appearance=data.appearance||'Pink & Gray';renderProfile()}}
-async function loadOnlineWallet(){if(!pinggoUser)return;const {data}=await pinggoDb.from('wallets').select('balance').eq('user_id',pinggoUser.id).single();if(data){gemState.balance=data.balance;renderGem();renderProfile()}}
+async function loadOnlineProfile(){if(!pinggoUser)return;const {data}=await window.pinggoDb.from('profiles').select('*').eq('id',pinggoUser.id).single();if(data){profileState.name=data.display_name||profileState.name;profileState.id='@'+data.pinggo_id;profileState.photo=data.avatar_url||null;profileState.privacy=data.private_profile;profileState.secretPrivate=data.secret_private_default;profileState.notifications=data.notifications_enabled;profileState.appearance=data.appearance||'Pink & Gray';renderProfile()}}
+async function loadOnlineWallet(){if(!pinggoUser)return;const {data}=await window.pinggoDb.from('wallets').select('balance').eq('user_id',pinggoUser.id).single();if(data){gemState.balance=data.balance;renderGem();renderProfile()}}
 async function startPinggoSession(u){pinggoUser=u;document.getElementById('authScreen').classList.add('hide');await loadOnlineProfile();await loadOnlineWallet()}
 document.querySelectorAll('.auth-tab').forEach(b=>b.onclick=()=>authMode(b.dataset.authMode));
-document.getElementById('loginBtn').onclick=async()=>{const phone=loginPhone.value.trim(),password=loginPassword.value;if(!phone||!password){authStatus('Masukkan nomor HP dan password.');return}authStatus('Login...');const {data,error}=await pinggoDb.auth.signInWithPassword({phone,password});if(error){authStatus(error.message);return}await startPinggoSession(data.user)};
-document.getElementById('registerBtn').onclick=async()=>{const name=registerName.value.trim()||'PINGGO User',phone=registerPhone.value.trim(),password=registerPassword.value;if(!phone||password.length<6){authStatus('Lengkapi data. Password minimal 6 karakter.');return}authStatus('Membuat akun...');const {data,error}=await pinggoDb.auth.signUp({phone,password,options:{data:{display_name:name,phone}}});if(error){authStatus(error.message);return}if(data.session)await startPinggoSession(data.user);else authStatus('Akun dibuat. Cek email untuk konfirmasi, lalu login.')};
-(async()=>{const {data:{session}}=await pinggoDb.auth.getSession();if(session?.user)await startPinggoSession(session.user)})();
-document.getElementById('demoLogout').onclick=async()=>{await pinggoDb.auth.signOut();pinggoUser=null;document.getElementById('authScreen').classList.remove('hide');authStatus('Kamu sudah logout.')};
+document.getElementById('loginBtn').onclick=async()=>{const phone=loginPhone.value.trim(),password=loginPassword.value;if(!phone||!password){authStatus('Masukkan nomor HP dan password.');return}authStatus('Login...');const {data,error}=await window.pinggoDb.auth.signInWithPassword({phone,password});if(error){authStatus(error.message);return}await startPinggoSession(data.user)};
+document.getElementById('registerBtn').onclick=async()=>{const name=registerName.value.trim()||'PINGGO User',phone=registerPhone.value.trim(),password=registerPassword.value;if(!phone||password.length<6){authStatus('Lengkapi data. Password minimal 6 karakter.');return}authStatus('Membuat akun...');const {data,error}=await window.pinggoDb.auth.signUp({phone,password,options:{data:{display_name:name,phone}}});if(error){authStatus(error.message);return}if(data.session)await startPinggoSession(data.user);else authStatus('Akun dibuat. Cek email untuk konfirmasi, lalu login.')};
+(async()=>{const {data:{session}}=await window.pinggoDb.auth.getSession();if(session?.user)await startPinggoSession(session.user)})();
+document.getElementById('demoLogout').onclick=async()=>{await window.pinggoDb.auth.signOut();pinggoUser=null;document.getElementById('authScreen').classList.remove('hide');authStatus('Kamu sudah logout.')};
 
 
 async function copyPinggoId(){const id=(profileState?.id||'').replace(/^@/,'');if(!id)return;try{await navigator.clipboard.writeText(id);alert('PINGGO ID copied: '+id)}catch(e){const t=document.createElement('textarea');t.value=id;document.body.appendChild(t);t.select();document.execCommand('copy');t.remove();alert('PINGGO ID copied: '+id)}}
@@ -434,14 +431,14 @@ async function searchPinggoFriend(){
  const box=document.getElementById('pfSearchResult');
  if(!id){box.innerHTML='<div class="pf-empty">Enter a PINGGO ID</div>';return}
  box.innerHTML='<div class="pf-empty">Searching...</div>';
- const {data,error}=await pinggoDb.rpc('find_profile_by_pinggo_id',{p_pinggo_id:id});
+ const {data,error}=await window.pinggoDb.rpc('find_profile_by_pinggo_id',{p_pinggo_id:id});
  if(error||!data||!data.length){box.innerHTML='<div class="pf-empty">PINGGO user not found</div>';return}
  const u=data[0];
  if(u.id===pinggoUser.id){box.innerHTML='<div class="pf-empty">This is your PINGGO ID</div>';return}
  box.innerHTML='<div class="pf-result"><div class="pf-user"><div class="pf-avatar">'+pfAvatar(u.display_name)+'</div><div class="pf-meta"><b>'+pfEsc(u.display_name)+'</b><small>'+pfEsc(u.pinggo_id)+'</small></div></div><button class="pf-action" id="pfAddFound">Add Friend</button></div>';
  document.getElementById('pfAddFound').onclick=async()=>{
    const btn=document.getElementById('pfAddFound');btn.textContent='Sending...';btn.disabled=true;
-   const {error}=await pinggoDb.rpc('send_friend_request',{p_other:u.id});
+   const {error}=await window.pinggoDb.rpc('send_friend_request',{p_other:u.id});
    if(error){btn.textContent='Unavailable';alert(error.message);return}
    btn.textContent='Request Sent';await loadPinggoFriends();
  };
@@ -451,12 +448,12 @@ document.getElementById('pfSearchInput').addEventListener('keydown',e=>{if(e.key
 
 async function loadPinggoFriends(){
  if(!pinggoUser)return;
- const {data,error}=await pinggoDb.from('friends').select('*').or('requester_id.eq.'+pinggoUser.id+',addressee_id.eq.'+pinggoUser.id).order('created_at',{ascending:false});
+ const {data,error}=await window.pinggoDb.from('friends').select('*').or('requester_id.eq.'+pinggoUser.id+',addressee_id.eq.'+pinggoUser.id).order('created_at',{ascending:false});
  if(error)return;
  pfFriendCache=data||[];
  const otherIds=[...new Set(pfFriendCache.flatMap(x=>[x.requester_id,x.addressee_id]).filter(x=>x!==pinggoUser.id))];
  let profiles={};
- if(otherIds.length){const {data:p}=await pinggoDb.from('profiles').select('id,display_name,pinggo_id,avatar_url').in('id',otherIds);(p||[]).forEach(x=>profiles[x.id]=x);window.__pfLastProfiles=Object.values(profiles)}
+ if(otherIds.length){const {data:p}=await window.pinggoDb.from('profiles').select('id,display_name,pinggo_id,avatar_url').in('id',otherIds);(p||[]).forEach(x=>profiles[x.id]=x);window.__pfLastProfiles=Object.values(profiles)}
  const accepted=pfFriendCache.filter(x=>x.status==='accepted');
  const incoming=pfFriendCache.filter(x=>x.status==='pending'&&x.addressee_id===pinggoUser.id);
  const friendsBox=document.getElementById('pfFriendsList');
@@ -465,7 +462,7 @@ async function loadPinggoFriends(){
  reqBox.innerHTML=incoming.length?incoming.map(x=>{const u=profiles[x.requester_id];return '<div class="pf-row"><div class="pf-user"><div class="pf-avatar">'+pfAvatar(u?.display_name)+'</div><div class="pf-meta"><b>'+pfEsc(u?.display_name||'PINGGO User')+'</b><small>'+pfEsc(u?.pinggo_id||'')+'</small></div></div><div><button class="pf-action" onclick="respondPinggoFriend(\\''+x.id+'\\',true)">Accept</button><button class="pf-action pf-secondary" onclick="respondPinggoFriend(\\''+x.id+'\\',false)">Decline</button></div></div>'}).join(''):'<div class="pf-empty">No friend requests.</div>';
  document.getElementById('pfReqCount').textContent=incoming.length?'('+incoming.length+')':'';
 }
-async function respondPinggoFriend(id,accept){const {error}=await pinggoDb.rpc('respond_friend_request',{p_request:id,p_accept:accept});if(error)alert(error.message);await loadPinggoFriends()}
+async function respondPinggoFriend(id,accept){const {error}=await window.pinggoDb.rpc('respond_friend_request',{p_request:id,p_accept:accept});if(error)alert(error.message);await loadPinggoFriends()}
 document.querySelectorAll('.pf-tab').forEach(b=>b.onclick=()=>{document.querySelectorAll('.pf-tab').forEach(x=>x.classList.remove('active'));b.classList.add('active');const req=b.dataset.pfTab==='requests';document.getElementById('pfFriendsView').style.display=req?'none':'block';document.getElementById('pfRequestsView').style.display=req?'block':'none'});
 /* Hook existing Friends navigation/button to online Friends modal */
 document.addEventListener('click',e=>{
@@ -481,10 +478,10 @@ let pcConversation=null,pcOther=null,pcChannel=null;
 function openPinggoChat(u){pcOther=u;document.getElementById('pcName').textContent=u.display_name||'PINGGO User';document.getElementById('pcId').textContent=u.pinggo_id||'';document.getElementById('pcModal').classList.add('show');startPinggoChat()}
 function closePinggoChat(){document.getElementById('pcModal').classList.remove('show');if(pcChannel){pinggoDb.removeChannel(pcChannel);pcChannel=null}pcConversation=null}
 pcClose.onclick=closePinggoChat;pcBack.onclick=closePinggoChat;
-async function startPinggoChat(){if(!pcOther||!pinggoUser)return;const {data,error}=await pinggoDb.rpc('get_or_create_direct_conversation',{p_other:pcOther.id});if(error){alert(error.message);return}pcConversation=data;await loadPinggoMessages();if(pcChannel)pinggoDb.removeChannel(pcChannel);pcChannel=pinggoDb.channel('chat-'+pcConversation).on('postgres_changes',{event:'INSERT',schema:'public',table:'messages',filter:'conversation_id=eq.'+pcConversation},p=>{appendPinggoMessage(p.new)}).subscribe()}
+async function startPinggoChat(){if(!pcOther||!pinggoUser)return;const {data,error}=await window.pinggoDb.rpc('get_or_create_direct_conversation',{p_other:pcOther.id});if(error){alert(error.message);return}pcConversation=data;await loadPinggoMessages();if(pcChannel)pinggoDb.removeChannel(pcChannel);pcChannel=pinggoDb.channel('chat-'+pcConversation).on('postgres_changes',{event:'INSERT',schema:'public',table:'messages',filter:'conversation_id=eq.'+pcConversation},p=>{appendPinggoMessage(p.new)}).subscribe()}
 function appendPinggoMessage(m){const box=document.getElementById('pcMessages');if(box.querySelector('[data-mid="'+m.id+'"]'))return;const d=document.createElement('div');d.className='pc-msg '+(m.sender_id===pinggoUser.id?'me':'');d.dataset.mid=m.id;d.innerHTML='<div>'+pfEsc(m.body||'')+'</div><div class="pc-time">'+new Date(m.created_at).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'})+'</div>';box.appendChild(d);box.scrollTop=box.scrollHeight}
-async function loadPinggoMessages(){const box=document.getElementById('pcMessages');box.innerHTML='<div class="pf-empty">Loading messages...</div>';const {data,error}=await pinggoDb.from('messages').select('*').eq('conversation_id',pcConversation).is('deleted_at',null).order('created_at',{ascending:true});box.innerHTML='';if(error){box.innerHTML='<div class="pf-empty">Unable to load messages</div>';return}(data||[]).forEach(appendPinggoMessage)}
-async function sendPinggoMessage(){const input=document.getElementById('pcInput'),body=input.value.trim();if(!body||!pcConversation)return;input.value='';const {error}=await pinggoDb.from('messages').insert({conversation_id:pcConversation,sender_id:pinggoUser.id,body});if(error){alert(error.message);input.value=body}}
+async function loadPinggoMessages(){const box=document.getElementById('pcMessages');box.innerHTML='<div class="pf-empty">Loading messages...</div>';const {data,error}=await window.pinggoDb.from('messages').select('*').eq('conversation_id',pcConversation).is('deleted_at',null).order('created_at',{ascending:true});box.innerHTML='';if(error){box.innerHTML='<div class="pf-empty">Unable to load messages</div>';return}(data||[]).forEach(appendPinggoMessage)}
+async function sendPinggoMessage(){const input=document.getElementById('pcInput'),body=input.value.trim();if(!body||!pcConversation)return;input.value='';const {error}=await window.pinggoDb.from('messages').insert({conversation_id:pcConversation,sender_id:pinggoUser.id,body});if(error){alert(error.message);input.value=body}}
 pcSend.onclick=sendPinggoMessage;pcInput.addEventListener('keydown',e=>{if(e.key==='Enter')sendPinggoMessage()});
 const _oldLoadFriends=loadPinggoFriends;loadPinggoFriends=async function(){await _oldLoadFriends();document.querySelectorAll('.pf-row').forEach(row=>{const name=row.querySelector('.pf-meta b')?.textContent;const id=row.querySelector('.pf-meta small')?.textContent;if(!name||!id||row.querySelector('.pc-open'))return;const u=Object.values(window.__pfProfiles||{}).find(x=>x.pinggo_id===id);});document.querySelectorAll('#pfFriendsList .pf-row').forEach((row,i)=>{if(row.querySelector('.pc-open'))return;const id=row.querySelector('.pf-meta small')?.textContent;const u=(window.__pfLastProfiles||[]).find(x=>x.pinggo_id===id);if(u){const b=document.createElement('button');b.className='pf-action pc-open';b.textContent='Chat';b.onclick=()=>openPinggoChat(u);row.appendChild(b)}})};
 
@@ -1024,7 +1021,7 @@ document.addEventListener('click',e=>{
  const theme=e.target.closest('[data-theme]');if(theme){profileState.appearance=theme.dataset.theme;document.getElementById('profileModal').classList.remove('show');renderProfile();return}
  const unblock=e.target.closest('[data-unblock]');if(unblock){profileState.blocked=profileState.blocked.filter(x=>x.id!==unblock.dataset.unblock);openProfileSetting('blocked');renderProfile()}
 });
-document.getElementById('demoLogout').onclick=()=>alert('Demo logout berhasil. Backend login akan ditambahkan saat Supabase dihubungkan.');
+
 renderProfile();
 
 // Sync profile counters after Friends, Secret Drop, and Gem actions.
@@ -1151,75 +1148,73 @@ document.addEventListener('click',()=>setTimeout(renderProfile,0));
 
 <script>
 (function(){
-  function ready(){
-    const loginTab = document.querySelector('[data-auth-mode="login"]');
-    const registerTab = document.querySelector('[data-auth-mode="register"]');
-    const loginForm = document.getElementById('authLoginForm');
-    const registerForm = document.getElementById('authRegisterForm');
-    const status = document.getElementById('authStatus');
-    const loginBtn = document.getElementById('loginBtn');
-    const registerBtn = document.getElementById('registerBtn');
-
-    function setStatus(msg){ if(status) status.textContent = msg || ''; }
-    function mode(m){
-      if(loginForm) loginForm.style.display = m === 'login' ? 'block' : 'none';
-      if(registerForm) registerForm.style.display = m === 'register' ? 'block' : 'none';
-      if(loginTab) loginTab.classList.toggle('active',m==='login');
-      if(registerTab) registerTab.classList.toggle('active',m==='register');
-      setStatus('');
-    }
-
-    if(loginTab) loginTab.onclick = function(e){ e.preventDefault(); e.stopPropagation(); mode('login'); };
-    if(registerTab) registerTab.onclick = function(e){ e.preventDefault(); e.stopPropagation(); mode('register'); };
-
-    if(loginBtn) loginBtn.onclick = async function(e){
-      e.preventDefault(); e.stopPropagation();
-      const phoneEl=document.getElementById('loginPhone');
-      const passEl=document.getElementById('loginPassword');
-      const phone=(phoneEl?.value||'').trim();
-      const password=passEl?.value||'';
-      if(!phone || !password){ setStatus('Masukkan nomor HP dan password.'); return; }
-      if(typeof pinggoDb==='undefined'){ setStatus('Koneksi login belum siap. Refresh halaman.'); return; }
-      loginBtn.disabled=true; setStatus('Login...');
-      try{
-        const {data,error}=await pinggoDb.auth.signInWithPassword({phone,password});
-        if(error) throw error;
-        if(!data.user) throw new Error('Login gagal.');
-        if(typeof window.startPinggoSession==='function') await window.startPinggoSession(data.user);
-        else document.getElementById('authScreen')?.classList.add('hide');
-      }catch(err){ setStatus(err.message || 'Login gagal.'); }
-      finally{ loginBtn.disabled=false; }
-    };
-
-    if(registerBtn) registerBtn.onclick = async function(e){
-      e.preventDefault(); e.stopPropagation();
-      const name=(document.getElementById('registerName')?.value||'').trim() || 'PINGGO User';
-      let phone=(document.getElementById('registerPhone')?.value||'').trim().replace(/[\s-]/g,'');
-      if(phone.startsWith('08')) phone='+62'+phone.slice(1);
-      else if(phone.startsWith('62')) phone='+'+phone;
-      const password=document.getElementById('registerPassword')?.value||'';
-      if(!phone || password.length<6){ setStatus('Isi nomor HP. Password minimal 6 karakter.'); return; }
-      if(typeof pinggoDb==='undefined'){ setStatus('Koneksi register belum siap. Refresh halaman.'); return; }
-      registerBtn.disabled=true; setStatus('Membuat akun...');
-      try{
-        const {data,error}=await pinggoDb.auth.signUp({
-          phone,password,options:{data:{display_name:name,phone}}
-        });
-        if(error) throw error;
-        if(!data.user) throw new Error('Akun belum berhasil dibuat. Coba lagi.');
-        if(data.session && data.user){
-          if(typeof window.startPinggoSession==='function') await window.startPinggoSession(data.user);
-          else document.getElementById('authScreen')?.classList.add('hide');
-        }else{
-          setStatus('Akun dibuat. Silakan verifikasi nomor HP jika diminta.');
-        }
-      }catch(err){ setStatus(err.message || 'Register gagal.'); }
-      finally{ registerBtn.disabled=false; }
-    };
+  const status = (m)=>{const el=document.getElementById('authStatus'); if(el) el.textContent=m||'';};
+  const normalizePhone=(v)=>{
+    v=(v||'').trim().replace(/[\s()-]/g,'');
+    if(v.startsWith('08')) return '+62'+v.slice(1);
+    if(v.startsWith('62')) return '+'+v;
+    return v;
+  };
+  function setMode(mode){
+    const login=document.getElementById('authLoginForm');
+    const reg=document.getElementById('authRegisterForm');
+    if(login) login.style.display=mode==='login'?'block':'none';
+    if(reg) reg.style.display=mode==='register'?'block':'none';
+    document.querySelectorAll('.auth-tab').forEach(b=>b.classList.toggle('active',b.dataset.authMode===mode));
+    status('');
   }
-
-  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',ready);
-  else ready();
+  async function waitForClient(){
+    for(let i=0;i<100;i++){
+      if(window.pinggoDb && typeof window.pinggoDb.auth?.signUp==='function') return window.pinggoDb;
+      await new Promise(r=>setTimeout(r,50));
+    }
+    throw new Error('Koneksi PINGGO belum siap. Periksa koneksi internet lalu refresh.');
+  }
+  document.addEventListener('DOMContentLoaded',()=>{
+    document.querySelectorAll('.auth-tab').forEach(b=>{
+      b.onclick=(e)=>{e.preventDefault();setMode(b.dataset.authMode);};
+    });
+    const rb=document.getElementById('registerBtn');
+    if(rb) rb.onclick=async(e)=>{
+      e.preventDefault();
+      const name=(document.getElementById('registerName')?.value||'').trim()||'PINGGO User';
+      const phone=normalizePhone(document.getElementById('registerPhone')?.value);
+      const password=document.getElementById('registerPassword')?.value||'';
+      if(!phone || password.length<6){status('Isi nomor HP. Password minimal 6 karakter.');return;}
+      rb.disabled=true; status('Membuat akun...');
+      try{
+        const db=await waitForClient();
+        const {data,error}=await db.auth.signUp({phone,password,options:{data:{display_name:name,phone}}});
+        if(error) throw error;
+        if(data?.user){
+          status(data.session?'Akun berhasil dibuat. Masuk ke PINGGO...':'Akun berhasil dibuat. Silakan verifikasi nomor HP jika diminta.');
+          if(data.session){
+            const screen=document.getElementById('authScreen');
+            if(screen) screen.classList.add('hide');
+          }
+        }else status('Akun belum berhasil dibuat. Coba lagi.');
+      }catch(err){status(err?.message||'Create Account gagal.');}
+      finally{rb.disabled=false;}
+    };
+    const lb=document.getElementById('loginBtn');
+    if(lb) lb.onclick=async(e)=>{
+      e.preventDefault();
+      const phone=normalizePhone(document.getElementById('loginPhone')?.value);
+      const password=document.getElementById('loginPassword')?.value||'';
+      if(!phone||!password){status('Masukkan nomor HP dan password.');return;}
+      lb.disabled=true; status('Login...');
+      try{
+        const db=await waitForClient();
+        const {data,error}=await db.auth.signInWithPassword({phone,password});
+        if(error) throw error;
+        if(data?.user){
+          const screen=document.getElementById('authScreen');
+          if(screen) screen.classList.add('hide');
+        }
+      }catch(err){status(err?.message||'Login gagal.');}
+      finally{lb.disabled=false;}
+    };
+  });
 })();
 </script>
 
