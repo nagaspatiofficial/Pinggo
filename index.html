@@ -1816,5 +1816,74 @@ body{
 }
 </style>
 
+
+<!-- REMOVE PINK ACTIVE FILL FROM LOGGED-IN APP ONLY — LOGIN/REGISTER UNTOUCHED -->
+<style id="pinggo-remove-pink-active-fill">
+/* Only the application after login. Auth/login screen is deliberately excluded. */
+.app .bottom-nav .nav-item.active,
+.app .bottom-nav .nav-item.active:active,
+.app .bottom-nav .nav-item:active,
+.app .bottom-nav .nav-item.selected,
+.app .bottom-nav .nav-item:focus,
+.app .bottom-nav .nav-item:focus-visible{
+  background:transparent !important;
+  color:#4a4850 !important;
+  box-shadow:none !important;
+  transform:none !important;
+}
+
+/* Prevent pink pseudo-layer/background on the active Chats item. */
+.app .bottom-nav .nav-item.active::before,
+.app .bottom-nav .nav-item.active::after,
+.app .bottom-nav .nav-item:active::before,
+.app .bottom-nav .nav-item:active::after{
+  background:transparent !important;
+  opacity:0 !important;
+  box-shadow:none !important;
+}
+
+/* Keep icon and label visible without a pink block. */
+.app .bottom-nav .nav-item.active *,
+.app .bottom-nav .nav-item:active *{
+  color:#4a4850 !important;
+  fill:currentColor !important;
+  stroke:currentColor !important;
+  opacity:1 !important;
+}
+</style>
+
+
+<!-- ACTIVE NAV: PINK ICON ONLY, NO PINK BOX — LOGIN/REGISTER UNTOUCHED -->
+<style id="pinggo-active-icon-only">
+/* Remove any active background, block, pill or pseudo-element. */
+.app .bottom-nav .nav-item,
+.app .bottom-nav .nav-item.active,
+.app .bottom-nav .nav-item:active,
+.app .bottom-nav .nav-item.active::before,
+.app .bottom-nav .nav-item.active::after{
+  background:transparent !important;
+  box-shadow:none !important;
+}
+
+/* Inactive menu stays neutral. */
+.app .bottom-nav .nav-item:not(.active){
+  color:#5f5d64 !important;
+}
+
+/* Active menu: ONLY the icon turns pink. */
+.app .bottom-nav .nav-item.active svg,
+.app .bottom-nav .nav-item.active i{
+  color:#d94b83 !important;
+  fill:currentColor !important;
+  stroke:currentColor !important;
+}
+
+/* Keep active label neutral so the highlight is on the logo/icon only. */
+.app .bottom-nav .nav-item.active span,
+.app .bottom-nav .nav-item.active .label{
+  color:#4a4850 !important;
+}
+</style>
+
 </body>
 </html>
