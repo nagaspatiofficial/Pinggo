@@ -331,10 +331,133 @@ document.addEventListener('pointercancel',clearPinggoPressed,{passive:true});
 </style>
 
 
-<style>
-/* PINGGO: background only — all existing font colors remain unchanged */
-body{
-  background:linear-gradient(135deg,#f8b6d0 0%,#f28ab6 52%,#e7e7e9 100%) !important;
+<style id="pinggo-background-clean-fix">
+html {
+  background: #f7b1cf !important;
+}
+body {
+  background: #f7b1cf !important;
+}
+</style>
+
+
+<style id="pinggo-font-clean">
+/* Keep all button text neutral and consistent */
+button,
+.auth-primary,
+.auth-tab,
+.nav-item,
+.tab,
+.action-btn{
+  color:#ffffff !important;
+}
+
+/* Tabs and text-style controls stay neutral gray unless selected */
+.auth-tab{
+  color:#55585e !important;
+}
+.auth-tab.active{
+  color:#3f4247 !important;
+}
+
+/* Press feedback changes background only, not font to unusual colors */
+button:active,
+.auth-primary:active,
+.nav-item:active,
+.tab:active,
+.action-btn:active{
+  color:#ffffff !important;
+}
+
+/* Inputs keep normal readable text */
+input{
+  color:#3f4247 !important;
+}
+</style>
+
+
+<style id="pinggo-click-active">
+/* Only the control being touched changes color. Text color stays clean. */
+button, .auth-tab, .nav-item, .tab, .action-btn{
+  transition: background-color .18s ease, border-color .18s ease, transform .1s ease !important;
+}
+
+/* Main buttons: gray normally */
+.auth-primary{
+  background:#5f6268 !important;
+  color:#fff !important;
+}
+
+/* The exact button being clicked turns pink */
+.auth-primary:active,
+.auth-primary.pressed,
+button.pressed{
+  background:#e94f91 !important;
+  border-color:#d63d7c !important;
+  color:#fff !important;
+  transform:scale(.98) !important;
+}
+
+/* Tabs/navigation: only the clicked item gets the pink selected state */
+.auth-tab.active,
+.nav-item.active,
+.tab.active,
+.action-btn.active,
+.auth-tab.pressed,
+.nav-item.pressed,
+.tab.pressed,
+.action-btn.pressed{
+  background:#e94f91 !important;
+  color:#fff !important;
+  border-color:#d63d7c !important;
+}
+
+/* Generic buttons also get pink feedback while pressed */
+button:active{
+  background:#e94f91 !important;
+  color:#fff !important;
+}
+</style>
+
+<script>
+/* Keep the clicked button visibly highlighted briefly, especially on iPhone */
+(function(){
+  const selector='button,.auth-tab,.nav-item,.tab,.action-btn';
+
+  document.addEventListener('pointerdown',function(e){
+    const el=e.target.closest(selector);
+    if(!el || el.disabled) return;
+    el.classList.add('pressed');
+  },{passive:true});
+
+  document.addEventListener('pointerup',function(e){
+    const el=e.target.closest(selector);
+    if(!el) return;
+    setTimeout(()=>el.classList.remove('pressed'),260);
+  },{passive:true});
+
+  document.addEventListener('pointercancel',function(e){
+    const el=e.target.closest(selector);
+    if(el) el.classList.remove('pressed');
+  },{passive:true});
+})();
+</script>
+
+
+<style id="pinggo-auth-background-correct">
+.auth-screen{
+  background:#e94f91 !important;
+}
+</style>
+
+
+<style id="pinggo-one-pink-layer">
+html,
+body,
+#authScreen,
+.auth-screen{
+  background-color:#e94f91 !important;
+  background-image:none !important;
 }
 </style>
 
@@ -1479,22 +1602,6 @@ document.addEventListener('click',()=>setTimeout(renderProfile,0));
 
 
 <div id="edseanFooter">© 2026 <span>·</span> EDSEAN COMPANY</div>
-
-
-<style id="pinggo-final-background">
-html, body {
-  background: #f28ab6 !important;
-  background-image: none !important;
-}
-body::before, body::after {
-  background: transparent !important;
-  background-image: none !important;
-}
-#authScreen, .auth-screen, .screen, .app, #app {
-  background: transparent !important;
-  background-image: none !important;
-}
-</style>
 
 </body>
 </html>
