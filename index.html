@@ -1179,10 +1179,10 @@ document.addEventListener('click',()=>setTimeout(renderProfile,0));
       const phone=(phoneEl?.value||'').trim();
       const password=passEl?.value||'';
       if(!phone || !password){ setStatus('Masukkan nomor HP dan password.'); return; }
-      if(typeof window.pinggoDb==='undefined'){ setStatus('Koneksi login belum siap. Refresh halaman.'); return; }
+      if(typeof pinggoDb==='undefined'){ setStatus('Koneksi login belum siap. Refresh halaman.'); return; }
       loginBtn.disabled=true; setStatus('Login...');
       try{
-        const {data,error}=await window.pinggoDb.auth.signInWithPassword({phone,password});
+        const {data,error}=await pinggoDb.auth.signInWithPassword({phone,password});
         if(error) throw error;
         if(!data.user) throw new Error('Login gagal.');
         if(typeof window.startPinggoSession==='function') await window.startPinggoSession(data.user);
@@ -1194,16 +1194,19 @@ document.addEventListener('click',()=>setTimeout(renderProfile,0));
     if(registerBtn) registerBtn.onclick = async function(e){
       e.preventDefault(); e.stopPropagation();
       const name=(document.getElementById('registerName')?.value||'').trim() || 'PINGGO User';
-      const phone=(document.getElementById('registerPhone')?.value||'').trim();
+      let phone=(document.getElementById('registerPhone')?.value||'').trim().replace(/[\s-]/g,'');
+      if(phone.startsWith('08')) phone='+62'+phone.slice(1);
+      else if(phone.startsWith('62')) phone='+'+phone;
       const password=document.getElementById('registerPassword')?.value||'';
       if(!phone || password.length<6){ setStatus('Isi nomor HP. Password minimal 6 karakter.'); return; }
-      if(typeof window.pinggoDb==='undefined'){ setStatus('Koneksi register belum siap. Refresh halaman.'); return; }
+      if(typeof pinggoDb==='undefined'){ setStatus('Koneksi register belum siap. Refresh halaman.'); return; }
       registerBtn.disabled=true; setStatus('Membuat akun...');
       try{
-        const {data,error}=await window.pinggoDb.auth.signUp({
+        const {data,error}=await pinggoDb.auth.signUp({
           phone,password,options:{data:{display_name:name,phone}}
         });
         if(error) throw error;
+        if(!data.user) throw new Error('Akun belum berhasil dibuat. Coba lagi.');
         if(data.session && data.user){
           if(typeof window.startPinggoSession==='function') await window.startPinggoSession(data.user);
           else document.getElementById('authScreen')?.classList.add('hide');
