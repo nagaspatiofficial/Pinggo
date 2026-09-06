@@ -1669,5 +1669,73 @@ document.addEventListener('click',()=>setTimeout(renderProfile,0));
 
 <div id="edseanFooter">© 2026 <span>·</span> EDSEAN COMPANY</div>
 
+
+<!-- APP SHELL VISUAL FIX: no Login/Register/chat functionality changed -->
+<style id="pinggo-app-shell-visual-fix">
+/* Outside the application stays normal/neutral. */
+html,
+body{
+  background:#ffffff !important;
+  overflow-x:hidden !important;
+}
+
+/* Pink + gray belongs to the PINGGO application area itself. */
+.app{
+  width:100% !important;
+  max-width:520px !important;
+  min-height:100dvh !important;
+  margin:0 auto !important;
+  position:relative !important;
+  background:
+    linear-gradient(145deg,
+      #f2d8e1 0%,
+      #e7d9df 30%,
+      #d7d5d8 62%,
+      #c9c7ca 100%) !important;
+}
+
+/* Keep fixed application controls aligned with the app, not the page outside it. */
+.bottom-nav{
+  background:rgba(229,226,230,.96) !important;
+  color:#5c5960 !important;
+  z-index:60 !important;
+}
+.nav-item{
+  color:#6c6870 !important;
+  opacity:1 !important;
+}
+.nav-item.active{
+  color:#3f3b42 !important;
+}
+
+/* Footer must not cover the bottom navigation buttons. */
+#edseanFooter{
+  bottom:calc(80px + env(safe-area-inset-bottom)) !important;
+  z-index:61 !important;
+  color:rgba(70,72,78,.62) !important;
+}
+
+/* Give the list enough room above fixed navigation and footer. */
+.app{
+  padding-bottom:calc(112px + env(safe-area-inset-bottom)) !important;
+}
+
+/* On narrow/mobile screens the PINGGO app fills the normal viewport cleanly. */
+@media (max-width:520px){
+  .app{
+    max-width:none !important;
+    width:100% !important;
+  }
+  .bottom-nav{
+    max-width:none !important;
+    width:100% !important;
+  }
+  .chat-room{
+    max-width:none !important;
+    width:100% !important;
+  }
+}
+</style>
+
 </body>
 </html>
