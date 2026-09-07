@@ -2299,5 +2299,81 @@ body{
 })();
 </script>
 
+
+<!-- PRIVATE CHAT INPUT POSITION FIX — LOGIN AND OTHER SCREENS UNTOUCHED -->
+<style id="private-chat-composer-position-fix">
+/*
+  Fix only the private chat room layout.
+  The composer was falling below the mobile viewport because the room used
+  100dvh plus vertical padding without border-box sizing.
+*/
+#chatRoom.chat-room{
+  box-sizing:border-box !important;
+  position:fixed !important;
+  inset:0 !important;
+  left:0 !important;
+  top:0 !important;
+  width:100% !important;
+  max-width:none !important;
+  height:100dvh !important;
+  min-height:100dvh !important;
+  transform:none !important;
+  margin:0 !important;
+  padding:
+    env(safe-area-inset-top)
+    14px
+    calc(env(safe-area-inset-bottom) + 10px)
+    !important;
+  overflow:hidden !important;
+  z-index:9999 !important;
+}
+
+#chatRoom.chat-room.open{
+  display:flex !important;
+  flex-direction:column !important;
+}
+
+#chatRoom .chat-room-header{
+  flex:0 0 63px !important;
+  min-height:63px !important;
+}
+
+#chatRoom .chat-messages{
+  flex:1 1 auto !important;
+  min-height:0 !important;
+  overflow-y:auto !important;
+  overscroll-behavior:contain;
+}
+
+#chatRoom .chat-composer{
+  flex:0 0 auto !important;
+  flex-shrink:0 !important;
+  display:flex !important;
+  visibility:visible !important;
+  opacity:1 !important;
+  width:100% !important;
+  min-height:61px !important;
+  margin-top:0 !important;
+  position:relative !important;
+  z-index:2 !important;
+  background:#ffffff !important;
+  padding-top:9px !important;
+  padding-bottom:8px !important;
+}
+
+#chatRoom .composer-input,
+#chatRoom #messageInput,
+#chatRoom #plusMessage,
+#chatRoom #sendMessage{
+  visibility:visible !important;
+  opacity:1 !important;
+  pointer-events:auto !important;
+}
+
+#chatRoom .attach-menu{
+  z-index:3 !important;
+}
+</style>
+
 </body>
 </html>
