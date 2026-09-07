@@ -1983,5 +1983,34 @@ body{
 }
 </style>
 
+<!-- FINAL FOOTER LOCATION FIX: EDSEAN COMPANY ONLY ON LOGIN/REGISTER SCREEN -->
+<style id="edsean-login-only-final">
+#edseanFooter{display:none !important;}
+</style>
+<script id="edsean-login-only-script">
+(function(){
+  function syncEdseanFooter(){
+    var footer=document.getElementById('edseanFooter');
+    var auth=document.getElementById('authScreen');
+    if(!footer) return;
+    var show=!!auth && !auth.classList.contains('hide');
+    footer.style.setProperty('display',show?'block':'none','important');
+  }
+  function start(){
+    var auth=document.getElementById('authScreen');
+    syncEdseanFooter();
+    if(auth){
+      new MutationObserver(syncEdseanFooter).observe(auth,{
+        attributes:true,
+        attributeFilter:['class','style']
+      });
+    }
+  }
+  if(document.readyState==='loading'){
+    document.addEventListener('DOMContentLoaded',start);
+  }else{start();}
+})();
+</script>
+
 </body>
 </html>
