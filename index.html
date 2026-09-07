@@ -1149,37 +1149,50 @@ function setProfile(a){
 }
 function switchAuthTab(tab){
   authMode=tab;
+  pendingPinggoId='';
   document.querySelectorAll('.auth-tab-btn').forEach(x=>x.classList.remove('active'));
   $('authUsername').value='';$('authPassword').value='';
+  $('generatedPinggoId').textContent='';
+  $('generatedIdBox').style.display='none';
+  $('authUsername').disabled=false;
+  $('authPassword').disabled=false;
   if(tab==='login'){
     $('tabLogin').classList.add('active');
     $('authUsername').placeholder='PINGGO ID';
-    $('generatedIdBox').style.display='none';
     $('authMainBtn').textContent='Masuk';
   }else{
     $('tabRegister').classList.add('active');
     $('authUsername').placeholder='Nama pengguna';
-    pendingPinggoId=createPinggoId();
-    $('generatedPinggoId').textContent=pendingPinggoId;
-    $('generatedIdBox').style.display='block';
     $('authMainBtn').textContent='Daftar';
   }
 }
 window.switchAuthTab=switchAuthTab;
 window.handleAuth=function(){
   const raw=$('authUsername').value.trim(),p=$('authPassword').value;
+  if(authMode==='registerDone'){
+    const id=normalizePinggoId(pendingPinggoId || account()?.pinggoId || '');
+    switchAuthTab('login');
+    $('authUsername').value=id;
+    $('authPassword').focus();
+    return;
+  }
   if(authMode==='register'){
     if(!raw||!p)return alert('Isi nama pengguna dan kata sandi terlebih dahulu.');
     if(p.length<6)return alert('Kata sandi minimal 6 karakter.');
-    const id=normalizePinggoId(pendingPinggoId||createPinggoId());
+    const id=normalizePinggoId(createPinggoId());
     const a={name:raw,pinggoId:id,password:p};
     if(!saveAccount(a))return alert('Pendaftaran gagal disimpan di perangkat ini. Coba ulangi pendaftaran.');
     write(STORE.session,{loggedIn:false,pinggoId:id});
     setProfile(a);
-    alert('Pendaftaran berhasil.\nPINGGO ID kamu: '+id+'\n\nGunakan ID ini bersama kata sandi untuk login.');
-    switchAuthTab('login');
-    $('authUsername').value=id;
-    $('authPassword').focus();
+    pendingPinggoId=id;
+    $('generatedPinggoId').textContent=id;
+    $('generatedIdBox').style.display='block';
+    $('authUsername').value='';
+    $('authPassword').value='';
+    $('authUsername').disabled=true;
+    $('authPassword').disabled=true;
+    authMode='registerDone';
+    $('authMainBtn').textContent='Lanjut ke Masuk';
     return;
   }
   const id=normalizePinggoId(raw),a=account();
