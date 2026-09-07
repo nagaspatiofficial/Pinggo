@@ -2226,13 +2226,44 @@ body{
     history.forEach(m=>{
       const row=document.createElement('div');
       row.className='message-row '+(m.side==='out'?'outgoing':'incoming');
-      const bubble=document.createElement('div');
-      bubble.className='bubble';
-      bubble.append(document.createTextNode(m.text+' '));
-      const small=document.createElement('small');
-      small.textContent=m.time || '';
-      bubble.appendChild(small);
-      row.appendChild(bubble);
+
+      if(m.kind==='image' || m.kind==='video'){
+        const card=document.createElement('div');card.className='media-message';
+        const media=document.createElement(m.kind==='image'?'img':'video');
+        media.src=m.url||'';
+        if(m.kind==='video'){media.controls=true;media.playsInline=true;media.preload='metadata';}
+        const cap=document.createElement('div');cap.className='media-caption';
+        cap.textContent=(m.kind==='image'?'📷 Foto':'🎥 Video')+' • '+(m.time||'');
+        card.append(media,cap);row.appendChild(card);
+      }else if(m.kind==='voice'){
+        const bubble=document.createElement('div');bubble.className='bubble voice-message';
+        const audio=document.createElement('audio');audio.src=m.url||'';audio.preload='metadata';
+        const play=document.createElement('button');play.className='voice-play';play.textContent='▶';
+        const bars=document.createElement('div');bars.className='voice-bars';
+        [12,20,28,16,34,22,30,14,25,18,11].forEach(h=>{const i=document.createElement('i');i.style.height=h+'px';bars.appendChild(i)});
+        const dur=document.createElement('span');dur.className='voice-duration';dur.textContent=(m.duration||'00:00')+' ✓';
+        play.addEventListener('click',()=>{if(audio.paused){audio.play();play.textContent='❚❚'}else{audio.pause();play.textContent='▶'}});
+        audio.addEventListener('ended',()=>play.textContent='▶');
+        bubble.append(play,bars,dur);row.appendChild(bubble);
+      }else if(m.kind==='secret'){
+        const card=document.createElement('div');card.className='secret-message';
+        card.dataset.price=String(m.price||10);card.dataset.type=m.mediaType||'image';card.dataset.url=m.url||'';
+        const thumb=document.createElement('div');thumb.className='secret-thumb';
+        const media=document.createElement((m.mediaType||'image')==='image'?'img':'video');media.src=m.url||'';
+        if(media.tagName==='VIDEO'){media.muted=true;media.playsInline=true;media.preload='metadata';}
+        thumb.appendChild(media);const lock=document.createElement('div');lock.className='secret-lock-overlay';lock.textContent='🔒';thumb.appendChild(lock);
+        const meta=document.createElement('div');meta.className='secret-meta';
+        meta.innerHTML='<b>SECRET DROP</b><div class="unlock-price"><span class="heart-gem"></span>'+(m.price||10)+' PINGGO Gem</div><small>Terkunci • Menunggu penerima Unlock</small>';
+        card.append(thumb,meta);row.appendChild(card);
+      }else{
+        const bubble=document.createElement('div');
+        bubble.className='bubble';
+        bubble.append(document.createTextNode((m.text||'')+' '));
+        const small=document.createElement('small');
+        small.textContent=m.time || '';
+        bubble.appendChild(small);
+        row.appendChild(bubble);
+      }
       messagesEl.appendChild(row);
     });
     requestAnimationFrame(()=>messagesEl.scrollTop=messagesEl.scrollHeight);
@@ -2254,6 +2285,7 @@ body{
     let user = typeof idOrUser==='string' ? people[idOrUser] : idOrUser;
     if(!user) return;
     activeUser = user;
+    room.dataset.chatId=user.id;
     updateHeader(user);
     renderHistory(user.id);
     room.classList.add('open');
@@ -2355,6 +2387,20 @@ body{
     if(chatsTab) chatsTab.click();
     setTimeout(()=>openPrivateChat(id),80);
   }, true);
+
+  // Shared API used by attachment module so media/voice/Secret Drop stay in the same chat history after Back.
+  window.__pinggoPrivateChatApi={
+    activeId:()=>activeUser?.id||room.dataset.chatId||'',
+    getHistory,
+    setHistory,
+    renderHistory,
+    updatePreview,
+    push(item){
+      const id=activeUser?.id||room.dataset.chatId;
+      if(!id)return false;
+      const history=getHistory(id);history.push(item);setHistory(id,history);renderHistory(id);return true;
+    }
+  };
 
   // If a new friend chat is opened, add it to Chats once.
   const originalOpen=openPrivateChat;
@@ -2792,186 +2838,107 @@ body{
 })();
 </script>
 
-<!-- CHAT ATTACHMENTS RUNTIME FIX — INDEX ONLY -->
-<script id="pinggo-chat-attachments-runtime-fix">
+<!-- CHAT ATTACHMENTS STABLE — single handler, persistent across Back -->
+<style id="pinggo-chat-attachments-stable-style">
+#attachMenu .attach-file-label{border:0;background:transparent;color:inherit;font:inherit;text-align:center;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;min-width:0}
+#attachMenu .attach-file-label span{pointer-events:none}
+#voiceRecorder.show,#secretModal.show{display:flex !important}
+</style>
+<script id="pinggo-chat-attachments-stable-script">
 (function(){
   'use strict';
   const room=document.getElementById('chatRoom');
   const menu=document.getElementById('attachMenu');
   const messages=document.getElementById('chatMessages');
-  const photoInput=document.getElementById('chatPhotoFile');
-  const videoInput=document.getElementById('chatVideoFile');
-  const viewer=document.getElementById('mediaViewer');
-  const viewerContent=document.getElementById('mediaViewerContent');
-  const closeViewer=document.getElementById('closeMediaViewer');
-  if(!room||!menu||!messages) return;
+  if(!room||!menu||!messages)return;
+  const api=()=>window.__pinggoPrivateChatApi;
+  const now=()=>new Date().toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit'});
 
-  function preview(text){
-    const current=room.dataset.chatName||'Cinta';
-    const row=document.querySelector('[data-open-chat="'+CSS.escape(current)+'"] .preview') || document.querySelector('[data-open-chat="Cinta"] .preview');
-    if(row) row.textContent=text;
+  // Clone inputs once to remove all older duplicate change listeners.
+  function freshInput(id){
+    const old=document.getElementById(id);if(!old)return null;
+    const n=old.cloneNode(true);old.replaceWith(n);return n;
   }
-  function time(){return new Date().toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit'});}
-  function scrollEnd(){requestAnimationFrame(()=>messages.scrollTop=messages.scrollHeight);}
+  const photo=freshInput('chatPhotoFile');
+  const video=freshInput('chatVideoFile');
+  const secretFile=freshInput('secretFile');
 
-  function openMedia(type,url){
-    if(!viewer||!viewerContent) return;
-    viewerContent.innerHTML='';
-    const el=document.createElement(type==='image'?'img':'video');
-    el.src=url;
-    if(type==='video'){el.controls=true;el.playsInline=true;el.autoplay=true;}
-    viewerContent.appendChild(el);
-    viewer.classList.add('show');
-  }
-  closeViewer?.addEventListener('click',()=>{viewer?.classList.remove('show');if(viewerContent)viewerContent.innerHTML='';});
+  // Replace Foto/Video buttons with native labels: fastest and most reliable on iPhone Safari.
+  [...menu.children].forEach(el=>{
+    const text=el.textContent.trim();
+    if(text.includes('Foto')&&photo){const l=document.createElement('label');l.className='attach-file-label';l.htmlFor=photo.id;l.innerHTML='<span>📷</span>Foto';el.replaceWith(l);}
+    else if(text.includes('Video')&&video){const l=document.createElement('label');l.className='attach-file-label';l.htmlFor=video.id;l.innerHTML='<span>🎥</span>Video';el.replaceWith(l);}
+  });
 
-  function addMedia(file,type){
-    if(!file) return;
+  function pushMedia(file,kind){
+    if(!file)return;
     const url=URL.createObjectURL(file);
-    const row=document.createElement('div');row.className='message-row outgoing';
-    const card=document.createElement('div');card.className='media-message';
-    const media=document.createElement(type==='image'?'img':'video');
-    media.src=url;
-    if(type==='video'){media.controls=true;media.playsInline=true;}
-    media.addEventListener('click',()=>openMedia(type,url));
-    const cap=document.createElement('div');cap.className='media-caption';
-    cap.textContent=(type==='image'?'📷 Foto':'🎥 Video')+' • '+time()+' ✓';
-    card.append(media,cap);row.appendChild(card);messages.appendChild(row);
-    preview(type==='image'?'📷 Foto':'🎥 Video');scrollEnd();
+    const item={side:'out',kind,url,time:now()+' ✓'};
+    if(api()?.push(item)) api().updatePreview(api().activeId(),kind==='image'?'📷 Foto':'🎥 Video',now());
+    else {
+      const row=document.createElement('div');row.className='message-row outgoing';
+      const card=document.createElement('div');card.className='media-message';
+      const m=document.createElement(kind==='image'?'img':'video');m.src=url;if(kind==='video'){m.controls=true;m.playsInline=true;m.preload='metadata';}
+      const cap=document.createElement('div');cap.className='media-caption';cap.textContent=(kind==='image'?'📷 Foto':'🎥 Video')+' • '+now()+' ✓';card.append(m,cap);row.appendChild(card);messages.appendChild(row);
+    }
+    requestAnimationFrame(()=>messages.scrollTop=messages.scrollHeight);
   }
+  photo?.addEventListener('change',()=>{const f=photo.files?.[0];if(f)pushMedia(f,'image');photo.value='';},{passive:true});
+  video?.addEventListener('change',()=>{const f=video.files?.[0];if(f)pushMedia(f,'video');video.value='';},{passive:true});
 
-  photoInput?.addEventListener('change',()=>{const f=photoInput.files?.[0];if(f)addMedia(f,'image');photoInput.value='';});
-  videoInput?.addEventListener('change',()=>{const f=videoInput.files?.[0];if(f)addMedia(f,'video');videoInput.value='';});
-
+  // Voice: clone controls to remove duplicate listeners, then use one recorder only.
   const voiceModal=document.getElementById('voiceRecorder');
-  const cancelVoice=document.getElementById('cancelVoice');
-  const startVoice=document.getElementById('startVoice');
-  const stopVoice=document.getElementById('stopVoice');
-  const sendVoice=document.getElementById('sendVoice');
-  const redoVoice=document.getElementById('redoVoice');
-  const voiceStatus=document.getElementById('voiceStatus');
-  const voiceTimer=document.getElementById('voiceTimer');
-  const voicePreview=document.getElementById('voicePreview');
-  const voiceIcon=document.getElementById('voiceRecordIcon');
-  let rec=null, stream=null, chunks=[], blobUrl='', ticker=null, secs=0;
-
+  const cloneBtn=id=>{const o=document.getElementById(id);if(!o)return null;const n=o.cloneNode(true);o.replaceWith(n);return n};
+  const cancelVoice=cloneBtn('cancelVoice'),startVoice=cloneBtn('startVoice'),stopVoice=cloneBtn('stopVoice'),sendVoice=cloneBtn('sendVoice'),redoVoice=cloneBtn('redoVoice');
+  const voiceStatus=document.getElementById('voiceStatus'),voiceTimer=document.getElementById('voiceTimer'),voicePreview=document.getElementById('voicePreview'),voiceIcon=document.getElementById('voiceRecordIcon');
+  let rec=null,stream=null,chunks=[],blobUrl='',ticker=null,secs=0;
   function stopTracks(){if(stream){stream.getTracks().forEach(t=>t.stop());stream=null;}}
   function resetVoice(revoke=true){
-    if(rec&&rec.state==='recording'){try{rec.stop();}catch(_){}}
-    stopTracks();clearInterval(ticker);ticker=null;rec=null;chunks=[];secs=0;
+    if(rec&&rec.state==='recording'){try{rec.stop()}catch(_){}}stopTracks();clearInterval(ticker);ticker=null;rec=null;chunks=[];secs=0;
     if(revoke&&blobUrl){URL.revokeObjectURL(blobUrl);blobUrl='';}
-    if(voiceTimer)voiceTimer.textContent='00:00';
-    if(voicePreview){voicePreview.pause();voicePreview.removeAttribute('src');voicePreview.style.display='none';}
+    if(voiceTimer)voiceTimer.textContent='00:00';if(voicePreview){voicePreview.pause();voicePreview.removeAttribute('src');voicePreview.style.display='none';}
     if(startVoice)startVoice.style.display='block';if(stopVoice)stopVoice.style.display='none';if(sendVoice)sendVoice.style.display='none';if(redoVoice)redoVoice.style.display='none';
     if(voiceStatus)voiceStatus.textContent='Siap merekam';voiceIcon?.classList.remove('recording');
   }
   function openVoice(){resetVoice();voiceModal?.classList.add('show');}
-  cancelVoice?.addEventListener('click',()=>{resetVoice();voiceModal?.classList.remove('show');});
+  cancelVoice?.addEventListener('click',()=>{resetVoice();voiceModal?.classList.remove('show')});
   startVoice?.addEventListener('click',async()=>{
-    if(!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder==='undefined'){alert('Browser ini tidak mendukung perekaman suara.');return;}
+    if(!navigator.mediaDevices?.getUserMedia||typeof MediaRecorder==='undefined'){alert('Browser ini tidak mendukung perekaman suara.');return;}
     try{
-      stream=await navigator.mediaDevices.getUserMedia({audio:true});
-      rec=new MediaRecorder(stream);chunks=[];
+      stream=await navigator.mediaDevices.getUserMedia({audio:true});rec=new MediaRecorder(stream);chunks=[];
       rec.ondataavailable=e=>{if(e.data?.size)chunks.push(e.data)};
-      rec.onstop=()=>{
-        clearInterval(ticker);ticker=null;voiceIcon?.classList.remove('recording');
-        const blob=new Blob(chunks,{type:rec?.mimeType||'audio/webm'});blobUrl=URL.createObjectURL(blob);stopTracks();
-        if(voicePreview){voicePreview.src=blobUrl;voicePreview.style.display='block';}
-        if(voiceStatus)voiceStatus.textContent='Voice siap dikirim';
-        if(sendVoice)sendVoice.style.display='block';if(redoVoice)redoVoice.style.display='block';if(stopVoice)stopVoice.style.display='none';
-      };
-      rec.start();secs=0;
-      if(voiceStatus)voiceStatus.textContent='Sedang merekam...';voiceIcon?.classList.add('recording');
-      startVoice.style.display='none';if(stopVoice)stopVoice.style.display='block';
-      ticker=setInterval(()=>{secs++;if(voiceTimer){const m=String(Math.floor(secs/60)).padStart(2,'0'),x=String(secs%60).padStart(2,'0');voiceTimer.textContent=m+':'+x;}},1000);
-    }catch(e){stopTracks();alert('Izin mikrofon diperlukan untuk merekam voice message.');}
+      rec.onstop=()=>{clearInterval(ticker);ticker=null;voiceIcon?.classList.remove('recording');const b=new Blob(chunks,{type:rec?.mimeType||'audio/mp4'});blobUrl=URL.createObjectURL(b);stopTracks();if(voicePreview){voicePreview.src=blobUrl;voicePreview.style.display='block'}if(voiceStatus)voiceStatus.textContent='Voice siap dikirim';if(sendVoice)sendVoice.style.display='block';if(redoVoice)redoVoice.style.display='block';if(stopVoice)stopVoice.style.display='none';};
+      rec.start(250);secs=0;if(voiceStatus)voiceStatus.textContent='Sedang merekam...';voiceIcon?.classList.add('recording');startVoice.style.display='none';if(stopVoice)stopVoice.style.display='block';
+      ticker=setInterval(()=>{secs++;if(voiceTimer){const m=String(Math.floor(secs/60)).padStart(2,'0'),x=String(secs%60).padStart(2,'0');voiceTimer.textContent=m+':'+x}},1000);
+    }catch(_){stopTracks();alert('Izin mikrofon diperlukan untuk merekam voice message.');}
   });
-  stopVoice?.addEventListener('click',()=>{if(rec&&rec.state==='recording')rec.stop();});
+  stopVoice?.addEventListener('click',()=>{if(rec&&rec.state==='recording')rec.stop()});
   redoVoice?.addEventListener('click',()=>resetVoice());
   sendVoice?.addEventListener('click',()=>{
-    if(!blobUrl)return;
-    const keep=blobUrl;blobUrl='';
-    const row=document.createElement('div');row.className='message-row outgoing';
-    const bubble=document.createElement('div');bubble.className='bubble voice-message';
-    const audio=document.createElement('audio');audio.src=keep;
-    const play=document.createElement('button');play.className='voice-play';play.textContent='▶';
-    const bars=document.createElement('div');bars.className='voice-bars';[12,20,28,16,34,22,30,14,25,18,11].forEach(h=>{const i=document.createElement('i');i.style.height=h+'px';bars.appendChild(i)});
-    const dur=document.createElement('span');dur.className='voice-duration';dur.textContent=(voiceTimer?.textContent||'00:00')+' ✓';
-    play.addEventListener('click',()=>{if(audio.paused){audio.play();play.textContent='❚❚'}else{audio.pause();play.textContent='▶'}});audio.addEventListener('ended',()=>play.textContent='▶');
-    bubble.append(play,bars,dur);row.appendChild(bubble);messages.appendChild(row);preview('🎙 Voice message');scrollEnd();
+    if(!blobUrl)return;const keep=blobUrl;blobUrl='';const duration=voiceTimer?.textContent||'00:00';
+    const item={side:'out',kind:'voice',url:keep,duration,time:now()+' ✓'};if(api()?.push(item))api().updatePreview(api().activeId(),'🎙 Voice message',now());
     resetVoice(false);voiceModal?.classList.remove('show');
   });
 
+  // Secret Drop: one set of controls/listeners only.
   const secretModal=document.getElementById('secretModal');
-  const secretFile=document.getElementById('secretFile');
-  const secretPreview=document.getElementById('secretPreview');
-  const customPrice=document.getElementById('customSecretPrice');
-  let secretChosen=null, secretUrl='', price=10;
-  document.querySelectorAll('.price-btn').forEach(btn=>btn.addEventListener('click',()=>{
-    document.querySelectorAll('.price-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');price=Number(btn.dataset.price||10);if(customPrice)customPrice.value='';
-  }));
-  document.getElementById('closeSecretModal')?.addEventListener('click',()=>secretModal?.classList.remove('show'));
-  document.getElementById('pickSecretFile')?.addEventListener('click',()=>secretFile?.click());
-  secretFile?.addEventListener('change',()=>{
-    const f=secretFile.files?.[0];if(!f)return;secretChosen=f;if(secretUrl)URL.revokeObjectURL(secretUrl);secretUrl=URL.createObjectURL(f);
-    if(secretPreview){secretPreview.innerHTML='';const m=document.createElement(f.type.startsWith('image/')?'img':'video');m.src=secretUrl;if(m.tagName==='VIDEO'){m.muted=true;m.playsInline=true;}secretPreview.appendChild(m);}
-  });
-  document.getElementById('sendSecretDrop')?.addEventListener('click',()=>{
-    if(!secretChosen){alert('Pilih foto atau video terlebih dahulu.');return;}
-    const usePrice=Number(customPrice?.value)||price||10;
-    const row=document.createElement('div');row.className='message-row outgoing';
-    const card=document.createElement('div');card.className='secret-message';card.dataset.price=String(usePrice);card.dataset.type=secretChosen.type.startsWith('image/')?'image':'video';card.dataset.url=secretUrl;
-    const thumb=document.createElement('div');thumb.className='secret-thumb';const m=document.createElement(card.dataset.type==='image'?'img':'video');m.src=secretUrl;if(m.tagName==='VIDEO'){m.muted=true;m.playsInline=true;}thumb.appendChild(m);const lock=document.createElement('div');lock.className='secret-lock-overlay';lock.textContent='🔒';thumb.appendChild(lock);
-    const meta=document.createElement('div');meta.className='secret-meta';meta.innerHTML='<b>SECRET DROP</b><div class="unlock-price"><span class="heart-gem"></span>'+usePrice+' PINGGO Gem</div><small>Terkunci • Menunggu penerima Unlock</small>';card.append(thumb,meta);row.appendChild(card);messages.appendChild(row);scrollEnd();preview('🔒 Secret Drop');
-    secretModal?.classList.remove('show');secretChosen=null;if(secretFile)secretFile.value='';if(customPrice)customPrice.value='';if(secretPreview)secretPreview.innerHTML='🔒';
-  });
+  const closeSecret=cloneBtn('closeSecretModal'),pickSecret=cloneBtn('pickSecretFile'),sendSecret=cloneBtn('sendSecretDrop');
+  const secretPreview=document.getElementById('secretPreview'),customPrice=document.getElementById('customSecretPrice');
+  let chosen=null,chosenUrl='',price=10;
+  const priceBtns=[...document.querySelectorAll('.price-btn')].map(b=>{const n=b.cloneNode(true);b.replaceWith(n);return n});
+  priceBtns.forEach(btn=>btn.addEventListener('click',()=>{priceBtns.forEach(b=>b.classList.remove('active'));btn.classList.add('active');price=Number(btn.dataset.price||10);if(customPrice)customPrice.value=''}));
+  closeSecret?.addEventListener('click',()=>secretModal?.classList.remove('show'));
+  pickSecret?.addEventListener('click',()=>secretFile?.click());
+  secretFile?.addEventListener('change',()=>{const f=secretFile.files?.[0];if(!f)return;chosen=f;if(chosenUrl)URL.revokeObjectURL(chosenUrl);chosenUrl=URL.createObjectURL(f);if(secretPreview){secretPreview.innerHTML='';const m=document.createElement(f.type.startsWith('image/')?'img':'video');m.src=chosenUrl;if(m.tagName==='VIDEO'){m.muted=true;m.playsInline=true;m.preload='metadata'}secretPreview.appendChild(m)}});
+  sendSecret?.addEventListener('click',()=>{if(!chosen){alert('Pilih foto atau video terlebih dahulu.');return;}const usePrice=Number(customPrice?.value)||price||10;const item={side:'out',kind:'secret',url:chosenUrl,mediaType:chosen.type.startsWith('image/')?'image':'video',price:usePrice,time:now()+' ✓'};if(api()?.push(item))api().updatePreview(api().activeId(),'🔒 Secret Drop',now());secretModal?.classList.remove('show');chosen=null;chosenUrl='';if(secretFile)secretFile.value='';if(customPrice)customPrice.value='';if(secretPreview)secretPreview.innerHTML='🔒';});
 
-  // One delegated handler for the four attachment choices. Capture mode makes it reliable on iPhone.
-  menu.addEventListener('click',function(e){
-    const btn=e.target.closest('button');if(!btn)return;
-    const label=btn.textContent.trim();
-    if(label.includes('Foto')){e.preventDefault();e.stopImmediatePropagation();menu.classList.remove('show');photoInput?.click();return;}
-    if(label.includes('Video')){e.preventDefault();e.stopImmediatePropagation();menu.classList.remove('show');videoInput?.click();return;}
-    if(label.includes('Voice')){e.preventDefault();e.stopImmediatePropagation();menu.classList.remove('show');openVoice();return;}
-    if(label.includes('Secret')){e.preventDefault();e.stopImmediatePropagation();menu.classList.remove('show');secretModal?.classList.add('show');return;}
-  },true);
-})();
-</script>
-
-
-<!-- CHAT ATTACHMENT IOS RELIABILITY FIX -->
-<style id="pinggo-chat-attachment-ios-fix-style">
-#attachMenu .attach-file-label{border:0;background:transparent;color:inherit;font:inherit;text-align:center;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;min-width:0}
-#attachMenu .attach-file-label span{pointer-events:none}
-</style>
-<script id="pinggo-chat-attachment-ios-fix-script">
-(function(){
-  const menu=document.getElementById('attachMenu');
-  const photo=document.getElementById('chatPhotoFile');
-  const video=document.getElementById('chatVideoFile');
-  const voice=document.getElementById('voiceRecorder');
-  const secret=document.getElementById('secretModal');
-  if(!menu) return;
-
-  // File labels are more reliable than programmatic input.click() in iPhone Safari.
-  [...menu.querySelectorAll('button')].forEach(btn=>{
-    const text=btn.textContent.trim();
-    if(text.includes('Foto') && photo){
-      const lab=document.createElement('label'); lab.className='attach-file-label'; lab.htmlFor=photo.id; lab.innerHTML='<span>📷</span>Foto'; btn.replaceWith(lab);
-    } else if(text.includes('Video') && video){
-      const lab=document.createElement('label'); lab.className='attach-file-label'; lab.htmlFor=video.id; lab.innerHTML='<span>🎥</span>Video'; btn.replaceWith(lab);
-    }
-  });
-
-  // Close the tray only after iOS has received the native file-picker tap.
+  // One capture handler only for Voice / Secret Drop. Foto/Video handled natively by labels.
   menu.addEventListener('click',e=>{
-    const label=e.target.closest('label.attach-file-label');
-    if(label){ setTimeout(()=>menu.classList.remove('show'),0); return; }
-    const btn=e.target.closest('button'); if(!btn) return;
-    const text=btn.textContent.trim();
-    if(text.includes('Voice')){ e.preventDefault(); e.stopImmediatePropagation(); menu.classList.remove('show'); voice?.classList.add('show'); }
-    if(text.includes('Secret')){ e.preventDefault(); e.stopImmediatePropagation(); menu.classList.remove('show'); secret?.classList.add('show'); }
+    const btn=e.target.closest('button');if(!btn)return;const text=btn.textContent.trim();
+    if(text.includes('Voice')){e.preventDefault();e.stopImmediatePropagation();menu.classList.remove('show');openVoice();}
+    else if(text.includes('Secret')){e.preventDefault();e.stopImmediatePropagation();menu.classList.remove('show');secretModal?.classList.add('show');}
   },true);
+  menu.addEventListener('click',e=>{if(e.target.closest('label.attach-file-label'))setTimeout(()=>menu.classList.remove('show'),0)},false);
 })();
 </script>
 </body>
