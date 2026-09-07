@@ -2946,3 +2946,79 @@ body{
 </script>
 </body>
 </html>
+
+<!-- CHAT HOME SCROLL + MOBILE WIDTH FIX -->
+<style id="pinggo-chat-home-scroll-width-fix">
+/* The old mobile stability rule locks html/body scrolling. Keep that lock,
+   but make the active application panel itself the scroll container. */
+.app{
+  height:100dvh !important;
+  min-height:100dvh !important;
+  max-height:100dvh !important;
+  overflow:hidden !important;
+  padding-left:18px !important;
+  padding-right:18px !important;
+  padding-bottom:calc(86px + env(safe-area-inset-bottom)) !important;
+}
+
+.app .panel{
+  width:100% !important;
+  max-width:100% !important;
+  min-width:0 !important;
+}
+
+.app .panel.active{
+  height:100% !important;
+  min-height:0 !important;
+  overflow-y:auto !important;
+  overflow-x:hidden !important;
+  -webkit-overflow-scrolling:touch !important;
+  touch-action:pan-y !important;
+  overscroll-behavior-y:contain;
+  padding-bottom:22px !important;
+}
+
+#chats,
+#chatHome,
+#chatHome .chat-list,
+#chatHome .chat,
+#chatHome .chat-main,
+#chatHome .name-row{
+  width:100% !important;
+  max-width:100% !important;
+  min-width:0 !important;
+  box-sizing:border-box !important;
+}
+
+#chatHome .chat-main{overflow:hidden !important;}
+#chatHome .name-row{overflow:hidden !important;}
+#chatHome .name{min-width:0 !important;overflow:hidden !important;text-overflow:ellipsis !important;white-space:nowrap !important;}
+#chatHome .time{flex:0 0 auto !important;max-width:72px !important;overflow:hidden !important;text-overflow:ellipsis !important;}
+#chatHome .badge{flex:0 0 21px !important;margin-left:2px !important;}
+
+/* Keep the filter row swipeable horizontally without making the whole page wider. */
+#chats .tabs{
+  width:100% !important;
+  max-width:100% !important;
+  overflow-x:auto !important;
+  overflow-y:hidden !important;
+  -webkit-overflow-scrolling:touch !important;
+  touch-action:pan-x !important;
+  scrollbar-width:none;
+}
+#chats .tabs::-webkit-scrollbar{display:none;}
+
+/* Fixed controls stay inside the visible iPhone viewport. */
+.bottom-nav{
+  left:0 !important;
+  right:0 !important;
+  transform:none !important;
+  width:100% !important;
+  max-width:100% !important;
+}
+.fab{
+  left:auto !important;
+  right:14px !important;
+  transform:none !important;
+}
+</style>
