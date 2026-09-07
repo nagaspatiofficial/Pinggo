@@ -2481,5 +2481,55 @@ body{
 }
 </style>
 
+
+
+<!-- PRIVATE CHAT HARD BACK FIX — ONLY CHAT ROOM -->
+<style id="private-chat-hard-back-fix">
+/* Pastikan tombol kembali selalu berada di atas area chat dan tetap bisa disentuh */
+#chatRoom .chat-room-header{
+  position:relative !important;
+  z-index:20 !important;
+}
+#chatRoom #backChat{
+  position:relative !important;
+  z-index:30 !important;
+  pointer-events:auto !important;
+  touch-action:manipulation !important;
+  -webkit-tap-highlight-color:transparent !important;
+}
+</style>
+<script id="private-chat-hard-back-fix-script">
+(function(){
+  const room=document.getElementById('chatRoom');
+  const back=document.getElementById('backChat');
+  const input=document.getElementById('messageInput');
+  const attach=document.getElementById('attachMenu');
+  if(!room || !back) return;
+
+  let closing=false;
+  function forceBack(e){
+    if(closing) return;
+    closing=true;
+    if(e){
+      e.preventDefault();
+      e.stopImmediatePropagation();
+    }
+    if(input) input.blur();
+    if(attach) attach.classList.remove('show');
+    room.classList.remove('open');
+    // Lepaskan status fokus/keyboard agar tidak membuat halaman chat terasa macet.
+    requestAnimationFrame(()=>{
+      room.classList.remove('open');
+      closing=false;
+    });
+  }
+
+  // Tangani sentuhan iPhone dan klik biasa. Semua langsung menjalankan penutupan room.
+  back.addEventListener('pointerdown', forceBack, true);
+  back.addEventListener('touchstart', forceBack, {capture:true, passive:false});
+  back.addEventListener('click', forceBack, true);
+})();
+</script>
+
 </body>
 </html>
