@@ -757,6 +757,119 @@ button, input, select, textarea {
   font-size: 13px;
 }
 </style>
+
+<style id="pinggo-merged-ui-missing-styles">
+/* Restores styles for merged interactive modules without changing core layout */
+.chat-composer{position:relative}
+.attach-btn{width:42px;height:42px;flex:0 0 42px;border:0;border-radius:14px;background:rgba(255,255,255,.78);color:var(--pinggo-gray-dark);font-size:24px;display:grid;place-items:center;cursor:pointer}
+.attach-menu{display:none;position:absolute;left:10px;right:10px;bottom:58px;z-index:260;padding:10px;border-radius:18px;background:rgba(255,255,255,.97);box-shadow:0 14px 36px rgba(45,35,43,.18);grid-template-columns:repeat(4,1fr);gap:6px;border:1px solid rgba(0,0,0,.06)}
+.attach-menu.show{display:grid}
+.attach-menu button,.attach-file-label{border:0;background:transparent;color:var(--pinggo-gray-dark);font:inherit;font-size:11px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;padding:7px 3px;cursor:pointer;text-align:center}
+.attach-menu button span,.attach-file-label span{width:40px;height:40px;border-radius:13px;background:var(--pinggo-gray-light);display:grid;place-items:center;font-size:18px}
+
+.media-viewer{display:none;position:absolute;inset:0;z-index:520;background:#171419;color:#fff;flex-direction:column}
+.media-viewer.show{display:flex}
+.media-viewer-bar{height:60px;flex:0 0 60px;display:flex;align-items:center;gap:12px;padding:8px 14px;background:#201b21}
+.media-viewer-bar button{width:38px;height:38px;border:0;border-radius:12px;background:rgba(255,255,255,.1);color:#fff;font-size:22px}
+.media-viewer-content{flex:1;min-height:0;display:grid;place-items:center;overflow:hidden}
+.media-viewer-content img,.media-viewer-content video{max-width:100%;max-height:100%;object-fit:contain}
+.media-message{width:210px;max-width:78%;overflow:hidden;border-radius:18px;background:#fff;box-shadow:0 4px 14px rgba(0,0,0,.08)}
+.media-message img{display:block;width:100%;height:180px;object-fit:cover}
+.media-message video{display:block;width:100%;max-height:200px;background:#222}
+.media-caption{padding:7px 10px;font-size:10px;color:var(--text-muted)}
+.voice-message audio{max-width:240px;width:100%}
+
+.voice-modal{display:none;position:absolute;inset:0;z-index:540;background:rgba(35,28,34,.4);backdrop-filter:blur(8px);align-items:center;justify-content:center;padding:22px}
+.voice-modal.show{display:flex}
+.voice-card{width:100%;max-width:360px;background:#fff;border-radius:26px;padding:20px;text-align:center;box-shadow:0 20px 60px rgba(40,30,38,.25)}
+.voice-icon{width:80px;height:80px;border-radius:50%;margin:20px auto 10px;display:grid;place-items:center;font-size:34px;background:linear-gradient(145deg,#f7c8d4,#e86b92)}
+.voice-icon.recording{animation:pinggoVoicePulse 1.2s infinite}
+@keyframes pinggoVoicePulse{50%{transform:scale(1.08);box-shadow:0 0 0 13px rgba(233,95,137,.13)}}
+.voice-timer{font-size:28px;font-weight:800;margin-bottom:5px}
+.modal-actions{display:flex;gap:8px;margin-top:8px}.modal-actions .btn-primary{margin:0}
+
+.friend-row{display:flex;align-items:center;gap:11px;padding:11px 2px;border-bottom:1px solid rgba(0,0,0,.06)}
+.friend-meta{flex:1;min-width:0}.friend-meta b{display:block;font-size:14px}.friend-meta small{display:block;color:var(--text-muted);font-size:11px;margin-top:3px}
+.friend-actions{display:flex;gap:6px}.mini-btn{border:0;border-radius:10px;padding:8px 10px;background:#dedde0;color:#57525a;font-size:11px;font-weight:700}.mini-btn.primary{background:var(--pinggo-pink);color:#fff}
+
+.modal-center{align-items:center;padding:18px}.modal-center .modal-sheet{max-height:82vh;overflow:auto;border-radius:24px;transform:scale(.96);max-width:430px}.modal-center.show .modal-sheet{transform:scale(1)}
+.field-label{display:block;text-align:left;font-size:12px;font-weight:700;color:var(--text-muted);margin:13px 2px 7px}
+.price-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin-bottom:10px}.price-choice{height:40px;border:0;border-radius:12px;background:#e3e0e4;color:#655f67;font-size:11px;font-weight:700}.price-choice.active{background:var(--pinggo-pink);color:#fff}
+.secret-file-preview{min-height:70px;border-radius:14px;background:#f2eef1;display:grid;place-items:center;overflow:hidden;color:var(--text-muted);font-size:11px}.secret-file-preview img,.secret-file-preview video{width:100%;height:120px;object-fit:cover}
+.wallet-history{margin-top:12px}.history-row{display:flex;align-items:center;justify-content:space-between;padding:10px 2px;border-bottom:1px solid rgba(0,0,0,.06);font-size:12px}
+.secret-chat-card{width:220px;max-width:78%;overflow:hidden;border-radius:17px;background:#fff;box-shadow:0 4px 14px rgba(0,0,0,.07)}
+.secret-chat-thumb{height:105px;display:grid;place-items:center;background:linear-gradient(145deg,#eadde2,#c7c2c7);font-size:28px}.secret-chat-meta{padding:9px 11px;font-size:11px}.secret-chat-meta b{display:block;margin-bottom:4px}
+</style>
+
+
+<style id="pinggo-attachment-menu-filter-fix">
+/* Attachment picker: compact filtered popover above the composer */
+#chatRoom .chat-composer{position:relative !important;}
+#chatRoom #attachMenu{
+  display:none !important;
+  position:absolute !important;
+  left:8px !important;
+  right:8px !important;
+  bottom:58px !important;
+  width:auto !important;
+  max-width:none !important;
+  z-index:900 !important;
+  padding:10px !important;
+  border-radius:20px !important;
+  background:rgba(255,255,255,.97) !important;
+  border:1px solid rgba(95,98,104,.12) !important;
+  box-shadow:0 14px 34px rgba(45,35,43,.16) !important;
+  grid-template-columns:repeat(4,minmax(0,1fr)) !important;
+  gap:8px !important;
+  align-items:stretch !important;
+}
+#chatRoom #attachMenu.show{display:grid !important;}
+#chatRoom #attachMenu > button,
+#chatRoom #attachMenu > .attach-file-label{
+  min-width:0 !important;
+  width:100% !important;
+  min-height:70px !important;
+  margin:0 !important;
+  padding:8px 3px !important;
+  border:0 !important;
+  border-radius:15px !important;
+  background:#f2f3f5 !important;
+  color:#3f4247 !important;
+  box-shadow:none !important;
+  display:flex !important;
+  flex-direction:column !important;
+  align-items:center !important;
+  justify-content:center !important;
+  gap:6px !important;
+  font-family:inherit !important;
+  font-size:11px !important;
+  font-weight:700 !important;
+  line-height:1.15 !important;
+  text-align:center !important;
+  white-space:normal !important;
+}
+#chatRoom #attachMenu > button > span,
+#chatRoom #attachMenu > .attach-file-label > span{
+  width:34px !important;
+  height:34px !important;
+  margin:0 !important;
+  padding:0 !important;
+  border-radius:11px !important;
+  background:#e1e3e6 !important;
+  display:grid !important;
+  place-items:center !important;
+  font-size:17px !important;
+  line-height:1 !important;
+}
+#chatRoom #attachMenu > button:active,
+#chatRoom #attachMenu > .attach-file-label:active{
+  background:#fbeaf0 !important;
+}
+@media (max-width:360px){
+  #chatRoom #attachMenu{grid-template-columns:repeat(2,minmax(0,1fr)) !important;}
+}
+</style>
+
 </head>
 <body>
 
