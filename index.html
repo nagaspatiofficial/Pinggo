@@ -1116,13 +1116,8 @@ let authMode='login',pendingPinggoId='',currentChatId=null,selectedSecretFile=nu
 let gems=Number(read(STORE.gems,250))||250;
 let prefs=Object.assign({privacy:false,secretPrivate:false,notifications:true,appearance:'Pink & Gray'},read(STORE.prefs,{}));
 let walletHistory=read('pinggo_wallet_history_v2',[]);
-const people={
-  cinta:{id:'cinta',name:'Cinta',avatar:'C',pinggo:'PG131101',online:true,private:false,photo:'',lastSeen:'Online'},
-  baliCrew:{id:'baliCrew',name:'Bali Crew',avatar:'BC',pinggo:'PG131202',online:true,private:false,photo:'',lastSeen:'Online'},
-  dika:{id:'dika',name:'Dika',avatar:'D',pinggo:'PG131303',online:false,private:true,photo:'',lastSeen:'Terakhir aktif 18 menit lalu'},
-  nadya:{id:'nadya',name:'Nadya',avatar:'N',pinggo:'PG131404',online:true,private:true,photo:'',lastSeen:'Online'},
-  rama:{id:'rama',name:'Rama',avatar:'R',pinggo:'PG131505',online:false,private:false,photo:'',lastSeen:'Terakhir aktif 1 jam lalu'}
-};
+const people={};
+let friendRowsByUser={};
 const defaultChat={
   cinta:[{side:'in',kind:'text',text:'Haii, nanti malam ketemu?',time:'09:20'},{side:'out',kind:'text',text:'Bisa 😊',time:'09:22 ✓✓'}],
   baliCrew:[{side:'in',kind:'text',text:'Rama: 📷 Foto',time:'08:41'}],
@@ -1138,14 +1133,78 @@ let chatsData=[
   {id:'dika',name:'Dika',preview:'Siap bro',time:'Kemarin',unread:0,avatar:'D',group:false,favorite:false},
   {id:'nadya',name:'Nadya',preview:'🎙 Voice message',time:'Senin',unread:1,avatar:'N',group:false,favorite:true}
 ];
-let friendsState=Object.assign({friends:['cinta','dika'],requests:['nadya','rama'],sent:['baliCrew'],blocked:[]},read(STORE.friends,{}));
+let friendsState=Object.assign({friends:[],requests:[],sent:[],blocked:[]},read(STORE.friends,{}));
 friendsState.friends=Array.isArray(friendsState.friends)?friendsState.friends:[];friendsState.requests=Array.isArray(friendsState.requests)?friendsState.requests:[];friendsState.sent=Array.isArray(friendsState.sent)?friendsState.sent:[];friendsState.blocked=Array.isArray(friendsState.blocked)?friendsState.blocked:[];
 let secretState=read(STORE.secret,null)||{
  received:[{id:'s1',name:'Sunset Bali',caption:'Exclusive sunset',price:10,type:'image',url:'',unlocked:false,date:'Hari ini',author:'Cinta'},{id:'s2',name:'Free Preview',caption:'Untuk kamu',price:0,type:'image',url:'',unlocked:false,date:'Hari ini',author:'Nadya'}],sent:[],unlocked:[]
 };
 function account(){return read(STORE.account,null)}
 function createPinggoId(){return 'PG13'+String(Math.floor(Math.random()*10000)).padStart(4,'0')}
+
 function normalizePinggoId(v){return String(v||'').trim().toUpperCase()}
+const SUPABASE_URL='https://fgvsqzjfrouypgudhrsc.supabase.co';
+const SUPABASE_KEY='sb_publishable_ojLOMPCW07M068trjToZ7w_PFu4XUw_';
+function currentSession(){return read(STORE.session,null)}
+function currentUserId(){return currentSession()?.userId||account()?.userId||''}
+function authHeaders(extra={}){const token=currentSession()?.accessToken;return Object.assign({'apikey':SUPABASE_KEY,'Authorization':'Bearer '+(token||SUPABASE_KEY)},extra)}
+async function supabaseRequest(path,options={}){
+  const headers=Object.assign({},options.auth===false?{'apikey':SUPABASE_KEY}:authHeaders(),options.headers||{});
+  const res=await fetch(SUPABASE_URL+path,Object.assign({},options,{headers}));
+  let data=null;try{data=await res.json()}catch(_){data=null}
+  if(!res.ok){const msg=data?.msg||data?.message||data?.error_description||data?.error||('Server error '+res.status);throw new Error(msg)}
+  return data;
+}
+async function backendLogin(pinggoId,password){
+  const email=normalizePinggoId(pinggoId).toLowerCase()+'@pinggo.local';
+  const data=await supabaseRequest('/auth/v1/token?grant_type=password',{method:'POST',auth:false,headers:{'Content-Type':'application/json'},body:JSON.stringify({email,password})});
+  const token=data?.access_token;if(!token||!data?.user)throw new Error('Login gagal.');
+  write(STORE.session,{loggedIn:true,pinggoId:normalizePinggoId(pinggoId),userId:data.user.id,accessToken:token,refreshToken:data.refresh_token||''});
+  const profile=await fetchOwnProfile(data.user.id);
+  return {auth:data,profile};
+}
+async function backendRegister(name,password,pinggoId){
+  const id=normalizePinggoId(pinggoId),email=id.toLowerCase()+'@pinggo.local';
+  let data=await supabaseRequest('/auth/v1/signup',{method:'POST',auth:false,headers:{'Content-Type':'application/json'},body:JSON.stringify({email,password,data:{display_name:name,pinggo_id:id}})});
+  if(!data?.access_token){data=await supabaseRequest('/auth/v1/token?grant_type=password',{method:'POST',auth:false,headers:{'Content-Type':'application/json'},body:JSON.stringify({email,password})})}
+  if(!data?.user||!data?.access_token)throw new Error('Akun berhasil dibuat tetapi sesi login belum tersedia.');
+  write(STORE.session,{loggedIn:false,pinggoId:id,userId:data.user.id,accessToken:data.access_token,refreshToken:data.refresh_token||''});
+  await supabaseRequest('/rest/v1/profiles',{method:'POST',headers:{'Content-Type':'application/json','Prefer':'resolution=merge-duplicates,return=representation'},body:JSON.stringify({id:data.user.id,pinggo_id:id,display_name:name,private_profile:!!prefs.privacy,secret_private_default:!!prefs.secretPrivate,notifications_enabled:!!prefs.notifications,appearance:prefs.appearance||'Pink & Gray'})});
+  return {user:data.user,pinggoId:id};
+}
+async function fetchOwnProfile(userId){
+  const rows=await supabaseRequest('/rest/v1/profiles?id=eq.'+encodeURIComponent(userId)+'&select=*');
+  return Array.isArray(rows)?rows[0]||null:null;
+}
+function profileToAccount(p){if(!p)return null;return {userId:p.id,name:p.display_name||'PINGGO User',pinggoId:normalizePinggoId(p.pinggo_id),photo:p.avatar_url||''}}
+function applyRemoteProfile(p){
+  const a=profileToAccount(p);if(!a)return null;write(STORE.account,a);setProfile(a);
+  prefs.privacy=!!p.private_profile;prefs.secretPrivate=!!p.secret_private_default;prefs.notifications=p.notifications_enabled!==false;prefs.appearance=p.appearance||prefs.appearance||'Pink & Gray';write(STORE.prefs,prefs);
+  return a;
+}
+async function syncOwnProfile(patch){
+  const uid=currentUserId();if(!uid||!currentSession()?.accessToken)return false;
+  try{await supabaseRequest('/rest/v1/profiles?id=eq.'+encodeURIComponent(uid),{method:'PATCH',headers:{'Content-Type':'application/json','Prefer':'return=minimal'},body:JSON.stringify(patch)});return true}catch(e){console.warn('Profile sync gagal:',e);return false}
+}
+async function restoreBackendSession(){
+  const sess=currentSession();if(!sess?.loggedIn||!sess.accessToken)return false;
+  try{
+    const user=await supabaseRequest('/auth/v1/user');
+    if(!user?.id)return false;
+    sess.userId=user.id;write(STORE.session,sess);
+    const p=await fetchOwnProfile(user.id);if(p)applyRemoteProfile(p);
+    await loadBackendFriends();
+    return true;
+  }catch(err){
+    if(!sess.refreshToken)return false;
+    try{
+      const d=await supabaseRequest('/auth/v1/token?grant_type=refresh_token',{method:'POST',auth:false,headers:{'Content-Type':'application/json'},body:JSON.stringify({refresh_token:sess.refreshToken})});
+      if(!d?.access_token||!d?.user)return false;
+      write(STORE.session,{loggedIn:true,pinggoId:sess.pinggoId,userId:d.user.id,accessToken:d.access_token,refreshToken:d.refresh_token||sess.refreshToken});
+      const p=await fetchOwnProfile(d.user.id);if(p)applyRemoteProfile(p);await loadBackendFriends();return true;
+    }catch(_){return false}
+  }
+}
+
 function saveAccount(a){
   try{
     localStorage.setItem(STORE.account,JSON.stringify(a));
@@ -1189,45 +1248,31 @@ function switchAuthTab(tab){
   }
 }
 window.switchAuthTab=switchAuthTab;
-window.handleAuth=function(){
+window.handleAuth=async function(){
   const raw=$('authUsername').value.trim(),p=$('authPassword').value;
   if(authMode==='registerDone'){
-    const id=normalizePinggoId(pendingPinggoId || account()?.pinggoId || '');
-    switchAuthTab('login');
-    $('authUsername').value=id;
-    $('authPassword').focus();
-    return;
+    const id=normalizePinggoId(pendingPinggoId||account()?.pinggoId||'');
+    switchAuthTab('login');$('authUsername').value=id;$('authPassword').focus();return;
   }
-  if(authMode==='register'){
-    if(!raw||!p)return alert('Isi nama pengguna dan kata sandi terlebih dahulu.');
-    if(p.length<6)return alert('Kata sandi minimal 6 karakter.');
-    const id=normalizePinggoId(createPinggoId());
-    const a={name:raw,pinggoId:id,password:p};
-    if(!saveAccount(a))return alert('Pendaftaran gagal disimpan di perangkat ini. Coba ulangi pendaftaran.');
-    write(STORE.session,{loggedIn:false,pinggoId:id});
-    setProfile(a);
-    pendingPinggoId=id;
-    $('generatedPinggoId').textContent=id;
-    $('generatedIdBox').style.display='block';
-    $('authUsername').value='';
-    $('authPassword').value='';
-    $('authUsername').disabled=true;
-    $('authPassword').disabled=true;
-    authMode='registerDone';
-    $('authMainBtn').textContent='Lanjut ke Masuk';
-    return;
-  }
-  const id=normalizePinggoId(raw),a=account();
-  if(!id||!p)return alert('Masukkan PINGGO ID dan kata sandi.');
-  if(!a)return alert('Belum ada akun terdaftar di perangkat ini. Silakan pilih Daftar terlebih dahulu.');
-  if(id!==normalizePinggoId(a.pinggoId)||p!==a.password)return alert('PINGGO ID atau kata sandi salah.');
-  a.pinggoId=normalizePinggoId(a.pinggoId);
-  saveAccount(a);
-  write(STORE.session,{loggedIn:true,pinggoId:a.pinggoId});
-  setProfile(a);
-  $('authScreen').classList.add('hide');
+  const btn=$('authMainBtn');btn.disabled=true;
+  try{
+    if(authMode==='register'){
+      if(!raw||!p)throw new Error('Isi nama pengguna dan kata sandi terlebih dahulu.');
+      if(p.length<6)throw new Error('Kata sandi minimal 6 karakter.');
+      const id=normalizePinggoId(createPinggoId());
+      const created=await backendRegister(raw,p,id);
+      const a={userId:created.user.id,name:raw,pinggoId:id,photo:''};saveAccount(a);setProfile(a);
+      pendingPinggoId=id;$('generatedPinggoId').textContent=id;$('generatedIdBox').style.display='block';
+      $('authUsername').value='';$('authPassword').value='';$('authUsername').disabled=true;$('authPassword').disabled=true;
+      authMode='registerDone';btn.textContent='Lanjut ke Masuk';return;
+    }
+    const id=normalizePinggoId(raw);if(!id||!p)throw new Error('Masukkan PINGGO ID dan kata sandi.');
+    const result=await backendLogin(id,p);const a=applyRemoteProfile(result.profile)||{userId:result.auth.user.id,name:'PINGGO User',pinggoId:id,photo:''};saveAccount(a);
+    $('authScreen').classList.add('hide');await loadBackendFriends();renderProfile();
+  }catch(err){alert(err?.message||'Proses akun gagal.');}
+  finally{btn.disabled=false;if(authMode==='login')btn.textContent='Masuk';else if(authMode==='register')btn.textContent='Daftar';}
 };
-window.logout=function(){const a=account();write(STORE.session,{loggedIn:false,pinggoId:a?.pinggoId||''});$('authScreen').classList.remove('hide');switchAuthTab('login');if(a?.pinggoId)$('authUsername').value=normalizePinggoId(a.pinggoId)};
+window.logout=function(){const a=account();write(STORE.session,{loggedIn:false,pinggoId:a?.pinggoId||'',userId:a?.userId||''});friendsState={friends:[],requests:[],sent:[],blocked:[]};friendRowsByUser={};Object.keys(people).forEach(k=>delete people[k]);persistFriends();$('authScreen').classList.remove('hide');switchAuthTab('login');if(a?.pinggoId)$('authUsername').value=normalizePinggoId(a.pinggoId)};
 window.switchPanel=function(name,btn){document.querySelectorAll('.panel').forEach(x=>x.classList.remove('active'));document.querySelectorAll('.nav-item').forEach(x=>x.classList.remove('active'));$('panel'+name).classList.add('active');btn.classList.add('active');if(name==='Profile')renderProfile();if(name==='Friends')renderFriends();if(name==='Drop')renderSecret()};
 function renderChats(filter='all',query=''){const box=$('chatList');box.innerHTML='';const q=query.toLowerCase();chatsData.forEach(c=>{const okFilter=filter==='all'||(filter==='unread'&&c.unread>0)||(filter==='group'&&c.group)||(filter==='favorite'&&c.favorite);const okSearch=!q||(c.name+' '+c.preview).toLowerCase().includes(q);if(!okFilter||!okSearch)return;const el=document.createElement('div');el.className='chat-item';el.innerHTML=`<div class="avatar-container">${esc(c.avatar)}<div class="online-dot"></div></div><div class="chat-info"><div class="chat-top-row"><span class="chat-name">${esc(c.name)}</span><span class="chat-time">${esc(c.time)}</span></div><div class="chat-preview">${esc(c.preview)}</div></div>${c.unread?`<div class="unread-badge">${c.unread}</div>`:''}`;el.onclick=()=>openChatRoom(c.id);box.appendChild(el)})}
 function renderHistory(){if(!currentChatId)return;const box=$('chatMessages');box.innerHTML='<div class="date-divider">Hari ini</div>';getHistory(currentChatId).forEach(m=>{const row=document.createElement('div');row.className='msg-row '+(m.side==='out'?'outgoing':'incoming');if(m.kind==='image'||m.kind==='video'){const card=document.createElement('div');card.className='media-message';const media=document.createElement(m.kind==='image'?'img':'video');media.src=m.url;if(m.kind==='video'){media.controls=true;media.playsInline=true}media.onclick=()=>openMedia(m.kind,m.url);const cap=document.createElement('div');cap.className='media-caption';cap.textContent=(m.kind==='image'?'📷 Foto':'🎥 Video')+' • '+(m.time||'');card.append(media,cap);row.append(card)}else if(m.kind==='voice'){const bubble=document.createElement('div');bubble.className='msg-bubble voice-message';const a=document.createElement('audio');a.controls=true;a.src=m.url;bubble.append(a);row.append(bubble)}else if(m.kind==='secret'){const card=document.createElement('div');card.className='secret-chat-card';card.innerHTML=`<div class="secret-chat-thumb">🔒</div><div class="secret-chat-meta"><b>SECRET DROP</b><div>${m.price===0?'FREE':'◆ '+m.price+' PINGGO Gem'}</div><small>${esc(m.time||'')}</small></div>`;row.append(card)}else{const b=document.createElement('div');b.className='msg-bubble';b.innerHTML=esc(m.text||'')+` <span class="msg-time">${esc(m.time||'')}</span>`;row.append(b)}box.append(row)});requestAnimationFrame(()=>box.scrollTop=box.scrollHeight)}
@@ -1257,39 +1302,69 @@ function friendActionsHTML(id,rel){
   if(rel==='blocked')return `<button class="mini-btn" data-unblock="${id}">Unblock</button>`;
   return `<button class="mini-btn primary" data-add="${id}">Tambah</button>`;
 }
+function backendProfileToPerson(p){return {id:p.id,name:p.display_name||'PINGGO User',avatar:(p.display_name||'P').trim().slice(0,2).toUpperCase(),pinggo:normalizePinggoId(p.pinggo_id),online:false,private:!!p.private_profile,photo:p.avatar_url||'',lastSeen:'Akun PINGGO'}}
+async function loadProfilesByIds(ids){
+  const unique=[...new Set(ids.filter(Boolean))];if(!unique.length)return;
+  const filter='('+unique.join(',')+')';const rows=await supabaseRequest('/rest/v1/profiles?id=in.'+encodeURIComponent(filter)+'&select=id,pinggo_id,display_name,avatar_url,private_profile');
+  (rows||[]).forEach(p=>{people[p.id]=backendProfileToPerson(p)});
+}
+async function loadBackendFriends(){
+  const uid=currentUserId();if(!uid||!currentSession()?.accessToken){renderFriends();return false}
+  try{
+    const [rows,blocks]=await Promise.all([
+      supabaseRequest('/rest/v1/friends?or='+encodeURIComponent('(requester_id.eq.'+uid+',addressee_id.eq.'+uid+')')+'&select=*'),
+      supabaseRequest('/rest/v1/blocks?blocker_id=eq.'+encodeURIComponent(uid)+'&select=*')
+    ]);
+    const next={friends:[],requests:[],sent:[],blocked:[]};friendRowsByUser={};const ids=[];
+    (rows||[]).forEach(r=>{const other=r.requester_id===uid?r.addressee_id:r.requester_id;if(!other)return;ids.push(other);friendRowsByUser[other]=r;if(r.status==='accepted')next.friends.push(other);else if(r.status==='pending'){if(r.addressee_id===uid)next.requests.push(other);else next.sent.push(other)}});
+    (blocks||[]).forEach(b=>{if(b.blocked_id){next.blocked.push(b.blocked_id);ids.push(b.blocked_id)}});
+    friendsState=next;await loadProfilesByIds(ids);persistFriends();renderFriends();return true;
+  }catch(e){console.warn('Friends backend gagal:',e);renderFriends();return false}
+}
 function renderFriends(){
-  updateFriendBadges();
-  const ids=(friendsState[currentFriendView]||[]).filter(id=>!friendsState.blocked.includes(id));
-  $('friendList').innerHTML='';$('friendCountLabel').textContent=ids.length+' user';
-  $('friendSectionTitle').textContent=currentFriendView==='friends'?'Daftar Teman':currentFriendView==='requests'?'Permintaan Masuk':'Permintaan Terkirim';
+  updateFriendBadges();const ids=(friendsState[currentFriendView]||[]).filter(id=>!friendsState.blocked.includes(id));
+  $('friendList').innerHTML='';$('friendCountLabel').textContent=ids.length+' user';$('friendSectionTitle').textContent=currentFriendView==='friends'?'Daftar Teman':currentFriendView==='requests'?'Permintaan Masuk':'Permintaan Terkirim';
   if(!ids.length){$('friendList').innerHTML='<div class="friend-search-empty">Belum ada data di bagian ini.</div>';return}
-  ids.forEach(id=>{const u=people[id];if(!u)return;const rel=relationFor(id);const row=document.createElement('div');row.className='friend-row';row.dataset.profileFriend=id;row.innerHTML=`${friendAvatarHTML(u)}<div class="friend-meta"><b>${esc(u.name)}</b><small>${esc(u.pinggo)} • <span class="friend-status"><i class="friend-status-dot ${u.online?'online':''}"></i>${esc(u.online?'Online':'Offline')}</span></small></div><div class="friend-actions">${friendActionsHTML(id,rel)}</div>`;$('friendList').append(row)})
+  ids.forEach(id=>{const u=people[id];if(!u)return;const rel=relationFor(id);const row=document.createElement('div');row.className='friend-row';row.dataset.profileFriend=id;row.innerHTML=`${friendAvatarHTML(u)}<div class="friend-meta"><b>${esc(u.name)}</b><small>${esc(u.pinggo)}${u.private?' • 🔒 Private':''}</small></div><div class="friend-actions">${friendActionsHTML(id,rel)}</div>`;$('friendList').append(row)})
 }
 function setFriendView(view){currentFriendView=view;document.querySelectorAll('#friendTabs .cat-tab').forEach(x=>x.classList.toggle('active',x.dataset.friendView===view));renderFriends()}
-function acceptFriend(id){friendsState.requests=friendsState.requests.filter(x=>x!==id);friendsState.sent=friendsState.sent.filter(x=>x!==id);if(!friendsState.friends.includes(id))friendsState.friends.push(id);persistFriends();pinggoNotify('PINGGO',`${people[id]?.name||'User'} sekarang menjadi teman.`);renderFriends()}
-function rejectFriend(id){friendsState.requests=friendsState.requests.filter(x=>x!==id);persistFriends();renderFriends()}
-function cancelSent(id){friendsState.sent=friendsState.sent.filter(x=>x!==id);persistFriends();renderFriends()}
-function addFriend(id){if(friendsState.blocked.includes(id))return alert('Unblock user terlebih dahulu.');if(!friendsState.sent.includes(id)&&!friendsState.friends.includes(id)&&!friendsState.requests.includes(id))friendsState.sent.push(id);persistFriends();alert('Permintaan pertemanan dikirim.');$('friendSearchInput').value='';setFriendView('sent')}
-function removeFriend(id){friendsState.friends=friendsState.friends.filter(x=>x!==id);persistFriends();closeFriendProfile();renderFriends()}
-function blockFriend(id){friendsState.friends=friendsState.friends.filter(x=>x!==id);friendsState.requests=friendsState.requests.filter(x=>x!==id);friendsState.sent=friendsState.sent.filter(x=>x!==id);if(!friendsState.blocked.includes(id))friendsState.blocked.push(id);persistFriends();closeFriendProfile();renderFriends()}
-function unblockFriend(id){friendsState.blocked=friendsState.blocked.filter(x=>x!==id);persistFriends();renderFriendProfile(id);renderFriends()}
-function goChatFromFriend(id){closeFriendProfile();switchPanel('Chats',document.querySelector('.nav-item[onclick*="Chats"]'));if(!chatsData.some(c=>c.id===id)){const u=people[id];chatsData.unshift({id,name:u.name,preview:'Mulai percakapan',time:'Sekarang',unread:0,avatar:u.avatar,group:false,favorite:false})}openChatRoom(id)}
+async function acceptFriend(id){try{const r=friendRowsByUser[id];if(!r)throw new Error('Permintaan tidak ditemukan.');await supabaseRequest('/rest/v1/friends?id=eq.'+encodeURIComponent(r.id),{method:'PATCH',headers:{'Content-Type':'application/json','Prefer':'return=minimal'},body:JSON.stringify({status:'accepted',updated_at:new Date().toISOString()})});await loadBackendFriends();pinggoNotify('PINGGO',(people[id]?.name||'User')+' sekarang menjadi teman.')}catch(e){alert(e.message)}}
+async function rejectFriend(id){try{const r=friendRowsByUser[id];if(r)await supabaseRequest('/rest/v1/friends?id=eq.'+encodeURIComponent(r.id),{method:'DELETE',headers:{'Prefer':'return=minimal'}});await loadBackendFriends()}catch(e){alert(e.message)}}
+async function cancelSent(id){return rejectFriend(id)}
+async function addFriend(id){
+  if(friendsState.blocked.includes(id))return alert('Unblock user terlebih dahulu.');const uid=currentUserId();if(!uid)return alert('Silakan login kembali.');
+  try{await supabaseRequest('/rest/v1/friends',{method:'POST',headers:{'Content-Type':'application/json','Prefer':'return=minimal'},body:JSON.stringify({requester_id:uid,addressee_id:id,status:'pending'})});await loadBackendFriends();alert('Permintaan pertemanan dikirim.');$('friendSearchInput').value='';setFriendView('sent')}catch(e){if(String(e.message).toLowerCase().includes('duplicate'))alert('Permintaan pertemanan sudah ada.');else alert(e.message)}
+}
+async function removeFriend(id){try{const r=friendRowsByUser[id];if(r)await supabaseRequest('/rest/v1/friends?id=eq.'+encodeURIComponent(r.id),{method:'DELETE',headers:{'Prefer':'return=minimal'}});await loadBackendFriends();closeFriendProfile()}catch(e){alert(e.message)}}
+async function blockFriend(id){
+  const uid=currentUserId();if(!uid)return alert('Silakan login kembali.');try{const r=friendRowsByUser[id];if(r)await supabaseRequest('/rest/v1/friends?id=eq.'+encodeURIComponent(r.id),{method:'DELETE',headers:{'Prefer':'return=minimal'}});await supabaseRequest('/rest/v1/blocks',{method:'POST',headers:{'Content-Type':'application/json','Prefer':'resolution=ignore-duplicates,return=minimal'},body:JSON.stringify({blocker_id:uid,blocked_id:id})});await loadBackendFriends();closeFriendProfile()}catch(e){alert(e.message)}}
+async function unblockFriend(id){const uid=currentUserId();if(!uid)return;try{await supabaseRequest('/rest/v1/blocks?blocker_id=eq.'+encodeURIComponent(uid)+'&blocked_id=eq.'+encodeURIComponent(id),{method:'DELETE',headers:{'Prefer':'return=minimal'}});await loadBackendFriends();if(people[id])renderFriendProfile(id)}catch(e){alert(e.message)}}
+function goChatFromFriend(id){const u=people[id];if(!u)return;closeFriendProfile();switchPanel('Chats',document.querySelector('.nav-item[onclick*="Chats"]'));if(!chatsData.some(c=>c.id===id))chatsData.unshift({id,name:u.name,preview:'Mulai percakapan',time:'Sekarang',unread:0,avatar:u.avatar,group:false,favorite:false});openChatRoom(id)}
 function renderFriendProfile(id){
-  const u=people[id];if(!u)return;const rel=relationFor(id);const isFriend=rel==='friend';const hidden=u.private&&!isFriend&&rel!=='request';
-  let actions='';
+  const u=people[id];if(!u)return;const rel=relationFor(id),isFriend=rel==='friend',hidden=u.private&&!isFriend&&rel!=='request';let actions='';
   if(rel==='friend')actions=`<button class="primary" data-fp-chat="${id}">Chat</button><button data-fp-remove="${id}">Hapus Teman</button><button class="danger full" data-fp-block="${id}">Blokir</button>`;
   else if(rel==='request')actions=`<button class="primary" data-fp-accept="${id}">Terima</button><button data-fp-reject="${id}">Tolak</button><button class="danger full" data-fp-block="${id}">Blokir</button>`;
   else if(rel==='sent')actions=`<button class="full" data-fp-cancel="${id}">Batalkan Permintaan</button><button class="danger full" data-fp-block="${id}">Blokir</button>`;
   else if(rel==='blocked')actions=`<button class="primary full" data-fp-unblock="${id}">Unblock</button>`;
   else actions=`<button class="primary full" data-fp-add="${id}">Tambah Teman</button><button class="danger full" data-fp-block="${id}">Blokir</button>`;
-  $('friendProfileBody').innerHTML=`<div class="friend-profile-card">${friendAvatarHTML(u,true)}<h3 style="margin:0">${esc(u.name)}</h3><div class="friend-profile-id">${esc(u.pinggo)}</div><div class="friend-profile-state"><span class="friend-status"><i class="friend-status-dot ${u.online?'online':''}"></i>${esc(u.lastSeen||'Offline')}</span></div>${hidden?'<div class="empty-state">🔒 Profil ini private. Tambahkan sebagai teman untuk melihat informasi lengkap.</div>':`<div class="empty-state" style="padding:14px;margin-top:12px">Status hubungan: <b>${rel==='friend'?'Teman':rel==='request'?'Mengirim permintaan ke kamu':rel==='sent'?'Permintaan terkirim':rel==='blocked'?'Diblokir':'Belum berteman'}</b></div>`}<div class="friend-profile-actions">${actions}</div></div>`;
-  $('friendProfileModal').classList.add('show')
+  $('friendProfileBody').innerHTML=`<div class="friend-profile-card">${friendAvatarHTML(u,true)}<h3 style="margin:0">${esc(u.name)}</h3><div class="friend-profile-id">${esc(u.pinggo)}</div>${hidden?'<div class="empty-state">🔒 Profil ini private. Tambahkan sebagai teman untuk melihat informasi lengkap.</div>':`<div class="empty-state" style="padding:14px;margin-top:12px">Status hubungan: <b>${rel==='friend'?'Teman':rel==='request'?'Mengirim permintaan ke kamu':rel==='sent'?'Permintaan terkirim':rel==='blocked'?'Diblokir':'Belum berteman'}</b></div>`}<div class="friend-profile-actions">${actions}</div></div>`;$('friendProfileModal').classList.add('show')
 }
 window.closeFriendProfile=()=>$('friendProfileModal').classList.remove('show');
 $('friendTabs').onclick=e=>{const b=e.target.closest('[data-friend-view]');if(b)setFriendView(b.dataset.friendView)};
 $('friendList').onclick=e=>{const t=e.target;const action=t.closest('button');if(action){e.stopPropagation();const id=action.dataset.chat||action.dataset.accept||action.dataset.reject||action.dataset.cancel||action.dataset.add||action.dataset.unblock;if(action.dataset.chat)return goChatFromFriend(id);if(action.dataset.accept)return acceptFriend(id);if(action.dataset.reject)return rejectFriend(id);if(action.dataset.cancel)return cancelSent(id);if(action.dataset.add)return addFriend(id);if(action.dataset.unblock)return unblockFriend(id)}const row=t.closest('[data-profile-friend]');if(row)renderFriendProfile(row.dataset.profileFriend)};
-$('friendSearchInput').addEventListener('input',e=>{const q=e.target.value.trim().toLowerCase();if(!q)return renderFriends();const own=normalizePinggoId(account()?.pinggoId||'');const found=Object.values(people).filter(u=>normalizePinggoId(u.pinggo)!==own&&(u.name+' '+u.pinggo).toLowerCase().includes(q));$('friendSectionTitle').textContent='Hasil Pencarian';$('friendCountLabel').textContent=found.length+' user';$('friendList').innerHTML=found.length?found.map(u=>`<div class="friend-row" data-profile-friend="${u.id}">${friendAvatarHTML(u)}<div class="friend-meta"><b>${esc(u.name)}</b><small>${esc(u.pinggo)}${u.private?' • 🔒 Private':''}</small></div><div class="friend-actions">${friendActionsHTML(u.id,relationFor(u.id))}</div></div>`).join(''):'<div class="friend-search-empty">PINGGO ID / nama tidak ditemukan.</div>'});
-$('friendProfileBody').onclick=e=>{const b=e.target.closest('button');if(!b)return;const id=b.dataset.fpChat||b.dataset.fpRemove||b.dataset.fpBlock||b.dataset.fpAccept||b.dataset.fpReject||b.dataset.fpCancel||b.dataset.fpUnblock||b.dataset.fpAdd;if(b.dataset.fpChat)return goChatFromFriend(id);if(b.dataset.fpRemove)return removeFriend(id);if(b.dataset.fpBlock)return blockFriend(id);if(b.dataset.fpAccept){acceptFriend(id);return renderFriendProfile(id)}if(b.dataset.fpReject){rejectFriend(id);return closeFriendProfile()}if(b.dataset.fpCancel){cancelSent(id);return closeFriendProfile()}if(b.dataset.fpUnblock)return unblockFriend(id);if(b.dataset.fpAdd){addFriend(id);return closeFriendProfile()}};
+let friendSearchTimer=null;
+$('friendSearchInput').addEventListener('input',e=>{clearTimeout(friendSearchTimer);const q=e.target.value.trim();if(!q){renderFriends();return}friendSearchTimer=setTimeout(()=>searchBackendUsers(q),320)});
+async function searchBackendUsers(q){
+  if(!currentUserId())return alert('Silakan login kembali.');$('friendSectionTitle').textContent='Mencari...';$('friendCountLabel').textContent='';
+  try{
+    const clean=q.trim();let rows=[];const looksId=/^PG13\d+$/i.test(clean);
+    if(looksId)rows=await supabaseRequest('/rest/v1/profiles?pinggo_id=eq.'+encodeURIComponent(normalizePinggoId(clean))+'&select=id,pinggo_id,display_name,avatar_url,private_profile&limit=20');
+    else rows=await supabaseRequest('/rest/v1/profiles?display_name=ilike.'+encodeURIComponent('*'+clean.replace(/[*,()]/g,'')+'*')+'&select=id,pinggo_id,display_name,avatar_url,private_profile&limit=20');
+    const own=currentUserId();const found=(rows||[]).filter(p=>p.id!==own).map(p=>{const u=backendProfileToPerson(p);people[u.id]=u;return u});
+    $('friendSectionTitle').textContent='Hasil Pencarian';$('friendCountLabel').textContent=found.length+' user';$('friendList').innerHTML=found.length?found.map(u=>`<div class="friend-row" data-profile-friend="${u.id}">${friendAvatarHTML(u)}<div class="friend-meta"><b>${esc(u.name)}</b><small>${esc(u.pinggo)}${u.private?' • 🔒 Private':''}</small></div><div class="friend-actions">${friendActionsHTML(u.id,relationFor(u.id))}</div></div>`).join(''):'<div class="friend-search-empty">PINGGO ID / nama tidak ditemukan.</div>';
+  }catch(e){$('friendSectionTitle').textContent='Hasil Pencarian';$('friendList').innerHTML='<div class="friend-search-empty">Pencarian gagal: '+esc(e.message)+'</div>'}
+}
+$('friendProfileBody').onclick=e=>{const b=e.target.closest('button');if(!b)return;const id=b.dataset.fpChat||b.dataset.fpRemove||b.dataset.fpBlock||b.dataset.fpAccept||b.dataset.fpReject||b.dataset.fpCancel||b.dataset.fpUnblock||b.dataset.fpAdd;if(b.dataset.fpChat)return goChatFromFriend(id);if(b.dataset.fpRemove)return removeFriend(id);if(b.dataset.fpBlock)return blockFriend(id);if(b.dataset.fpAccept){acceptFriend(id);return}if(b.dataset.fpReject){rejectFriend(id);return closeFriendProfile()}if(b.dataset.fpCancel){cancelSent(id);return closeFriendProfile()}if(b.dataset.fpUnblock)return unblockFriend(id);if(b.dataset.fpAdd){addFriend(id);return closeFriendProfile()}};
 function renderSecret(){const arr=secretState[currentSecretView]||[];$('secretFeed').innerHTML='';if(!arr.length){$('secretFeed').innerHTML='<div class="empty-state">Belum ada Secret Drop.</div>';return}arr.forEach(x=>{const card=document.createElement('div');card.className='secret-card';const free=Number(x.price)===0,unlocked=!!x.unlocked||currentSecretView==='unlocked';const thumb=x.url?(x.type==='video'?`<video src="${x.url}" muted playsinline></video>`:`<img src="${x.url}" alt="">`):'';card.innerHTML=`<div class="secret-thumb ${unlocked?'unlocked':''}">${thumb||'<div style="width:100%;height:100%;display:grid;place-items:center;font-size:26px;">🔒</div>'}${!unlocked?'<div class="lock-overlay">🔒</div>':''}</div><div class="secret-info"><div class="secret-title">${esc(x.caption||x.name||'Secret Drop')}</div><div style="font-size:11px;color:var(--text-muted);">${esc(x.author||'Saya')} • ${esc(x.date||'')}${x.private?' • Private':''}</div><div class="secret-price">${free?'FREE':'◆ '+x.price+' PINGGO Gem'}</div></div>${currentSecretView==='received'?`<button class="btn-unlock" data-unlock="${x.id}">${unlocked?'Open':free?'Open Free':'Unlock'}</button>`:''}`;$('secretFeed').append(card)})}
 $('secretTabs').onclick=e=>{const b=e.target.closest('[data-secret-view]');if(!b)return;document.querySelectorAll('#secretTabs button').forEach(x=>x.classList.remove('active'));b.classList.add('active');currentSecretView=b.dataset.secretView;renderSecret()};$('secretFeed').onclick=e=>{const b=e.target.closest('[data-unlock]');if(!b)return;const x=secretState.received.find(z=>z.id===b.dataset.unlock);if(!x)return;if(!x.unlocked&&x.price>0){if(gems<x.price)return alert('PINGGO Gem tidak cukup.');gems-=x.price;write(STORE.gems,gems);walletHistory.unshift({label:'Unlock '+(x.caption||'Secret Drop'),amount:-x.price,time:now()});write('pinggo_wallet_history_v2',walletHistory);x.unlocked=true;secretState.unlocked.unshift(x);write(STORE.secret,secretState);updateGem()}if(x.price===0&&!x.unlocked){x.unlocked=true;secretState.unlocked.unshift(x);write(STORE.secret,secretState)}if(x.url)openMedia(x.type,x.url);else alert('Secret Drop terbuka.');renderSecret()};
 window.openSecretCreate=function(){selectedSecretFile=null;selectedSecretUrl='';selectedPrice=0;$('secretPreview').textContent='Belum ada media dipilih';$('secretFile').value='';$('postCaption').value='';$('postPrice').value='';document.querySelectorAll('.price-choice').forEach(x=>x.classList.toggle('active',Number(x.dataset.price)===0));$('postModal').classList.add('show')};window.openPostModal=window.openSecretCreate;window.closePostModal=()=>$('postModal').classList.remove('show');$('pickSecretFile').onclick=()=>$('secretFile').click();$('secretFile').onchange=()=>{selectedSecretFile=$('secretFile').files?.[0]||null;if(!selectedSecretFile)return;if(selectedSecretUrl)URL.revokeObjectURL(selectedSecretUrl);selectedSecretUrl=URL.createObjectURL(selectedSecretFile);$('secretPreview').innerHTML='';const m=document.createElement(selectedSecretFile.type.startsWith('video/')?'video':'img');m.src=selectedSecretUrl;if(m.tagName==='VIDEO'){m.muted=true;m.playsInline=true}$('secretPreview').append(m)};$('priceGrid').onclick=e=>{const b=e.target.closest('.price-choice');if(!b)return;document.querySelectorAll('.price-choice').forEach(x=>x.classList.remove('active'));b.classList.add('active');selectedPrice=Number(b.dataset.price||0);$('postPrice').value=''};$('postPrice').oninput=()=>{selectedPrice=Math.max(0,Number($('postPrice').value)||0);document.querySelectorAll('.price-choice').forEach(x=>x.classList.remove('active'))};$('publishSecretBtn').onclick=()=>{if(!selectedSecretFile)return alert('Pilih foto atau video terlebih dahulu.');const x={id:'s'+Date.now(),name:selectedSecretFile.name,caption:$('postCaption').value.trim()||'Secret Drop',price:selectedPrice,type:selectedSecretFile.type.startsWith('video/')?'video':'image',url:selectedSecretUrl,unlocked:true,date:'Sekarang',author:'Saya',private:!!prefs.secretPrivate};secretState.sent.unshift(x);write(STORE.secret,secretState);closePostModal();currentSecretView='sent';document.querySelectorAll('#secretTabs button').forEach(b=>b.classList.toggle('active',b.dataset.secretView==='sent'));renderSecret()};$('secretAttach').onclick=()=>{$('attachMenu').classList.remove('show');openSecretCreate();const old=$('publishSecretBtn').onclick;$('publishSecretBtn').onclick=()=>{if(!selectedSecretFile)return alert('Pilih foto atau video terlebih dahulu.');const item={side:'out',kind:'secret',url:selectedSecretUrl,mediaType:selectedSecretFile.type.startsWith('video/')?'video':'image',price:selectedPrice,time:now()+' ✓'};pushChat(item,'🔒 Secret Drop');closePostModal();$('publishSecretBtn').onclick=old}};
@@ -1318,18 +1393,18 @@ function saveProfilePhoto(file){
   if(!file||!file.type.startsWith('image/'))return;
   if(file.size>4*1024*1024){alert('Ukuran foto maksimal 4 MB.');return;}
   const r=new FileReader();
-  r.onload=()=>{const a=account()||{name:'PINGGO User',pinggoId:''};a.photo=String(r.result||'');write(STORE.account,a);setProfile(a)};
+  r.onload=async()=>{const a=account()||{name:'PINGGO User',pinggoId:''};a.photo=String(r.result||'');write(STORE.account,a);setProfile(a);await syncOwnProfile({avatar_url:a.photo})};
   r.readAsDataURL(file);
 }
 $('profilePhotoInput').addEventListener('change',function(){const f=this.files?.[0];if(f)saveProfilePhoto(f);this.value=''});
-window.openProfileModal=function(type){const a=account()||{name:'PINGGO User',pinggoId:''};let html='';if(type==='account'){html=`<label class="field-label">Foto Profil</label><div class="profile-photo-actions"><button type="button" class="primary" id="changeProfilePhotoBtn">Pilih Foto</button><button type="button" id="removeProfilePhotoBtn">Hapus Foto</button></div><p class="profile-note">Foto disimpan di perangkat ini dan tetap tampil saat halaman dibuka lagi.</p><label class="field-label">Display Name</label><input id="editProfileName" class="auth-input" value="${esc(a.name)}"><label class="field-label">PINGGO ID</label><input class="auth-input" value="${esc(a.pinggoId)}" readonly><button id="saveProfileBtn" class="btn-primary" type="button">Save Changes</button>`;$('profileModalTitle').textContent='Account Information'}else if(type==='privacy'){html=`<div class="setting-item"><div><b>Private Profile</b><div class="setting-detail">Saat aktif, profil ditandai private dan permintaan teman tetap diperlukan.</div></div><button class="toggle ${prefs.privacy?'on':''}" data-pref="privacy"></button></div><div class="setting-item"><div><b>Secret Drop Private by Default</b><div class="setting-detail">Secret Drop baru otomatis ditandai Private.</div></div><button class="toggle ${prefs.secretPrivate?'on':''}" data-pref="secretPrivate"></button></div>`;$('profileModalTitle').textContent='Privacy & Security'}else if(type==='notifications'){html=`<div class="setting-item"><div><b>Chat & Activity Notifications</b><div class="setting-detail">Menggunakan izin notifikasi browser/perangkat.</div></div><button class="toggle ${prefs.notifications?'on':''}" data-pref="notifications"></button></div><button class="btn-primary" id="testNotificationBtn" type="button" style="margin-top:12px">Test Notification</button><p class="profile-note" id="notificationStatus"></p>`;$('profileModalTitle').textContent='Notifications'}else{html=`<button class="setting-item" style="width:100%" data-theme="Pink & Gray"><span>Pink & Gray</span><span>${prefs.appearance==='Pink & Gray'?'✓':''}</span></button><button class="setting-item" style="width:100%" data-theme="White & Gray"><span>White & Gray</span><span>${prefs.appearance==='White & Gray'?'✓':''}</span></button>`;$('profileModalTitle').textContent='Appearance'}$('profileModalBody').innerHTML=html;$('profileModal').classList.add('show');const save=$('saveProfileBtn');if(save)save.onclick=()=>{const n=$('editProfileName').value.trim();if(!n)return;const x=account()||a;x.name=n;write(STORE.account,x);setProfile(x);closeProfileModal()};const changePhoto=$('changeProfilePhotoBtn');if(changePhoto)changePhoto.onclick=()=>$('profilePhotoInput').click();const removePhoto=$('removeProfilePhotoBtn');if(removePhoto)removePhoto.onclick=()=>{const x=account()||a;delete x.photo;write(STORE.account,x);setProfile(x);openProfileModal('account')};const test=$('testNotificationBtn');if(test)test.onclick=async()=>{const ok=await pinggoNotify('PINGGO','Notifikasi PINGGO aktif.');const st=$('notificationStatus');if(st)st.textContent=ok?'Test notification berhasil dikirim.':'Notifikasi belum tersedia/izin belum diberikan.'}};window.closeProfileModal=()=>$('profileModal').classList.remove('show');$('profileModalBody').onclick=async e=>{const t=e.target.closest('[data-pref]');if(t){const k=t.dataset.pref;const next=!prefs[k];if(k==='notifications'&&next){if(!('Notification' in window)){alert('Browser ini belum mendukung notifikasi web.');return}try{const p=await Notification.requestPermission();if(p!=='granted'){alert('Izin notifikasi belum diberikan.');return}}catch(_){alert('Izin notifikasi tidak dapat diminta.');return}}prefs[k]=next;write(STORE.prefs,prefs);t.classList.toggle('on',prefs[k]);refreshProfileSettingLabels();return}const th=e.target.closest('[data-theme]');if(th){prefs.appearance=th.dataset.theme;write(STORE.prefs,prefs);applyAppearance();openProfileModal('appearance')}};
+window.openProfileModal=function(type){const a=account()||{name:'PINGGO User',pinggoId:''};let html='';if(type==='account'){html=`<label class="field-label">Foto Profil</label><div class="profile-photo-actions"><button type="button" class="primary" id="changeProfilePhotoBtn">Pilih Foto</button><button type="button" id="removeProfilePhotoBtn">Hapus Foto</button></div><p class="profile-note">Foto disimpan di perangkat ini dan tetap tampil saat halaman dibuka lagi.</p><label class="field-label">Display Name</label><input id="editProfileName" class="auth-input" value="${esc(a.name)}"><label class="field-label">PINGGO ID</label><input class="auth-input" value="${esc(a.pinggoId)}" readonly><button id="saveProfileBtn" class="btn-primary" type="button">Save Changes</button>`;$('profileModalTitle').textContent='Account Information'}else if(type==='privacy'){html=`<div class="setting-item"><div><b>Private Profile</b><div class="setting-detail">Saat aktif, profil ditandai private dan permintaan teman tetap diperlukan.</div></div><button class="toggle ${prefs.privacy?'on':''}" data-pref="privacy"></button></div><div class="setting-item"><div><b>Secret Drop Private by Default</b><div class="setting-detail">Secret Drop baru otomatis ditandai Private.</div></div><button class="toggle ${prefs.secretPrivate?'on':''}" data-pref="secretPrivate"></button></div>`;$('profileModalTitle').textContent='Privacy & Security'}else if(type==='notifications'){html=`<div class="setting-item"><div><b>Chat & Activity Notifications</b><div class="setting-detail">Menggunakan izin notifikasi browser/perangkat.</div></div><button class="toggle ${prefs.notifications?'on':''}" data-pref="notifications"></button></div><button class="btn-primary" id="testNotificationBtn" type="button" style="margin-top:12px">Test Notification</button><p class="profile-note" id="notificationStatus"></p>`;$('profileModalTitle').textContent='Notifications'}else{html=`<button class="setting-item" style="width:100%" data-theme="Pink & Gray"><span>Pink & Gray</span><span>${prefs.appearance==='Pink & Gray'?'✓':''}</span></button><button class="setting-item" style="width:100%" data-theme="White & Gray"><span>White & Gray</span><span>${prefs.appearance==='White & Gray'?'✓':''}</span></button>`;$('profileModalTitle').textContent='Appearance'}$('profileModalBody').innerHTML=html;$('profileModal').classList.add('show');const save=$('saveProfileBtn');if(save)save.onclick=async()=>{const n=$('editProfileName').value.trim();if(!n)return;const x=account()||a;x.name=n;write(STORE.account,x);setProfile(x);await syncOwnProfile({display_name:n});closeProfileModal()};const changePhoto=$('changeProfilePhotoBtn');if(changePhoto)changePhoto.onclick=()=>$('profilePhotoInput').click();const removePhoto=$('removeProfilePhotoBtn');if(removePhoto)removePhoto.onclick=async()=>{const x=account()||a;delete x.photo;write(STORE.account,x);setProfile(x);await syncOwnProfile({avatar_url:null});openProfileModal('account')};const test=$('testNotificationBtn');if(test)test.onclick=async()=>{const ok=await pinggoNotify('PINGGO','Notifikasi PINGGO aktif.');const st=$('notificationStatus');if(st)st.textContent=ok?'Test notification berhasil dikirim.':'Notifikasi belum tersedia/izin belum diberikan.'}};window.closeProfileModal=()=>$('profileModal').classList.remove('show');$('profileModalBody').onclick=async e=>{const t=e.target.closest('[data-pref]');if(t){const k=t.dataset.pref;const next=!prefs[k];if(k==='notifications'&&next){if(!('Notification' in window)){alert('Browser ini belum mendukung notifikasi web.');return}try{const p=await Notification.requestPermission();if(p!=='granted'){alert('Izin notifikasi belum diberikan.');return}}catch(_){alert('Izin notifikasi tidak dapat diminta.');return}}prefs[k]=next;write(STORE.prefs,prefs);t.classList.toggle('on',prefs[k]);refreshProfileSettingLabels();const patch=k==='privacy'?{private_profile:next}:k==='secretPrivate'?{secret_private_default:next}:{notifications_enabled:next};await syncOwnProfile(patch);return}const th=e.target.closest('[data-theme]');if(th){prefs.appearance=th.dataset.theme;write(STORE.prefs,prefs);applyAppearance();await syncOwnProfile({appearance:prefs.appearance});openProfileModal('appearance')}};
 function applyAppearance(){document.documentElement.style.setProperty('--panel-bg',prefs.appearance==='White & Gray'?'linear-gradient(160deg,#fff 0%,#f1f2f4 100%)':'linear-gradient(160deg,rgba(255,255,255,.85) 0%,rgba(248,233,238,.9) 100%)');$('appearanceLabel').textContent=prefs.appearance}
 function renderProfile(){setProfile(activeAccount()||account()||{name:'PINGGO User',pinggoId:''});updateGem();applyAppearance();refreshProfileSettingLabels();const n=$('profileName');if(n){const base=(activeAccount()||account()||{name:'PINGGO User'}).name||'PINGGO User';n.textContent=base+(prefs.privacy?' 🔒':'')}}
 let chatFilter='all';document.querySelectorAll('#panelChats .cat-tab').forEach((b,i)=>{b.onclick=()=>{document.querySelectorAll('#panelChats .cat-tab').forEach(x=>x.classList.remove('active'));b.classList.add('active');chatFilter=['all','unread','group','favorite'][i];renderChats(chatFilter,document.querySelector('#panelChats .search-bar input').value)}});document.querySelector('#panelChats .search-bar input').addEventListener('input',e=>renderChats(chatFilter,e.target.value));
 // fast back behavior: one handler only
 window.addEventListener('popstate',()=>{if($('chatRoom').classList.contains('open'))closeChatRoom()});
 renderChats();renderFriends();renderSecret();renderProfile();
-const sess=read(STORE.session,null),savedAccount=account();if(sess?.loggedIn&&savedAccount&&(!sess.pinggoId||normalizePinggoId(sess.pinggoId)===normalizePinggoId(savedAccount.pinggoId))){setProfile(savedAccount);$('authScreen').classList.add('hide')}else if(sess?.loggedIn){write(STORE.session,{loggedIn:false,pinggoId:savedAccount?.pinggoId||''})}
+(async()=>{const ok=await restoreBackendSession();if(ok){$('authScreen').classList.add('hide');renderProfile();renderFriends()}else{const savedAccount=account();write(STORE.session,{loggedIn:false,pinggoId:savedAccount?.pinggoId||'',userId:savedAccount?.userId||''});}})();
 })();
 </script>
 
