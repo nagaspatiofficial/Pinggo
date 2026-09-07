@@ -790,7 +790,7 @@ async function loadPinggoFriends(){
  const friendsBox=document.getElementById('pfFriendsList');
  friendsBox.innerHTML=accepted.length?accepted.map(x=>{const u=profiles[x.requester_id===pinggoUser.id?x.addressee_id:x.requester_id];return '<div class="pf-row"><div class="pf-user"><div class="pf-avatar">'+pfAvatar(u?.display_name)+'</div><div class="pf-meta"><b>'+pfEsc(u?.display_name||'PINGGO User')+'</b><small>'+pfEsc(u?.pinggo_id||'')+'</small></div></div><button class="pf-action pf-secondary">Friend</button></div>'}).join(''):'<div class="pf-empty">No friends yet. Search menggunakan PINGGO ID.</div>';
  const reqBox=document.getElementById('pfRequestsList');
- reqBox.innerHTML=incoming.length?incoming.map(x=>{const u=profiles[x.requester_id];return '<div class="pf-row"><div class="pf-user"><div class="pf-avatar">'+pfAvatar(u?.display_name)+'</div><div class="pf-meta"><b>'+pfEsc(u?.display_name||'PINGGO User')+'</b><small>'+pfEsc(u?.pinggo_id||'')+'</small></div></div><div><button class="pf-action" onclick="respondPinggoFriend(\\''+x.id+'\\',true)">Accept</button><button class="pf-action pf-secondary" onclick="respondPinggoFriend(\\''+x.id+'\\',false)">Decline</button></div></div>'}).join(''):'<div class="pf-empty">No friend requests.</div>';
+ reqBox.innerHTML=incoming.length?incoming.map(x=>{const u=profiles[x.requester_id];return '<div class="pf-row"><div class="pf-user"><div class="pf-avatar">'+pfAvatar(u?.display_name)+'</div><div class="pf-meta"><b>'+pfEsc(u?.display_name||'PINGGO User')+'</b><small>'+pfEsc(u?.pinggo_id||'')+'</small></div></div><div><button class="pf-action" onclick="respondPinggoFriend(\''+x.id+'\',true)">Accept</button><button class="pf-action pf-secondary" onclick="respondPinggoFriend(\''+x.id+'\',false)">Decline</button></div></div>'}).join(''):'<div class="pf-empty">No friend requests.</div>';
  document.getElementById('pfReqCount').textContent=incoming.length?'('+incoming.length+')':'';
 }
 async function respondPinggoFriend(id,accept){const {error}=await window.pinggoDb.rpc('respond_friend_request',{p_request:id,p_accept:accept});if(error)alert(error.message);await loadPinggoFriends()}
@@ -1972,17 +1972,11 @@ body{
   background:transparent !important;
 }
 
-/* EDSEAN COMPANY is hidden throughout the logged-in app */
-#edseanFooter{
-  display:none !important;
-}
 
-/* It appears only while the Login/Register screen is open */
-#authScreen:not(.hide) ~ #edseanFooter{
-  display:block !important;
-}
+<style id="pinggo-footer-auth-visibility">
+#edseanFooter{display:none !important;}
+#authScreen:not(.hide) ~ #edseanFooter{display:block !important;}
 </style>
-
 
 <!-- PINGGO CHAT STABILITY + REALTIME FIX: additive, existing UI preserved -->
 <script id="pinggo-chat-stability-fix">
@@ -2003,15 +1997,21 @@ body{
      Restore those tokens into the SDK before any Friends/Chat database call. */
   const previousStart=window.startPinggoSession;
   window.startPinggoSession=async function(user){
-    const db=await getPinggoDbSafe();
-    try{
-      const access=localStorage.getItem('pinggo_access_token');
-      const refresh=localStorage.getItem('pinggo_refresh_token');
-      if(access&&refresh) await db.auth.setSession({access_token:access,refresh_token:refresh});
-    }catch(e){ console.warn('PINGGO session restore',e); }
-    if(typeof previousStart==='function') return previousStart(user);
-    window.pinggoUser=user;
-    document.getElementById('authScreen')?.classList.add('hide');
+    /* Never block Login on the optional SDK/CDN used by realtime chat. */
+    const startApp=typeof previousStart==='function'
+      ? previousStart(user)
+      : (window.pinggoUser=user, document.getElementById('authScreen')?.classList.add('hide'));
+
+    (async()=>{
+      try{
+        const db=await getPinggoDbSafe();
+        const access=localStorage.getItem('pinggo_access_token');
+        const refresh=localStorage.getItem('pinggo_refresh_token');
+        if(access&&refresh) await db.auth.setSession({access_token:access,refresh_token:refresh});
+      }catch(e){ console.warn('PINGGO session restore skipped',e); }
+    })();
+
+    return startApp;
   };
 
   let chatConversation=null, chatOther=null, chatChannel=null;
