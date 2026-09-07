@@ -2029,5 +2029,47 @@ body{
 }
 </style>
 
+
+<!-- FULLSCREEN COLOR MATCH FIX — visual only, no login/buttons/functions changed -->
+<style id="fullscreen-white-color-match">
+html,
+body{
+  width:100% !important;
+  min-height:100% !important;
+  margin:0 !important;
+  padding:0 !important;
+  background:#ffffff !important;
+}
+
+/* Seluruh layar aplikasi memakai warna putih yang sama agar tidak terlihat seperti kotak terpotong */
+.app{
+  width:100% !important;
+  max-width:none !important;
+  min-height:100dvh !important;
+  margin:0 !important;
+  background:#ffffff !important;
+  box-shadow:none !important;
+}
+
+/* Area panel mengikuti warna layar */
+.app .panel{
+  background:transparent !important;
+}
+
+/* Navigasi bawah menyatu dengan layar putih */
+.bottom-nav{
+  width:100% !important;
+  max-width:none !important;
+  background:#ffffff !important;
+}
+
+/* Halaman chat juga tetap satu warna */
+.chat-room{
+  width:100% !important;
+  max-width:none !important;
+  background:#ffffff !important;
+}
+</style>
+
 </body>
 </html>
