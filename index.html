@@ -2791,5 +2791,188 @@ body{
   obs.observe(room,{attributes:true,attributeFilter:['class']});
 })();
 </script>
+
+<!-- CHAT ATTACHMENTS RUNTIME FIX — INDEX ONLY -->
+<script id="pinggo-chat-attachments-runtime-fix">
+(function(){
+  'use strict';
+  const room=document.getElementById('chatRoom');
+  const menu=document.getElementById('attachMenu');
+  const messages=document.getElementById('chatMessages');
+  const photoInput=document.getElementById('chatPhotoFile');
+  const videoInput=document.getElementById('chatVideoFile');
+  const viewer=document.getElementById('mediaViewer');
+  const viewerContent=document.getElementById('mediaViewerContent');
+  const closeViewer=document.getElementById('closeMediaViewer');
+  if(!room||!menu||!messages) return;
+
+  function preview(text){
+    const current=room.dataset.chatName||'Cinta';
+    const row=document.querySelector('[data-open-chat="'+CSS.escape(current)+'"] .preview') || document.querySelector('[data-open-chat="Cinta"] .preview');
+    if(row) row.textContent=text;
+  }
+  function time(){return new Date().toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit'});}
+  function scrollEnd(){requestAnimationFrame(()=>messages.scrollTop=messages.scrollHeight);}
+
+  function openMedia(type,url){
+    if(!viewer||!viewerContent) return;
+    viewerContent.innerHTML='';
+    const el=document.createElement(type==='image'?'img':'video');
+    el.src=url;
+    if(type==='video'){el.controls=true;el.playsInline=true;el.autoplay=true;}
+    viewerContent.appendChild(el);
+    viewer.classList.add('show');
+  }
+  closeViewer?.addEventListener('click',()=>{viewer?.classList.remove('show');if(viewerContent)viewerContent.innerHTML='';});
+
+  function addMedia(file,type){
+    if(!file) return;
+    const url=URL.createObjectURL(file);
+    const row=document.createElement('div');row.className='message-row outgoing';
+    const card=document.createElement('div');card.className='media-message';
+    const media=document.createElement(type==='image'?'img':'video');
+    media.src=url;
+    if(type==='video'){media.controls=true;media.playsInline=true;}
+    media.addEventListener('click',()=>openMedia(type,url));
+    const cap=document.createElement('div');cap.className='media-caption';
+    cap.textContent=(type==='image'?'📷 Foto':'🎥 Video')+' • '+time()+' ✓';
+    card.append(media,cap);row.appendChild(card);messages.appendChild(row);
+    preview(type==='image'?'📷 Foto':'🎥 Video');scrollEnd();
+  }
+
+  photoInput?.addEventListener('change',()=>{const f=photoInput.files?.[0];if(f)addMedia(f,'image');photoInput.value='';});
+  videoInput?.addEventListener('change',()=>{const f=videoInput.files?.[0];if(f)addMedia(f,'video');videoInput.value='';});
+
+  const voiceModal=document.getElementById('voiceRecorder');
+  const cancelVoice=document.getElementById('cancelVoice');
+  const startVoice=document.getElementById('startVoice');
+  const stopVoice=document.getElementById('stopVoice');
+  const sendVoice=document.getElementById('sendVoice');
+  const redoVoice=document.getElementById('redoVoice');
+  const voiceStatus=document.getElementById('voiceStatus');
+  const voiceTimer=document.getElementById('voiceTimer');
+  const voicePreview=document.getElementById('voicePreview');
+  const voiceIcon=document.getElementById('voiceRecordIcon');
+  let rec=null, stream=null, chunks=[], blobUrl='', ticker=null, secs=0;
+
+  function stopTracks(){if(stream){stream.getTracks().forEach(t=>t.stop());stream=null;}}
+  function resetVoice(revoke=true){
+    if(rec&&rec.state==='recording'){try{rec.stop();}catch(_){}}
+    stopTracks();clearInterval(ticker);ticker=null;rec=null;chunks=[];secs=0;
+    if(revoke&&blobUrl){URL.revokeObjectURL(blobUrl);blobUrl='';}
+    if(voiceTimer)voiceTimer.textContent='00:00';
+    if(voicePreview){voicePreview.pause();voicePreview.removeAttribute('src');voicePreview.style.display='none';}
+    if(startVoice)startVoice.style.display='block';if(stopVoice)stopVoice.style.display='none';if(sendVoice)sendVoice.style.display='none';if(redoVoice)redoVoice.style.display='none';
+    if(voiceStatus)voiceStatus.textContent='Siap merekam';voiceIcon?.classList.remove('recording');
+  }
+  function openVoice(){resetVoice();voiceModal?.classList.add('show');}
+  cancelVoice?.addEventListener('click',()=>{resetVoice();voiceModal?.classList.remove('show');});
+  startVoice?.addEventListener('click',async()=>{
+    if(!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder==='undefined'){alert('Browser ini tidak mendukung perekaman suara.');return;}
+    try{
+      stream=await navigator.mediaDevices.getUserMedia({audio:true});
+      rec=new MediaRecorder(stream);chunks=[];
+      rec.ondataavailable=e=>{if(e.data?.size)chunks.push(e.data)};
+      rec.onstop=()=>{
+        clearInterval(ticker);ticker=null;voiceIcon?.classList.remove('recording');
+        const blob=new Blob(chunks,{type:rec?.mimeType||'audio/webm'});blobUrl=URL.createObjectURL(blob);stopTracks();
+        if(voicePreview){voicePreview.src=blobUrl;voicePreview.style.display='block';}
+        if(voiceStatus)voiceStatus.textContent='Voice siap dikirim';
+        if(sendVoice)sendVoice.style.display='block';if(redoVoice)redoVoice.style.display='block';if(stopVoice)stopVoice.style.display='none';
+      };
+      rec.start();secs=0;
+      if(voiceStatus)voiceStatus.textContent='Sedang merekam...';voiceIcon?.classList.add('recording');
+      startVoice.style.display='none';if(stopVoice)stopVoice.style.display='block';
+      ticker=setInterval(()=>{secs++;if(voiceTimer){const m=String(Math.floor(secs/60)).padStart(2,'0'),x=String(secs%60).padStart(2,'0');voiceTimer.textContent=m+':'+x;}},1000);
+    }catch(e){stopTracks();alert('Izin mikrofon diperlukan untuk merekam voice message.');}
+  });
+  stopVoice?.addEventListener('click',()=>{if(rec&&rec.state==='recording')rec.stop();});
+  redoVoice?.addEventListener('click',()=>resetVoice());
+  sendVoice?.addEventListener('click',()=>{
+    if(!blobUrl)return;
+    const keep=blobUrl;blobUrl='';
+    const row=document.createElement('div');row.className='message-row outgoing';
+    const bubble=document.createElement('div');bubble.className='bubble voice-message';
+    const audio=document.createElement('audio');audio.src=keep;
+    const play=document.createElement('button');play.className='voice-play';play.textContent='▶';
+    const bars=document.createElement('div');bars.className='voice-bars';[12,20,28,16,34,22,30,14,25,18,11].forEach(h=>{const i=document.createElement('i');i.style.height=h+'px';bars.appendChild(i)});
+    const dur=document.createElement('span');dur.className='voice-duration';dur.textContent=(voiceTimer?.textContent||'00:00')+' ✓';
+    play.addEventListener('click',()=>{if(audio.paused){audio.play();play.textContent='❚❚'}else{audio.pause();play.textContent='▶'}});audio.addEventListener('ended',()=>play.textContent='▶');
+    bubble.append(play,bars,dur);row.appendChild(bubble);messages.appendChild(row);preview('🎙 Voice message');scrollEnd();
+    resetVoice(false);voiceModal?.classList.remove('show');
+  });
+
+  const secretModal=document.getElementById('secretModal');
+  const secretFile=document.getElementById('secretFile');
+  const secretPreview=document.getElementById('secretPreview');
+  const customPrice=document.getElementById('customSecretPrice');
+  let secretChosen=null, secretUrl='', price=10;
+  document.querySelectorAll('.price-btn').forEach(btn=>btn.addEventListener('click',()=>{
+    document.querySelectorAll('.price-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');price=Number(btn.dataset.price||10);if(customPrice)customPrice.value='';
+  }));
+  document.getElementById('closeSecretModal')?.addEventListener('click',()=>secretModal?.classList.remove('show'));
+  document.getElementById('pickSecretFile')?.addEventListener('click',()=>secretFile?.click());
+  secretFile?.addEventListener('change',()=>{
+    const f=secretFile.files?.[0];if(!f)return;secretChosen=f;if(secretUrl)URL.revokeObjectURL(secretUrl);secretUrl=URL.createObjectURL(f);
+    if(secretPreview){secretPreview.innerHTML='';const m=document.createElement(f.type.startsWith('image/')?'img':'video');m.src=secretUrl;if(m.tagName==='VIDEO'){m.muted=true;m.playsInline=true;}secretPreview.appendChild(m);}
+  });
+  document.getElementById('sendSecretDrop')?.addEventListener('click',()=>{
+    if(!secretChosen){alert('Pilih foto atau video terlebih dahulu.');return;}
+    const usePrice=Number(customPrice?.value)||price||10;
+    const row=document.createElement('div');row.className='message-row outgoing';
+    const card=document.createElement('div');card.className='secret-message';card.dataset.price=String(usePrice);card.dataset.type=secretChosen.type.startsWith('image/')?'image':'video';card.dataset.url=secretUrl;
+    const thumb=document.createElement('div');thumb.className='secret-thumb';const m=document.createElement(card.dataset.type==='image'?'img':'video');m.src=secretUrl;if(m.tagName==='VIDEO'){m.muted=true;m.playsInline=true;}thumb.appendChild(m);const lock=document.createElement('div');lock.className='secret-lock-overlay';lock.textContent='🔒';thumb.appendChild(lock);
+    const meta=document.createElement('div');meta.className='secret-meta';meta.innerHTML='<b>SECRET DROP</b><div class="unlock-price"><span class="heart-gem"></span>'+usePrice+' PINGGO Gem</div><small>Terkunci • Menunggu penerima Unlock</small>';card.append(thumb,meta);row.appendChild(card);messages.appendChild(row);scrollEnd();preview('🔒 Secret Drop');
+    secretModal?.classList.remove('show');secretChosen=null;if(secretFile)secretFile.value='';if(customPrice)customPrice.value='';if(secretPreview)secretPreview.innerHTML='🔒';
+  });
+
+  // One delegated handler for the four attachment choices. Capture mode makes it reliable on iPhone.
+  menu.addEventListener('click',function(e){
+    const btn=e.target.closest('button');if(!btn)return;
+    const label=btn.textContent.trim();
+    if(label.includes('Foto')){e.preventDefault();e.stopImmediatePropagation();menu.classList.remove('show');photoInput?.click();return;}
+    if(label.includes('Video')){e.preventDefault();e.stopImmediatePropagation();menu.classList.remove('show');videoInput?.click();return;}
+    if(label.includes('Voice')){e.preventDefault();e.stopImmediatePropagation();menu.classList.remove('show');openVoice();return;}
+    if(label.includes('Secret')){e.preventDefault();e.stopImmediatePropagation();menu.classList.remove('show');secretModal?.classList.add('show');return;}
+  },true);
+})();
+</script>
+
+
+<!-- CHAT ATTACHMENT IOS RELIABILITY FIX -->
+<style id="pinggo-chat-attachment-ios-fix-style">
+#attachMenu .attach-file-label{border:0;background:transparent;color:inherit;font:inherit;text-align:center;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;min-width:0}
+#attachMenu .attach-file-label span{pointer-events:none}
+</style>
+<script id="pinggo-chat-attachment-ios-fix-script">
+(function(){
+  const menu=document.getElementById('attachMenu');
+  const photo=document.getElementById('chatPhotoFile');
+  const video=document.getElementById('chatVideoFile');
+  const voice=document.getElementById('voiceRecorder');
+  const secret=document.getElementById('secretModal');
+  if(!menu) return;
+
+  // File labels are more reliable than programmatic input.click() in iPhone Safari.
+  [...menu.querySelectorAll('button')].forEach(btn=>{
+    const text=btn.textContent.trim();
+    if(text.includes('Foto') && photo){
+      const lab=document.createElement('label'); lab.className='attach-file-label'; lab.htmlFor=photo.id; lab.innerHTML='<span>📷</span>Foto'; btn.replaceWith(lab);
+    } else if(text.includes('Video') && video){
+      const lab=document.createElement('label'); lab.className='attach-file-label'; lab.htmlFor=video.id; lab.innerHTML='<span>🎥</span>Video'; btn.replaceWith(lab);
+    }
+  });
+
+  // Close the tray only after iOS has received the native file-picker tap.
+  menu.addEventListener('click',e=>{
+    const label=e.target.closest('label.attach-file-label');
+    if(label){ setTimeout(()=>menu.classList.remove('show'),0); return; }
+    const btn=e.target.closest('button'); if(!btn) return;
+    const text=btn.textContent.trim();
+    if(text.includes('Voice')){ e.preventDefault(); e.stopImmediatePropagation(); menu.classList.remove('show'); voice?.classList.add('show'); }
+    if(text.includes('Secret')){ e.preventDefault(); e.stopImmediatePropagation(); menu.classList.remove('show'); secret?.classList.add('show'); }
+  },true);
+})();
+</script>
 </body>
 </html>
