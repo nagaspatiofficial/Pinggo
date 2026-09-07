@@ -527,6 +527,14 @@ button{
 }
 </style>
 
+
+<style id="pinggo-secret-drop-only">
+/* Gallery removed: content publishing lives in Secret Drop only. */
+.bottom-nav .nav-item{flex:1;min-width:0}
+.secret-price-options{flex-wrap:wrap}
+.secret-price-options button[data-secret-price="0"]{min-width:74px}
+.secret-card-price{font-weight:800}
+</style>
 </head>
 <body>
 <div class="app">
@@ -643,48 +651,12 @@ button{
   </div>
 </section>
 
-  <section id="gallery" class="panel">
-  <div class="gallery-toolbar">
-    <div class="gallery-title-row"><div><b>My Gallery</b><small id="galleryCount">0 items</small></div><button id="uploadGallery" class="gallery-upload">＋ Upload</button></div>
-    <div class="gallery-filter-row">
-      <button class="gallery-filter active" data-gallery-filter="all">All</button>
-      <button class="gallery-filter" data-gallery-filter="photo">Photos</button>
-      <button class="gallery-filter" data-gallery-filter="video">Videos</button>
-      <button class="gallery-filter" data-gallery-filter="private">Private</button>
-    </div>
-  </div>
-  <input id="galleryUploadInput" type="file" accept="image/*,video/*" multiple hidden>
-  <div id="galleryGrid" class="gallery-grid"></div>
-  <div id="galleryEmpty" class="empty-card">Belum ada foto atau video. Tekan Upload untuk mencoba.</div>
-
-  <div id="galleryUploadModal" class="gallery-upload-modal">
-    <div class="gallery-upload-sheet">
-      <button id="closeGalleryUpload" class="gallery-close">×</button>
-      <h3>Upload ke Gallery</h3>
-      <p>Pilih foto atau video dari perangkat.</p>
-      <button id="chooseGalleryMedia" class="gallery-main-btn">Pilih dari Gallery</button>
-      <div id="gallerySelectedInfo" class="gallery-selected-info">Belum ada media dipilih</div>
-      <div id="galleryPrivacyOptions" class="gallery-privacy-options">
-        <button class="privacy-choice active" data-privacy="private">🔒 Private</button>
-        <button class="privacy-choice" data-privacy="public">🌐 Public</button>
-      </div>
-      <button id="saveGalleryMedia" class="gallery-main-btn" disabled>Simpan ke Gallery</button>
-    </div>
-  </div>
-
-  <div id="galleryViewer" class="gallery-viewer">
-    <div class="gallery-viewer-bar"><button id="closeGalleryViewer">←</button><b id="galleryViewerTitle">Gallery</b><button id="deleteGalleryMedia">🗑</button></div>
-    <div id="galleryViewerContent"></div>
-    <div id="galleryViewerMeta"></div>
-  </div>
-</section>
-
-  <section id="drop" class="panel"><div class="secret-page-head"><div><b>Secret Drop</b><small>Konten eksklusif & terkunci</small></div><button id="openSecretCreate" class="secret-create-btn">＋ Create</button></div>
+  <section id="drop" class="panel"><div class="secret-page-head"><div><b>Secret Drop</b><small>Post foto/video • Free atau berbayar</small></div><button id="openSecretCreate" class="secret-create-btn">＋ Post</button></div>
 <div class="secret-tabs"><button class="secret-tab active" data-secret-view="secretSentView">Sent</button><button class="secret-tab" data-secret-view="secretReceivedView">Received</button><button class="secret-tab" data-secret-view="secretUnlockedView">Unlocked</button></div>
 <div id="secretSentView" class="secret-view active"><div id="secretSentList"></div><div id="secretSentEmpty" class="empty-card">Belum ada Secret Drop yang dikirim.</div></div>
 <div id="secretReceivedView" class="secret-view"><div id="secretReceivedList"></div><div id="secretReceivedEmpty" class="empty-card">Belum ada Secret Drop diterima.</div></div>
 <div id="secretUnlockedView" class="secret-view"><div id="secretUnlockedList"></div><div id="secretUnlockedEmpty" class="empty-card">Belum ada konten yang di-unlock.</div></div>
-<div id="secretCreateModal" class="secret-create-modal"><div class="secret-create-sheet"><button id="closeSecretCreate" class="secret-create-close">×</button><h3>Create Secret Drop</h3><p>Pilih foto atau video, lalu tentukan harga PINGGO Gem.</p><input id="secretCreateInput" type="file" accept="image/*,video/*" hidden><button id="chooseSecretCreate" class="secret-main-btn">Pilih Foto / Video</button><div id="secretCreatePreview" class="secret-create-preview">Belum ada media dipilih</div><div class="secret-price-title">Harga Unlock</div><div class="secret-price-options"><button data-secret-price="10">◆ 10</button><button data-secret-price="25">◆ 25</button><button data-secret-price="50" class="active">◆ 50</button><button data-secret-price="100">◆ 100</button></div><input id="secretCustomPrice" type="number" min="1" placeholder="Atau jumlah PINGGO Gem sendiri"><button id="publishSecretCreate" class="secret-main-btn" disabled>Publish Secret Drop 🔒</button></div></div></section>
+<div id="secretCreateModal" class="secret-create-modal"><div class="secret-create-sheet"><button id="closeSecretCreate" class="secret-create-close">×</button><h3>Post Secret Drop</h3><p>Pilih foto atau video. Jadikan FREE atau kunci dengan harga PINGGO Gem.</p><input id="secretCreateInput" type="file" accept="image/*,video/*" hidden><button id="chooseSecretCreate" class="secret-main-btn">Pilih Foto / Video</button><div id="secretCreatePreview" class="secret-create-preview">Belum ada media dipilih</div><div class="secret-price-title">Akses Konten</div><div class="secret-price-options"><button data-secret-price="0" class="active">FREE</button><button data-secret-price="10">◆ 10</button><button data-secret-price="25">◆ 25</button><button data-secret-price="50">◆ 50</button><button data-secret-price="100">◆ 100</button></div><input id="secretCustomPrice" type="number" min="1" placeholder="Atau isi harga PINGGO Gem sendiri"><button id="publishSecretCreate" class="secret-main-btn" disabled>Post Secret Drop</button></div></div></section>
 
   <section id="profile" class="panel">
   <div class="profile-page">
@@ -720,7 +692,6 @@ button{
 <nav class="bottom-nav">
   <div class="nav-item active" data-target="chats"><div class="nav-icon">◔</div><span>Chats</span></div>
   <div class="nav-item" data-target="friends"><div class="nav-icon">♧</div><span>Friends</span></div>
-  <div class="nav-item" data-target="gallery"><div class="nav-icon">▧</div><span>Gallery</span></div>
   <div class="nav-item" data-target="drop"><div class="nav-icon">⬡</div><span>Drop</span></div>
   <div class="nav-item" data-target="profile"><div class="nav-icon">♙</div><span>Profile</span></div>
 </nav>
@@ -1316,52 +1287,19 @@ renderFriends();
 
 
 // GALLERY - FULLY INTERACTIVE LOCAL PROTOTYPE
-const galleryState=[];
-let galleryFilter='all', gallerySelectedFiles=[], galleryPrivacy='private', viewingGalleryId=null;
-const galleryGrid=document.getElementById('galleryGrid'), galleryEmpty=document.getElementById('galleryEmpty');
-const galleryInput=document.getElementById('galleryUploadInput');
-
-function renderGallery(){
- const items=galleryState.filter(x=>galleryFilter==='all'||x.type===galleryFilter||(galleryFilter==='private'&&x.privacy==='private'));
- galleryGrid.innerHTML=items.map(x=>`<button class="gallery-item" data-gallery-open="${x.id}" aria-label="Open media">${x.type==='photo'?`<img src="${x.url}" alt="">`:`<video src="${x.url}" muted preload="metadata"></video>`}<span class="gallery-item-type">${x.type==='photo'?'📷':'▶'}</span><span class="gallery-item-badge">${x.privacy==='private'?'🔒 Private':'🌐 Public'}</span></button>`).join('');
- galleryEmpty.style.display=items.length?'none':'block';
- document.getElementById('galleryCount').textContent=galleryState.length+' item'+(galleryState.length===1?'':'s');
-}
-function openGalleryUpload(){gallerySelectedFiles=[];galleryPrivacy='private';document.getElementById('gallerySelectedInfo').textContent='Belum ada media dipilih';document.getElementById('saveGalleryMedia').disabled=true;document.querySelectorAll('.privacy-choice').forEach(x=>x.classList.toggle('active',x.dataset.privacy==='private'));document.getElementById('galleryUploadModal').classList.add('show');}
-document.getElementById('uploadGallery').addEventListener('click',openGalleryUpload);
-document.getElementById('closeGalleryUpload').addEventListener('click',()=>document.getElementById('galleryUploadModal').classList.remove('show'));
-document.getElementById('chooseGalleryMedia').addEventListener('click',()=>galleryInput.click());
-galleryInput.addEventListener('change',()=>{
- gallerySelectedFiles=[...galleryInput.files];
- document.getElementById('gallerySelectedInfo').textContent=gallerySelectedFiles.length?gallerySelectedFiles.length+' media dipilih • '+gallerySelectedFiles.map(f=>f.name).join(', '):'Belum ada media dipilih';
- document.getElementById('saveGalleryMedia').disabled=!gallerySelectedFiles.length;
-});
-document.querySelectorAll('.privacy-choice').forEach(btn=>btn.addEventListener('click',()=>{galleryPrivacy=btn.dataset.privacy;document.querySelectorAll('.privacy-choice').forEach(x=>x.classList.toggle('active',x===btn));}));
-document.getElementById('saveGalleryMedia').addEventListener('click',()=>{
- gallerySelectedFiles.forEach(file=>galleryState.unshift({id:'g'+Date.now()+Math.random(),name:file.name,type:file.type.startsWith('video/')?'video':'photo',privacy:galleryPrivacy,url:URL.createObjectURL(file),date:new Date().toLocaleString('id-ID')}));
- document.getElementById('galleryUploadModal').classList.remove('show');galleryInput.value='';renderGallery();
-});
-document.querySelectorAll('.gallery-filter').forEach(btn=>btn.addEventListener('click',()=>{galleryFilter=btn.dataset.galleryFilter;document.querySelectorAll('.gallery-filter').forEach(x=>x.classList.toggle('active',x===btn));renderGallery();}));
-document.addEventListener('click',e=>{
- const open=e.target.closest('[data-gallery-open]');if(open){const x=galleryState.find(i=>i.id===open.dataset.galleryOpen);if(!x)return;viewingGalleryId=x.id;document.getElementById('galleryViewerTitle').textContent=x.name;document.getElementById('galleryViewerContent').innerHTML=x.type==='photo'?`<img src="${x.url}" alt="">`:`<video src="${x.url}" controls autoplay playsinline></video>`;document.getElementById('galleryViewerMeta').className='gallery-viewer-meta';document.getElementById('galleryViewerMeta').textContent=(x.privacy==='private'?'🔒 Private':'🌐 Public')+' • '+x.date;document.getElementById('galleryViewer').classList.add('show');}
-});
-document.getElementById('closeGalleryViewer').addEventListener('click',()=>{document.getElementById('galleryViewer').classList.remove('show');document.getElementById('galleryViewerContent').innerHTML='';});
-document.getElementById('deleteGalleryMedia').addEventListener('click',()=>{if(!viewingGalleryId)return;const i=galleryState.findIndex(x=>x.id===viewingGalleryId);if(i>=0){URL.revokeObjectURL(galleryState[i].url);galleryState.splice(i,1);}document.getElementById('galleryViewer').classList.remove('show');document.getElementById('galleryViewerContent').innerHTML='';renderGallery();});
-renderGallery();
-
 
 // SECRET DROP MAIN MENU
-const secretState={sent:[],received:[],unlocked:[]};let secretCreateFile=null,secretCreatePrice=50;
+const secretState={sent:[],received:[],unlocked:[]};let secretCreateFile=null,secretCreatePrice=0;
 const secretCreateInput=document.getElementById('secretCreateInput');
-function secretCard(x,kind){const unlocked=!!x.unlocked,media=x.type==='image'?`<img src="${x.url}" alt="">`:`<video src="${x.url}" muted></video>`;let action=kind==='received'&&!unlocked?`<button class="secret-card-action primary" data-secret-unlock="${x.id}">Unlock</button>`:unlocked?`<button class="secret-card-action primary" data-secret-view-item="${x.id}">Open</button>`:`<button class="secret-card-action" data-secret-preview="${x.id}">Preview</button>`;return `<div class="secret-card ${unlocked?'unlocked':''}"><div class="secret-thumb">${media}<span>${unlocked?'🔓':'🔒'}</span></div><div class="secret-card-info"><b>${x.name}</b><small>${kind==='sent'?'Sent':kind==='received'?'Received':'Unlocked'} • ${x.date}</small><div class="secret-card-price">◆ ${x.price} PINGGO Gem</div></div>${action}</div>`}
+function secretCard(x,kind){const unlocked=!!x.unlocked,isFree=Number(x.price)===0,media=x.type==='image'?`<img src="${x.url}" alt="">`:`<video src="${x.url}" muted></video>`;let action=kind==='received'&&!unlocked?`<button class="secret-card-action primary" data-secret-unlock="${x.id}">${isFree?'Open Free':'Unlock'}</button>`:unlocked?`<button class="secret-card-action primary" data-secret-view-item="${x.id}">Open</button>`:`<button class="secret-card-action" data-secret-preview="${x.id}">Preview</button>`;return `<div class="secret-card ${unlocked?'unlocked':''}"><div class="secret-thumb">${media}<span>${unlocked||isFree?'🔓':'🔒'}</span></div><div class="secret-card-info"><b>${x.name}</b><small>${kind==='sent'?'Sent':kind==='received'?'Received':'Unlocked'} • ${x.date}</small><div class="secret-card-price">${isFree?'FREE':'◆ '+x.price+' PINGGO Gem'}</div></div>${action}</div>`}
 function renderSecret(){[['sent','secretSentList','secretSentEmpty'],['received','secretReceivedList','secretReceivedEmpty'],['unlocked','secretUnlockedList','secretUnlockedEmpty']].forEach(([k,l,e])=>{document.getElementById(l).innerHTML=secretState[k].map(x=>secretCard(x,k)).join('');document.getElementById(e).style.display=secretState[k].length?'none':'block'})}
 document.querySelectorAll('.secret-tab').forEach(b=>b.addEventListener('click',()=>{document.querySelectorAll('.secret-tab').forEach(x=>x.classList.remove('active'));b.classList.add('active');document.querySelectorAll('.secret-view').forEach(x=>x.classList.remove('active'));document.getElementById(b.dataset.secretView).classList.add('active')}));
-document.getElementById('openSecretCreate').onclick=()=>{secretCreateFile=null;secretCreatePrice=50;document.getElementById('secretCreatePreview').textContent='Belum ada media dipilih';document.getElementById('publishSecretCreate').disabled=true;document.getElementById('secretCreateModal').classList.add('show')};
+document.getElementById('openSecretCreate').onclick=()=>{secretCreateFile=null;secretCreatePrice=0;secretCreateInput.value='';document.getElementById('secretCreatePreview').textContent='Belum ada media dipilih';document.getElementById('secretCustomPrice').value='';document.querySelectorAll('.secret-price-options button').forEach(x=>x.classList.toggle('active',Number(x.dataset.secretPrice)===0));document.getElementById('publishSecretCreate').disabled=true;document.getElementById('secretCreateModal').classList.add('show')};
 document.getElementById('closeSecretCreate').onclick=()=>document.getElementById('secretCreateModal').classList.remove('show');
 document.getElementById('chooseSecretCreate').onclick=()=>secretCreateInput.click();
-secretCreateInput.onchange=()=>{secretCreateFile=secretCreateInput.files[0]||null;if(!secretCreateFile)return;const u=URL.createObjectURL(secretCreateFile);document.getElementById('secretCreatePreview').innerHTML=secretCreateFile.type.startsWith('image/')?`<img src="${u}" alt="">`:`<video src="${u}" muted></video>`;document.getElementById('publishSecretCreate').disabled=false};
-document.querySelectorAll('.secret-price-options button').forEach(b=>b.onclick=()=>{secretCreatePrice=Number(b.dataset.secretPrice);document.getElementById('secretCustomPrice').value='';document.querySelectorAll('.secret-price-options button').forEach(x=>x.classList.toggle('active',x===b))});
-document.getElementById('secretCustomPrice').oninput=e=>{if(Number(e.target.value)>0){secretCreatePrice=Number(e.target.value);document.querySelectorAll('.secret-price-options button').forEach(x=>x.classList.remove('active'))}};
+secretCreateInput.onchange=()=>{secretCreateFile=secretCreateInput.files[0]||null;if(!secretCreateFile)return;const u=URL.createObjectURL(secretCreateFile);document.getElementById('secretCreatePreview').innerHTML=secretCreateFile.type.startsWith('image/')?`<img src="${u}" alt="">`:`<video src="${u}" muted playsinline></video>`;const pub=document.getElementById('publishSecretCreate');pub.disabled=false;pub.textContent=secretCreatePrice===0?'Post FREE':'Post Locked • ◆ '+secretCreatePrice};
+document.querySelectorAll('.secret-price-options button').forEach(b=>b.onclick=()=>{secretCreatePrice=Number(b.dataset.secretPrice);document.getElementById('secretCustomPrice').value='';document.querySelectorAll('.secret-price-options button').forEach(x=>x.classList.toggle('active',x===b));document.getElementById('publishSecretCreate').textContent=secretCreatePrice===0?'Post FREE':'Post Locked • ◆ '+secretCreatePrice});
+document.getElementById('secretCustomPrice').oninput=e=>{const v=Number(e.target.value);if(v>0){secretCreatePrice=v;document.querySelectorAll('.secret-price-options button').forEach(x=>x.classList.remove('active'))}else if(!e.target.value){secretCreatePrice=0;document.querySelectorAll('.secret-price-options button').forEach(x=>x.classList.toggle('active',Number(x.dataset.secretPrice)===0))}const pub=document.getElementById('publishSecretCreate');if(secretCreateFile)pub.textContent=secretCreatePrice===0?'Post FREE':'Post Locked • ◆ '+secretCreatePrice};
 document.getElementById('publishSecretCreate').onclick=()=>{if(!secretCreateFile)return;const x={id:'s'+Date.now()+Math.random(),name:secretCreateFile.name,type:secretCreateFile.type.startsWith('image/')?'image':'video',url:URL.createObjectURL(secretCreateFile),price:secretCreatePrice,date:new Date().toLocaleString('id-ID'),unlocked:false};secretState.sent.unshift(x);secretState.received.unshift({...x,id:'r'+Date.now()+Math.random(),name:x.name+' (Demo Received)'});document.getElementById('secretCreateModal').classList.remove('show');renderSecret()};
 function openStandaloneSecret(x){const viewer=document.getElementById('secureViewer'),area=document.getElementById('secureMediaArea');area.innerHTML=x.type==='image'?`<img src="${x.url}" alt="">`:`<video src="${x.url}" controls autoplay playsinline controlsList="nodownload noremoteplayback" disablepictureinpicture></video>`;document.getElementById('dynamicWatermark').textContent='PINGGO • @edhysean • '+new Date().toLocaleString('id-ID');viewer.classList.add('show')}
 document.addEventListener('click',e=>{const u=e.target.closest('[data-secret-unlock]');if(u){const x=secretState.received.find(i=>i.id===u.dataset.secretUnlock);if(!x)return;x.unlocked=true;secretState.unlocked.unshift(x);renderSecret();document.querySelector('[data-secret-view="secretUnlockedView"]').click();openStandaloneSecret(x);return}const o=e.target.closest('[data-secret-view-item]');if(o){const x=secretState.unlocked.find(i=>i.id===o.dataset.secretViewItem);if(x)openStandaloneSecret(x);return}const p=e.target.closest('[data-secret-preview]');if(p){const x=secretState.sent.find(i=>i.id===p.dataset.secretPreview);if(x)openStandaloneSecret(x)}});
@@ -1404,7 +1342,7 @@ function openProfileSetting(type){
  else if(type==='notifications')c.innerHTML=`<h3>Notifications</h3>${toggleHtml('notifications','Chat & Activity Notifications',profileState.notifications)}`;
  else if(type==='blocked')c.innerHTML=`<h3>Blocked Users</h3>${profileState.blocked.length?profileState.blocked.map(u=>`<div class="block-row"><span class="friend-avatar">${u.name.slice(0,1)}</span><div><b>${u.name}</b><small>${u.pinggo}</small></div><button data-unblock="${u.id}">Unblock</button></div>`).join(''):'<div class="empty-card">Belum ada user diblokir.</div>'}`;
  else if(type==='appearance')c.innerHTML=`<h3>Appearance</h3><div class="profile-field"><label>Tema aplikasi</label><button class="profile-save" data-theme="Pink & Gray">Pink & Gray</button><button class="profile-save" data-theme="White & Gray" style="background:#ddd;color:#555">White & Gray</button></div>`;
- else c.innerHTML=`<h3>About PINGGO</h3><p style="font-size:12px;color:#777079;line-height:1.6">PINGGO adalah aplikasi social messaging dengan Chat, Friends, Gallery, Secret Drop dan PINGGO Gem.</p><div class="empty-card">PINGGO Prototype • Version 1.0</div>`;
+ else c.innerHTML=`<h3>About PINGGO</h3><p style="font-size:12px;color:#777079;line-height:1.6">PINGGO adalah aplikasi social messaging dengan Chat, Friends, Secret Drop dan PINGGO Gem.</p><div class="empty-card">PINGGO Prototype • Version 1.0</div>`;
  document.getElementById('profileModal').classList.add('show');
 }
 document.getElementById('editProfileBtn').onclick=()=>openProfileSetting('account');
@@ -2633,7 +2571,7 @@ body{
     else if(type==='blocked') content.innerHTML=`<h3>Blocked Users</h3>${profileState.blocked.length?profileState.blocked.map(u=>`<div class="block-row"><span class="friend-avatar">${esc((u.name||'?').slice(0,1))}</span><div><b>${esc(u.name||'PINGGO User')}</b><small>${esc(u.pinggo||'')}</small></div><button type="button" data-profile-unblock="${esc(u.id)}">Unblock</button></div>`).join(''):'<div class="empty-card">Belum ada user diblokir.</div>'}`;
     else if(type==='notifications') content.innerHTML=`<h3>Notifications</h3>${toggleRow('notifications','Chat & Activity Notifications',profileState.notifications)}`;
     else if(type==='appearance') content.innerHTML=`<h3>Appearance</h3><div class="profile-theme-list"><button type="button" class="profile-theme-choice ${profileState.appearance==='Pink & Gray'?'active':''}" data-profile-theme="Pink & Gray">Pink & Gray</button><button type="button" class="profile-theme-choice ${profileState.appearance==='White & Gray'?'active':''}" data-profile-theme="White & Gray">White & Gray</button></div><div class="profile-status" id="profileModuleStatus"></div>`;
-    else content.innerHTML=`<h3>About PINGGO</h3><p style="font-size:12px;color:#777079;line-height:1.6">PINGGO adalah aplikasi social messaging dengan Chat, Friends, Gallery, Secret Drop dan PINGGO Gem.</p><div class="empty-card">PINGGO Prototype • Version 1.0</div>`;
+    else content.innerHTML=`<h3>About PINGGO</h3><p style="font-size:12px;color:#777079;line-height:1.6">PINGGO adalah aplikasi social messaging dengan Chat, Friends, Secret Drop dan PINGGO Gem.</p><div class="empty-card">PINGGO Prototype • Version 1.0</div>`;
     show();
   }
 
