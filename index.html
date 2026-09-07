@@ -2071,5 +2071,233 @@ body{
 }
 </style>
 
+
+<!-- PRIVATE CHAT MODULE — SEPARATE STEP, LOGIN UNTOUCHED -->
+<style id="pinggo-private-chat-module">
+/* Visual only for private-chat room; no auth/login styles are changed */
+.chat-room{background:#ffffff !important;}
+.chat-room-header{background:#ffffff;}
+.chat-date{background:#f2f2f2;}
+</style>
+
+<script id="pinggo-private-chat-module-script">
+(function(){
+  const room = document.getElementById('chatRoom');
+  const messagesEl = document.getElementById('chatMessages');
+  const inputEl = document.getElementById('messageInput');
+  const headerAvatar = room ? room.querySelector('.room-avatar') : null;
+  const headerName = room ? room.querySelector('.room-user b') : null;
+  const headerStatus = room ? room.querySelector('.room-user small') : null;
+  const backBtn = document.getElementById('backChat');
+
+  if(!room || !messagesEl || !inputEl) return;
+
+  const CHAT_KEY = 'pinggo_private_chats_v1';
+  let activeUser = null;
+
+  const people = {
+    cinta:{id:'cinta',name:'Cinta',initial:'C',online:true,pinggo:'@cinta'},
+    baliCrew:{id:'baliCrew',name:'Bali Crew',initial:'BC',online:false,pinggo:'@balicrew'},
+    dika:{id:'dika',name:'Dika',initial:'D',online:false,pinggo:'@dika.surf'},
+    pinggoTeam:{id:'pinggoTeam',name:'PINGGO Team',initial:'P',online:true,pinggo:'@pinggo.team'},
+    nadya:{id:'nadya',name:'Nadya',initial:'N',online:true,pinggo:'@nadya.bali'},
+    surfBali:{id:'surfBali',name:'Surf Bali',initial:'SB',online:false,pinggo:'@surfbali'},
+    rama:{id:'rama',name:'Rama',initial:'R',online:false,pinggo:'@rama.wave'}
+  };
+
+  const defaultHistory = {
+    cinta:[
+      {side:'in',text:'Haii',time:'09:20'},
+      {side:'in',text:'Lagi apa?',time:'09:20'},
+      {side:'out',text:'Lagi kerja nih',time:'09:21 ✓✓'},
+      {side:'in',text:'Nanti malam ketemu?',time:'09:22'},
+      {side:'out',text:'Bisa 😊',time:'09:22 ✓✓'}
+    ],
+    baliCrew:[
+      {side:'in',text:'Rama: 📷 Foto',time:'08:41'},
+      {side:'in',text:'Nanti kumpul sore ya.',time:'08:42'}
+    ],
+    dika:[
+      {side:'in',text:'Siap bro',time:'Kemarin'}
+    ],
+    pinggoTeam:[
+      {side:'in',text:'Update baru sudah tersedia',time:'Sen'}
+    ],
+    nadya:[
+      {side:'in',text:'🎙 Voice message',time:'Sen'}
+    ],
+    surfBali:[
+      {side:'in',text:'Oke 👌',time:'Min'}
+    ],
+    rama:[
+      {side:'in',text:'Hai, ada yang bisa dibantu?',time:'Kemarin'}
+    ]
+  };
+
+  function loadStore(){
+    try{return JSON.parse(localStorage.getItem(CHAT_KEY) || '{}');}
+    catch(e){return {};}
+  }
+  function saveStore(data){
+    localStorage.setItem(CHAT_KEY, JSON.stringify(data));
+  }
+  function getHistory(id){
+    const store = loadStore();
+    if(Array.isArray(store[id])) return store[id];
+    return (defaultHistory[id] || []).map(x=>({...x}));
+  }
+  function setHistory(id, history){
+    const store = loadStore();
+    store[id] = history;
+    saveStore(store);
+  }
+  function esc(s){
+    return String(s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
+  function renderHistory(id){
+    const history = getHistory(id);
+    messagesEl.innerHTML = '<div class="chat-date">Hari ini</div>';
+    history.forEach(m=>{
+      const row=document.createElement('div');
+      row.className='message-row '+(m.side==='out'?'outgoing':'incoming');
+      const bubble=document.createElement('div');
+      bubble.className='bubble';
+      bubble.append(document.createTextNode(m.text+' '));
+      const small=document.createElement('small');
+      small.textContent=m.time || '';
+      bubble.appendChild(small);
+      row.appendChild(bubble);
+      messagesEl.appendChild(row);
+    });
+    requestAnimationFrame(()=>messagesEl.scrollTop=messagesEl.scrollHeight);
+  }
+  function updateHeader(user){
+    if(headerAvatar){
+      headerAvatar.innerHTML = '';
+      headerAvatar.append(document.createTextNode(user.initial || user.name.slice(0,2).toUpperCase()));
+      if(user.online){
+        const dot=document.createElement('div');
+        dot.className='online-dot';
+        headerAvatar.appendChild(dot);
+      }
+    }
+    if(headerName) headerName.textContent=user.name;
+    if(headerStatus) headerStatus.innerHTML=(user.online?'<span></span> Online':'Terakhir aktif baru-baru ini');
+  }
+  function openPrivateChat(idOrUser){
+    let user = typeof idOrUser==='string' ? people[idOrUser] : idOrUser;
+    if(!user) return;
+    activeUser = user;
+    updateHeader(user);
+    renderHistory(user.id);
+    room.classList.add('open');
+    inputEl.value='';
+    setTimeout(()=>inputEl.focus(),120);
+  }
+  function closePrivateChat(){
+    room.classList.remove('open');
+    activeUser=null;
+  }
+
+  window.openPinggoPrivateChat = openPrivateChat;
+
+  // Every existing chat list item becomes a real private room selector.
+  const chatRows = [...document.querySelectorAll('#chatHome .chat')];
+  const mapping = ['cinta','baliCrew','dika','pinggoTeam','nadya','surfBali'];
+  chatRows.forEach((row,i)=>{
+    row.addEventListener('click', function(e){
+      e.stopImmediatePropagation();
+      openPrivateChat(mapping[i] || 'cinta');
+    }, true);
+  });
+
+  // Back button keeps the existing behavior but always closes the active private room.
+  if(backBtn){
+    backBtn.addEventListener('click', function(e){
+      e.stopImmediatePropagation();
+      closePrivateChat();
+    }, true);
+  }
+
+  // Replace the old sender with a private-chat aware sender.
+  const sendBtn=document.getElementById('sendMessage');
+  function privateSend(){
+    const text=inputEl.value.trim();
+    if(!text || !activeUser) return;
+    const history=getHistory(activeUser.id);
+    const now=new Date().toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit'});
+    history.push({side:'out',text,time:now+' ✓'});
+    setHistory(activeUser.id,history);
+    inputEl.value='';
+    renderHistory(activeUser.id);
+    updatePreview(activeUser.id,text,now);
+  }
+  if(sendBtn){
+    sendBtn.addEventListener('click', function(e){
+      if(!activeUser) return;
+      e.stopImmediatePropagation();
+      privateSend();
+    }, true);
+  }
+  inputEl.addEventListener('keydown', function(e){
+    if(e.key==='Enter' && activeUser){
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      privateSend();
+    }
+  }, true);
+
+  function updatePreview(id,text,time){
+    const idx=mapping.indexOf(id);
+    const row=idx>=0?chatRows[idx]:null;
+    if(!row) return;
+    const preview=row.querySelector('.preview');
+    const timeEl=row.querySelector('.time');
+    if(preview) preview.textContent=text;
+    if(timeEl) timeEl.textContent=time;
+  }
+
+  // Friends -> open their own private room instead of demo alert.
+  document.addEventListener('click', function(e){
+    const btn=e.target.closest('[data-chat],[data-profile-chat]');
+    if(!btn) return;
+    const friendId=btn.dataset.chat || btn.dataset.profileChat;
+    if(!friendId) return;
+
+    const fs=window.friendsState;
+    let f=null;
+    if(fs){
+      f=[...(fs.friends||[]),...(fs.requests||[]),...(fs.sent||[]),...(fs.users||[])].find(x=>x.id===friendId);
+    }
+    if(!f) return;
+
+    e.preventDefault();
+    e.stopImmediatePropagation();
+
+    const id='friend_'+f.id;
+    if(!people[id]){
+      people[id]={
+        id,
+        name:f.name,
+        initial:f.name.split(' ').map(x=>x[0]).join('').slice(0,2).toUpperCase(),
+        online:!!f.online,
+        pinggo:f.pinggo||''
+      };
+    }
+
+    const chatsTab=document.querySelector('[data-target="chats"]');
+    if(chatsTab) chatsTab.click();
+    setTimeout(()=>openPrivateChat(id),80);
+  }, true);
+
+  // If a new friend chat is opened, add it to Chats once.
+  const originalOpen=openPrivateChat;
+  window.openPinggoPrivateChat=function(idOrUser){
+    return originalOpen(idOrUser);
+  };
+
+})();
+</script>
+
 </body>
 </html>
