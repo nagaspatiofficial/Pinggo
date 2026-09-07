@@ -2,7 +2,7 @@
 <html lang="id">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no, viewport-fit=cover">
 <title>PINGGO</title>
 
 <style>
@@ -458,6 +458,72 @@ body,
 .auth-screen{
   background-color:#e94f91 !important;
   background-image:none !important;
+}
+</style>
+
+
+<!-- MOBILE SCREEN STABILITY FIX — keeps layout from zooming/reflowing when fields are tapped -->
+<style id="mobile-screen-stability-fix">
+html{
+  width:100% !important;
+  height:100% !important;
+  overflow:hidden !important;
+  -webkit-text-size-adjust:100% !important;
+  text-size-adjust:100% !important;
+}
+
+body{
+  width:100% !important;
+  min-width:100% !important;
+  height:100% !important;
+  min-height:100% !important;
+  overflow:hidden !important;
+  margin:0 !important;
+  touch-action:manipulation !important;
+}
+
+/* Prevent iPhone Safari automatic zoom when an input is tapped */
+input,
+textarea,
+select,
+button{
+  font-size:16px !important;
+  -webkit-text-size-adjust:100% !important;
+  text-size-adjust:100% !important;
+}
+
+/* Keep all main application pages locked to the viewport width */
+.app,
+.screen,
+#chatHome,
+#chatRoom,
+.chat-room{
+  width:100vw !important;
+  max-width:100vw !important;
+  min-width:100vw !important;
+  box-sizing:border-box !important;
+}
+
+/* Private chat remains fixed to the visual screen instead of expanding/reflowing */
+#chatRoom.chat-room{
+  height:100dvh !important;
+  min-height:100dvh !important;
+  max-height:100dvh !important;
+  overflow:hidden !important;
+}
+
+#chatRoom .chat-messages{
+  min-height:0 !important;
+  -webkit-overflow-scrolling:touch;
+}
+
+/* Composer stays at its normal size when the keyboard opens */
+#chatRoom .chat-composer,
+#chatRoom .composer-input,
+#chatRoom #messageInput{
+  box-sizing:border-box !important;
+  transform:none !important;
+  zoom:1 !important;
 }
 </style>
 
@@ -2372,6 +2438,46 @@ body{
 
 #chatRoom .attach-menu{
   z-index:3 !important;
+}
+</style>
+
+
+
+<!-- PRIVATE CHAT COLOR VISIBILITY FIX — ONLY CHAT ROOM, LOGIN UNTOUCHED -->
+<style id="private-chat-color-visibility-fix">
+/* Kolom menulis dibuat jelas di layar putih */
+#chatRoom .chat-composer{
+  background:#ffffff !important;
+}
+#chatRoom .composer-input{
+  background:#eef0f3 !important;
+  border:1px solid #cfd4da !important;
+  box-shadow:none !important;
+}
+#chatRoom .composer-input input,
+#chatRoom #messageInput{
+  background:transparent !important;
+  color:#2f343a !important;
+}
+#chatRoom #messageInput::placeholder{
+  color:#7b828a !important;
+  opacity:1 !important;
+}
+
+/* Pesan lawan bicara tidak lagi putih */
+#chatRoom .message-row.incoming .bubble{
+  background:#e7e9ed !important;
+  color:#2f343a !important;
+  border:1px solid #d7dbe0 !important;
+  box-shadow:none !important;
+}
+#chatRoom .message-row.incoming .bubble small{
+  color:#69717a !important;
+}
+
+/* Pesan sendiri tetap berbeda dan mudah dibaca */
+#chatRoom .message-row.outgoing .bubble{
+  color:#2f343a !important;
 }
 </style>
 
