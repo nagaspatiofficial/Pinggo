@@ -2879,5 +2879,87 @@ body{
   menu.addEventListener('click',e=>{if(e.target.closest('label.attach-file-label'))setTimeout(()=>menu.classList.remove('show'),0)},false);
 })();
 </script>
+
+
+<!-- PINGGO SESSION RESTORE — keep login after refresh -->
+<script id="pinggo-session-restore-final">
+(function(){
+  const ACCESS='pinggo_access_token';
+  const REFRESH='pinggo_refresh_token';
+
+  function saved(){
+    try{return {access_token:localStorage.getItem(ACCESS)||'',refresh_token:localStorage.getItem(REFRESH)||''};}
+    catch(_){return {access_token:'',refresh_token:''};}
+  }
+  function saveSession(session){
+    if(!session)return;
+    try{
+      if(session.access_token)localStorage.setItem(ACCESS,session.access_token);
+      if(session.refresh_token)localStorage.setItem(REFRESH,session.refresh_token);
+    }catch(_){}
+  }
+  function clearSaved(){
+    try{localStorage.removeItem(ACCESS);localStorage.removeItem(REFRESH);}catch(_){}
+  }
+  function showLogin(){
+    const a=document.getElementById('authScreen');
+    if(a)a.classList.remove('hide');
+  }
+  function hideLogin(){
+    const a=document.getElementById('authScreen');
+    if(a)a.classList.add('hide');
+  }
+
+  async function restore(){
+    const tok=saved();
+    if(!tok.access_token||!tok.refresh_token){showLogin();return;}
+
+    // Avoid flashing the login page while the saved session is being restored.
+    hideLogin();
+    try{
+      if(window.__pinggoSupabaseReady)await window.__pinggoSupabaseReady;
+      for(let i=0;i<60&&!window.pinggoDb;i++)await new Promise(r=>setTimeout(r,50));
+      if(!window.pinggoDb)throw new Error('Supabase belum siap');
+
+      const {data,error}=await window.pinggoDb.auth.setSession(tok);
+      if(error)throw error;
+      const session=data&&data.session;
+      const user=session&&session.user;
+      if(!user)throw new Error('Session tidak ditemukan');
+
+      saveSession(session);
+      if(typeof startPinggoSession==='function')await startPinggoSession(user);
+      else hideLogin();
+    }catch(err){
+      console.warn('PINGGO session restore failed',err);
+      clearSaved();
+      if(typeof pinggoUser!=='undefined')pinggoUser=null;
+      showLogin();
+    }
+  }
+
+  async function bindAuthRefresh(){
+    try{
+      if(window.__pinggoSupabaseReady)await window.__pinggoSupabaseReady;
+      for(let i=0;i<60&&!window.pinggoDb;i++)await new Promise(r=>setTimeout(r,50));
+      if(!window.pinggoDb)return;
+      window.pinggoDb.auth.onAuthStateChange((event,session)=>{
+        if(session)saveSession(session);
+        if(event==='SIGNED_OUT'){
+          clearSaved();
+          if(typeof pinggoUser!=='undefined')pinggoUser=null;
+          showLogin();
+        }
+      });
+    }catch(_){}
+  }
+
+  if(document.readyState==='loading'){
+    document.addEventListener('DOMContentLoaded',()=>{restore();bindAuthRefresh();},{once:true});
+  }else{
+    restore();bindAuthRefresh();
+  }
+})();
+</script>
 </body>
 </html>
