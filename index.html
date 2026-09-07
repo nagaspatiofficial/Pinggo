@@ -2881,84 +2881,67 @@ body{
 </script>
 
 
-<!-- PINGGO SESSION RESTORE — keep login after refresh -->
+<!-- PINGGO SESSION RESTORE — lightweight, no global UI/event blocking -->
 <script id="pinggo-session-restore-final">
 (function(){
+  'use strict';
   const ACCESS='pinggo_access_token';
   const REFRESH='pinggo_refresh_token';
+  const API='https://fgvsqzjfrouypgudhrsc.supabase.co';
+  const KEY='sb_publishable_ojLOMPCW07M068trjToZ7w_PFu4XUw_';
 
-  function saved(){
-    try{return {access_token:localStorage.getItem(ACCESS)||'',refresh_token:localStorage.getItem(REFRESH)||''};}
-    catch(_){return {access_token:'',refresh_token:''};}
+  function get(k){try{return localStorage.getItem(k)||''}catch(_){return ''}}
+  function setTokens(a,r){try{if(a)localStorage.setItem(ACCESS,a);if(r)localStorage.setItem(REFRESH,r)}catch(_){}}
+  function clearTokens(){try{localStorage.removeItem(ACCESS);localStorage.removeItem(REFRESH)}catch(_){}}
+  function authEl(){return document.getElementById('authScreen')}
+  function showLogin(){const a=authEl();if(a)a.classList.remove('hide')}
+  function hideLogin(){const a=authEl();if(a)a.classList.add('hide')}
+
+  async function fetchUser(access){
+    if(!access)return null;
+    const r=await fetch(API+'/auth/v1/user',{headers:{apikey:KEY,Authorization:'Bearer '+access}});
+    if(!r.ok)return null;
+    return await r.json();
   }
-  function saveSession(session){
-    if(!session)return;
-    try{
-      if(session.access_token)localStorage.setItem(ACCESS,session.access_token);
-      if(session.refresh_token)localStorage.setItem(REFRESH,session.refresh_token);
-    }catch(_){}
-  }
-  function clearSaved(){
-    try{localStorage.removeItem(ACCESS);localStorage.removeItem(REFRESH);}catch(_){}
-  }
-  function showLogin(){
-    const a=document.getElementById('authScreen');
-    if(a)a.classList.remove('hide');
-  }
-  function hideLogin(){
-    const a=document.getElementById('authScreen');
-    if(a)a.classList.add('hide');
+  async function refreshSession(refresh){
+    if(!refresh)return null;
+    const r=await fetch(API+'/auth/v1/token?grant_type=refresh_token',{
+      method:'POST',headers:{apikey:KEY,'Content-Type':'application/json'},body:JSON.stringify({refresh_token:refresh})
+    });
+    if(!r.ok)return null;
+    return await r.json();
   }
 
-  async function restore(){
-    const tok=saved();
-    if(!tok.access_token||!tok.refresh_token){showLogin();return;}
+  async function restoreSession(){
+    let access=get(ACCESS), refresh=get(REFRESH);
+    if(!access&&!refresh){showLogin();return}
 
-    // Avoid flashing the login page while the saved session is being restored.
+    // Hide only the login layer. No overlay, no capture handler, no waiting loop.
     hideLogin();
     try{
-      if(window.__pinggoSupabaseReady)await window.__pinggoSupabaseReady;
-      for(let i=0;i<60&&!window.pinggoDb;i++)await new Promise(r=>setTimeout(r,50));
-      if(!window.pinggoDb)throw new Error('Supabase belum siap');
-
-      const {data,error}=await window.pinggoDb.auth.setSession(tok);
-      if(error)throw error;
-      const session=data&&data.session;
-      const user=session&&session.user;
-      if(!user)throw new Error('Session tidak ditemukan');
-
-      saveSession(session);
-      if(typeof startPinggoSession==='function')await startPinggoSession(user);
-      else hideLogin();
-    }catch(err){
-      console.warn('PINGGO session restore failed',err);
-      clearSaved();
-      if(typeof pinggoUser!=='undefined')pinggoUser=null;
+      let user=await fetchUser(access);
+      if(!user && refresh){
+        const s=await refreshSession(refresh);
+        if(s&&s.access_token){
+          access=s.access_token;refresh=s.refresh_token||refresh;setTokens(access,refresh);
+          user=s.user||await fetchUser(access);
+        }
+      }
+      if(!user||!user.id)throw new Error('session expired');
+      if(typeof startPinggoSession==='function'){
+        // Do not await online profile/wallet calls; UI must remain immediately responsive.
+        Promise.resolve(startPinggoSession(user)).catch(console.warn);
+      }else hideLogin();
+    }catch(e){
+      console.warn('PINGGO restore:',e);
+      clearTokens();
+      try{if(typeof pinggoUser!=='undefined')pinggoUser=null}catch(_){}
       showLogin();
     }
   }
 
-  async function bindAuthRefresh(){
-    try{
-      if(window.__pinggoSupabaseReady)await window.__pinggoSupabaseReady;
-      for(let i=0;i<60&&!window.pinggoDb;i++)await new Promise(r=>setTimeout(r,50));
-      if(!window.pinggoDb)return;
-      window.pinggoDb.auth.onAuthStateChange((event,session)=>{
-        if(session)saveSession(session);
-        if(event==='SIGNED_OUT'){
-          clearSaved();
-          if(typeof pinggoUser!=='undefined')pinggoUser=null;
-          showLogin();
-        }
-      });
-    }catch(_){}
-  }
-
-  if(document.readyState==='loading'){
-    document.addEventListener('DOMContentLoaded',()=>{restore();bindAuthRefresh();},{once:true});
-  }else{
-    restore();bindAuthRefresh();
-  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',restoreSession,{once:true});
+  else restoreSession();
 })();
 </script>
 </body>
