@@ -1983,5 +1983,156 @@ body{
 }
 </style>
 
+
+<!-- PINGGO CHAT STABILITY + REALTIME FIX: additive, existing UI preserved -->
+<script id="pinggo-chat-stability-fix">
+(function(){
+  const sleep=(ms)=>new Promise(r=>setTimeout(r,ms));
+  async function getPinggoDbSafe(){
+    for(let i=0;i<160;i++){
+      if(window.pinggoDb) return window.pinggoDb;
+      if(window.__pinggoSupabaseReady){
+        try{ await Promise.race([window.__pinggoSupabaseReady,sleep(150)]); }catch(_){}
+      }
+      await sleep(50);
+    }
+    throw new Error('Koneksi PINGGO belum siap. Coba refresh.');
+  }
+
+  /* The login endpoint returns tokens directly, while the browser SDK is created separately.
+     Restore those tokens into the SDK before any Friends/Chat database call. */
+  const previousStart=window.startPinggoSession;
+  window.startPinggoSession=async function(user){
+    const db=await getPinggoDbSafe();
+    try{
+      const access=localStorage.getItem('pinggo_access_token');
+      const refresh=localStorage.getItem('pinggo_refresh_token');
+      if(access&&refresh) await db.auth.setSession({access_token:access,refresh_token:refresh});
+    }catch(e){ console.warn('PINGGO session restore',e); }
+    if(typeof previousStart==='function') return previousStart(user);
+    window.pinggoUser=user;
+    document.getElementById('authScreen')?.classList.add('hide');
+  };
+
+  let chatConversation=null, chatOther=null, chatChannel=null;
+  const modal=()=>document.getElementById('pcModal');
+  const box=()=>document.getElementById('pcMessages');
+  const esc=(v)=>String(v||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+  function appendRealMessage(m){
+    const b=box(); if(!b||!m||b.querySelector('[data-mid="'+m.id+'"]')) return;
+    const d=document.createElement('div');
+    d.className='pc-msg '+(m.sender_id===window.pinggoUser?.id?'me':'');
+    d.dataset.mid=m.id;
+    const time=m.created_at?new Date(m.created_at).toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit'}):'';
+    d.innerHTML='<div>'+esc(m.body||'')+'</div><div class="pc-time">'+time+'</div>';
+    b.appendChild(d); b.scrollTop=b.scrollHeight;
+  }
+
+  async function loadRealMessages(){
+    const db=await getPinggoDbSafe(), b=box();
+    if(!chatConversation||!b) return;
+    b.innerHTML='<div class="pf-empty">Loading messages...</div>';
+    const {data,error}=await db.from('messages').select('*').eq('conversation_id',chatConversation).is('deleted_at',null).order('created_at',{ascending:true});
+    b.innerHTML='';
+    if(error){ b.innerHTML='<div class="pf-empty">Unable to load messages</div>'; console.warn(error); return; }
+    (data||[]).forEach(appendRealMessage);
+  }
+
+  window.openPinggoChat=async function(u){
+    if(!u||!u.id){ alert('Data user tidak lengkap.'); return; }
+    if(!window.pinggoUser){ alert('Silakan login terlebih dahulu.'); return; }
+    chatOther=u;
+    document.getElementById('pcName').textContent=u.display_name||u.name||'PINGGO User';
+    document.getElementById('pcId').textContent=u.pinggo_id||u.pinggo||'';
+    modal()?.classList.add('show');
+    try{
+      const db=await getPinggoDbSafe();
+      const {data,error}=await db.rpc('get_or_create_direct_conversation',{p_other:u.id});
+      if(error) throw error;
+      chatConversation=data;
+      await loadRealMessages();
+      if(chatChannel) db.removeChannel(chatChannel);
+      chatChannel=db.channel('pinggo-chat-'+chatConversation)
+        .on('postgres_changes',{event:'INSERT',schema:'public',table:'messages',filter:'conversation_id=eq.'+chatConversation},payload=>appendRealMessage(payload.new))
+        .subscribe();
+    }catch(e){ console.error(e); box().innerHTML='<div class="pf-empty">Chat belum dapat dibuka: '+esc(e.message||'Unknown error')+'</div>'; }
+  };
+
+  window.closePinggoChat=function(){
+    modal()?.classList.remove('show');
+    if(chatChannel&&window.pinggoDb){ try{window.pinggoDb.removeChannel(chatChannel)}catch(_){} }
+    chatChannel=null; chatConversation=null; chatOther=null;
+  };
+
+  async function sendRealMessage(){
+    const input=document.getElementById('pcInput');
+    const body=(input?.value||'').trim();
+    if(!body||!chatConversation||!window.pinggoUser) return;
+    input.value='';
+    try{
+      const db=await getPinggoDbSafe();
+      const {error}=await db.from('messages').insert({conversation_id:chatConversation,sender_id:window.pinggoUser.id,body});
+      if(error) throw error;
+    }catch(e){ alert(e.message||'Pesan gagal dikirim.'); input.value=body; }
+  }
+
+  document.getElementById('pcClose')?.addEventListener('click',window.closePinggoChat);
+  document.getElementById('pcBack')?.addEventListener('click',window.closePinggoChat);
+  document.getElementById('pcSend')?.addEventListener('click',sendRealMessage);
+  document.getElementById('pcInput')?.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();sendRealMessage();}});
+
+  /* Stable Friends renderer with one real Chat button for every accepted friend. */
+  window.loadPinggoFriends=async function(){
+    if(!window.pinggoUser) return;
+    try{
+      const db=await getPinggoDbSafe();
+      const {data,error}=await db.from('friends').select('*').or('requester_id.eq.'+window.pinggoUser.id+',addressee_id.eq.'+window.pinggoUser.id).order('created_at',{ascending:false});
+      if(error) throw error;
+      const rows=data||[];
+      const otherIds=[...new Set(rows.flatMap(x=>[x.requester_id,x.addressee_id]).filter(x=>x!==window.pinggoUser.id))];
+      const profiles={};
+      if(otherIds.length){
+        const {data:p,error:pe}=await db.from('profiles').select('id,display_name,pinggo_id,avatar_url').in('id',otherIds);
+        if(pe) throw pe;
+        (p||[]).forEach(x=>profiles[x.id]=x);
+      }
+      const accepted=rows.filter(x=>x.status==='accepted');
+      const incoming=rows.filter(x=>x.status==='pending'&&x.addressee_id===window.pinggoUser.id);
+      const fb=document.getElementById('pfFriendsList');
+      if(fb) fb.innerHTML=accepted.length?accepted.map(x=>{
+        const u=profiles[x.requester_id===window.pinggoUser.id?x.addressee_id:x.requester_id];
+        if(!u) return '';
+        return '<div class="pf-row"><div class="pf-user"><div class="pf-avatar">'+esc((u.display_name||'?').charAt(0).toUpperCase())+'</div><div class="pf-meta"><b>'+esc(u.display_name)+'</b><small>'+esc(u.pinggo_id)+'</small></div></div><button class="pf-action pc-open" data-pc-user="'+u.id+'">Chat</button></div>';
+      }).join(''):'<div class="pf-empty">No friends yet. Search menggunakan PINGGO ID.</div>';
+      const rb=document.getElementById('pfRequestsList');
+      if(rb) rb.innerHTML=incoming.length?incoming.map(x=>{
+        const u=profiles[x.requester_id]; if(!u) return '';
+        return '<div class="pf-row"><div class="pf-user"><div class="pf-avatar">'+esc((u.display_name||'?').charAt(0).toUpperCase())+'</div><div class="pf-meta"><b>'+esc(u.display_name)+'</b><small>'+esc(u.pinggo_id)+'</small></div></div><div><button class="pf-action" data-pf-accept="'+x.id+'">Accept</button><button class="pf-action pf-secondary" data-pf-decline="'+x.id+'">Decline</button></div></div>';
+      }).join(''):'<div class="pf-empty">No friend requests.</div>';
+      const c=document.getElementById('pfReqCount'); if(c) c.textContent=incoming.length?'('+incoming.length+')':'';
+      document.querySelectorAll('[data-pc-user]').forEach(btn=>btn.onclick=()=>{const u=profiles[btn.dataset.pcUser];window.openPinggoChat(u);});
+      document.querySelectorAll('[data-pf-accept]').forEach(btn=>btn.onclick=()=>respond(btn.dataset.pfAccept,true));
+      document.querySelectorAll('[data-pf-decline]').forEach(btn=>btn.onclick=()=>respond(btn.dataset.pfDecline,false));
+    }catch(e){ console.warn('load friends',e); }
+  };
+
+  async function respond(requestId,accept){
+    try{const db=await getPinggoDbSafe(); const {error}=await db.rpc('respond_friend_request',{p_request:requestId,p_accept:accept}); if(error) throw error; await window.loadPinggoFriends();}
+    catch(e){alert(e.message||'Request gagal diproses.');}
+  }
+
+  /* Realtime subscriptions are created only after the SDK exists, avoiding the previous startup crash. */
+  (async()=>{
+    try{
+      const db=await getPinggoDbSafe();
+      db.channel('pinggo-friends-live-safe')
+        .on('postgres_changes',{event:'*',schema:'public',table:'friends'},()=>{if(window.pinggoUser)window.loadPinggoFriends();})
+        .subscribe();
+    }catch(e){console.warn('Realtime init',e);}
+  })();
+})();
+</script>
+
 </body>
 </html>
