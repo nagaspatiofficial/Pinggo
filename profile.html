@@ -856,7 +856,7 @@ async function loadPinggoFriends(){
  const friendsBox=document.getElementById('pfFriendsList');
  friendsBox.innerHTML=accepted.length?accepted.map(x=>{const u=profiles[x.requester_id===pinggoUser.id?x.addressee_id:x.requester_id];return '<div class="pf-row"><div class="pf-user"><div class="pf-avatar">'+pfAvatar(u?.display_name)+'</div><div class="pf-meta"><b>'+pfEsc(u?.display_name||'PINGGO User')+'</b><small>'+pfEsc(u?.pinggo_id||'')+'</small></div></div><button class="pf-action pf-secondary">Friend</button></div>'}).join(''):'<div class="pf-empty">No friends yet. Search menggunakan PINGGO ID.</div>';
  const reqBox=document.getElementById('pfRequestsList');
- reqBox.innerHTML=incoming.length?incoming.map(x=>{const u=profiles[x.requester_id];return '<div class="pf-row"><div class="pf-user"><div class="pf-avatar">'+pfAvatar(u?.display_name)+'</div><div class="pf-meta"><b>'+pfEsc(u?.display_name||'PINGGO User')+'</b><small>'+pfEsc(u?.pinggo_id||'')+'</small></div></div><div><button class="pf-action" onclick="respondPinggoFriend(\\''+x.id+'\\',true)">Accept</button><button class="pf-action pf-secondary" onclick="respondPinggoFriend(\\''+x.id+'\\',false)">Decline</button></div></div>'}).join(''):'<div class="pf-empty">No friend requests.</div>';
+ reqBox.innerHTML=incoming.length?incoming.map(x=>{const u=profiles[x.requester_id];return `<div class="pf-row"><div class="pf-user"><div class="pf-avatar">${pfAvatar(u?.display_name)}</div><div class="pf-meta"><b>${pfEsc(u?.display_name||'PINGGO User')}</b><small>${pfEsc(u?.pinggo_id||'')}</small></div></div><div><button class="pf-action" onclick="respondPinggoFriend('${String(x.id).replace(/'/g,"\\'")}',true)">Accept</button><button class="pf-action pf-secondary" onclick="respondPinggoFriend('${String(x.id).replace(/'/g,"\\'")}',false)">Decline</button></div></div>`}).join(''):'<div class="pf-empty">No friend requests.</div>';
  document.getElementById('pfReqCount').textContent=incoming.length?'('+incoming.length+')':'';
 }
 async function respondPinggoFriend(id,accept){const {error}=await window.pinggoDb.rpc('respond_friend_request',{p_request:id,p_accept:accept});if(error)alert(error.message);await loadPinggoFriends()}
@@ -2530,9 +2530,6 @@ body{
   back.addEventListener('click', forceBack, true);
 })();
 </script>
-
-</body>
-</html>
 <!-- PROFILE MODULE ONLY — appended separately; LOGIN and CHAT are not changed -->
 <style id="pinggo-profile-module-final">
 #profile .profile-edit-btn{cursor:pointer}
@@ -2677,86 +2674,5 @@ body{
   if(profileNav){profileNav.addEventListener('click',()=>{try{if(typeof renderProfile==='function')renderProfile()}catch(_){}});}
 })();
 </script>
-
-<!-- PROFILE STABILITY PATCH ONLY — login/chat/navigation untouched -->
-<style id="pinggo-profile-stability-patch">
-#profile .profile-top,#profile .profile-stats,#profile .settings-group{position:relative}
-#profile .profile-edit-btn,#profile .setting-row,#profile #changeProfilePhoto,#profile #demoLogout{touch-action:manipulation}
-#profileModal .profile-sheet{max-height:min(82dvh,720px);overflow:auto;-webkit-overflow-scrolling:touch}
-#profileModal .profile-close{position:sticky;top:0;z-index:2}
-#profileModal .profile-save,#profileModal .profile-id-copy button{touch-action:manipulation}
-</style>
-<script id="pinggo-profile-stability-patch-script">
-(function(){
- 'use strict';
- const modal=document.getElementById('profileModal');
- const content=document.getElementById('profileModalContent');
- const close=document.getElementById('closeProfileModal');
- const profile=document.getElementById('profile');
- const avatar=document.getElementById('changeProfilePhoto');
- const photoInput=document.getElementById('profilePhotoInput');
- if(!modal||!content||!close||!profile||typeof profileState==='undefined') return;
-
- const KEY='pinggo_profile_local_v1';
- const esc=v=>String(v??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
- const persist=()=>{try{localStorage.setItem(KEY,JSON.stringify({name:profileState.name,privacy:!!profileState.privacy,secretPrivate:!!profileState.secretPrivate,notifications:!!profileState.notifications,appearance:profileState.appearance,blocked:Array.isArray(profileState.blocked)?profileState.blocked:[]}));}catch(_){}};
- const restore=()=>{try{const x=JSON.parse(localStorage.getItem(KEY)||'null');if(!x)return;Object.keys(x).forEach(k=>{if(k in profileState)profileState[k]=x[k];});}catch(_){}};
- restore();
- try{if(typeof renderProfile==='function')renderProfile();}catch(_){}
- const show=()=>modal.classList.add('show');
- const hide=()=>modal.classList.remove('show');
- const status=(m,bad)=>{const s=document.getElementById('profileStableStatus');if(s){s.textContent=m||'';s.style.color=bad?'#a33':'#666';}};
- async function online(patch){
-   if(!window.pinggoUser||!window.pinggoDb)return;
-   const {error}=await window.pinggoDb.from('profiles').update(patch).eq('id',window.pinggoUser.id);
-   if(error)throw error;
- }
- function account(){
-   content.innerHTML=`<h3>Account Information</h3>
-   <div class="profile-field"><label>Display Name</label><input id="profileStableName" maxlength="60" value="${esc(profileState.name)}"></div>
-   <div class="profile-field"><label>PINGGO ID</label><input value="${esc(profileState.id)}" readonly></div>
-   <div class="profile-id-copy"><button type="button" data-ps-copy>Copy PINGGO ID</button><button type="button" data-ps-share>Share</button></div>
-   <p class="profile-note">PINGGO ID tidak diubah dari Profile agar login yang sudah benar tidak terganggu.</p>
-   <button class="profile-save" type="button" data-ps-save>Save Changes</button><div class="profile-status" id="profileStableStatus"></div>`;
-   show();
- }
- function toggle(key,label){return `<div class="toggle-row"><span>${label}</span><button class="toggle ${profileState[key]?'on':''}" type="button" data-ps-toggle="${key}"><i></i></button></div>`;}
- function setting(type){
-   if(type==='account')return account();
-   if(type==='privacy')content.innerHTML=`<h3>Privacy</h3>${toggle('privacy','Private Profile')}${toggle('secretPrivate','Secret Drop Private by Default')}`;
-   else if(type==='notifications')content.innerHTML=`<h3>Notifications</h3>${toggle('notifications','Chat & Activity Notifications')}`;
-   else if(type==='blocked')content.innerHTML=`<h3>Blocked Users</h3>${profileState.blocked?.length?profileState.blocked.map(u=>`<div class="block-row"><span class="friend-avatar">${esc((u.name||'?').slice(0,1))}</span><div><b>${esc(u.name||'PINGGO User')}</b><small>${esc(u.pinggo||'')}</small></div><button type="button" data-ps-unblock="${esc(u.id)}">Unblock</button></div>`).join(''):'<div class="empty-card">Belum ada user diblokir.</div>'}`;
-   else if(type==='appearance')content.innerHTML=`<h3>Appearance</h3><div class="empty-card">Tampilan PINGGO saat ini memakai layar putih / bening. Tidak ada perubahan warna pink pada area layar.</div>`;
-   else content.innerHTML=`<h3>About PINGGO</h3><p style="font-size:12px;color:#777079;line-height:1.6">PINGGO adalah aplikasi social messaging dengan Chat, Friends, Gallery, Secret Drop dan PINGGO Gem.</p><div class="empty-card">PINGGO Prototype • Version 1.0</div>`;
-   show();
- }
- function openFrom(e){
-   const b=e.target.closest('#editProfileBtn,[data-setting-open]');
-   if(!b||!profile.contains(b))return false;
-   e.preventDefault();e.stopImmediatePropagation();
-   setting(b.id==='editProfileBtn'?'account':b.dataset.settingOpen);return true;
- }
- document.addEventListener('click',async e=>{
-   if(openFrom(e))return;
-   if(e.target.closest('#closeProfileModal')||e.target===modal){e.preventDefault();e.stopImmediatePropagation();hide();return;}
-   const copy=e.target.closest('[data-ps-copy]');
-   if(copy){e.preventDefault();e.stopImmediatePropagation();const id=String(profileState.id||'').replace(/^@/,'');try{await navigator.clipboard.writeText(id);}catch(_){const t=document.createElement('textarea');t.value=id;document.body.appendChild(t);t.select();document.execCommand('copy');t.remove();}status('PINGGO ID copied.');return;}
-   const share=e.target.closest('[data-ps-share]');
-   if(share){e.preventDefault();e.stopImmediatePropagation();const id=String(profileState.id||'').replace(/^@/,'');const text='Add me on PINGGO: '+id;try{if(navigator.share)await navigator.share({title:'My PINGGO ID',text});else{await navigator.clipboard.writeText(text);status('PINGGO ID copied for sharing.');}}catch(_){}return;}
-   const save=e.target.closest('[data-ps-save]');
-   if(save){e.preventDefault();e.stopImmediatePropagation();const name=(document.getElementById('profileStableName')?.value||'').trim();if(!name){status('Display Name tidak boleh kosong.',true);return;}save.disabled=true;save.textContent='Saving...';try{await online({display_name:name});profileState.name=name;persist();if(typeof renderProfile==='function')renderProfile();status(window.pinggoUser?'Saved.':'Saved locally.');setTimeout(hide,250);}catch(err){status(err?.message||'Gagal menyimpan perubahan.',true);}finally{save.disabled=false;save.textContent='Save Changes';}return;}
-   const tg=e.target.closest('[data-ps-toggle]');
-   if(tg){e.preventDefault();e.stopImmediatePropagation();const key=tg.dataset.psToggle;const map={privacy:'private_profile',secretPrivate:'secret_private_default',notifications:'notifications_enabled'};if(!map[key])return;const next=!profileState[key];tg.disabled=true;try{await online({[map[key]]:next});profileState[key]=next;persist();tg.classList.toggle('on',next);}catch(err){alert(err?.message||'Gagal menyimpan pengaturan.');}finally{tg.disabled=false;}return;}
-   const un=e.target.closest('[data-ps-unblock]');
-   if(un){e.preventDefault();e.stopImmediatePropagation();profileState.blocked=(profileState.blocked||[]).filter(x=>String(x.id)!==String(un.dataset.psUnblock));persist();if(typeof renderProfile==='function')renderProfile();setting('blocked');return;}
- },true);
-
- if(avatar&&photoInput){
-   avatar.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();photoInput.click();},true);
-   photoInput.addEventListener('change',()=>{persist();},true);
- }
- document.addEventListener('keydown',e=>{if(e.key==='Escape'&&modal.classList.contains('show')){e.preventDefault();hide();}},true);
- const nav=document.querySelector('.nav-item[data-target="profile"]');
- if(nav)nav.addEventListener('click',()=>{try{if(typeof renderProfile==='function')renderProfile();}catch(_){}},true);
-})();
-</script>
+</body>
+</html>
