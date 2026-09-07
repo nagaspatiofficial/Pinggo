@@ -2688,5 +2688,108 @@ body{
   if(profileNav) profileNav.addEventListener('click',()=>{try{if(typeof renderProfile==='function')renderProfile();}catch(_){}},true);
 })();
 </script>
+
+
+<!-- CHAT STABILITY MODULE — INDEX ONLY -->
+<style id="pinggo-chat-stability-style">
+#chatRoom{box-sizing:border-box!important;background:#fff!important}
+#chatRoom .chat-composer{background:#fff!important;position:relative!important;z-index:40!important}
+#chatRoom .composer-input{background:#eef0f3!important;border:1px solid #cfd4da!important}
+#chatRoom #messageInput{color:#2f343a!important;background:transparent!important;-webkit-text-fill-color:#2f343a!important}
+#chatRoom #messageInput::placeholder{color:#7b828a!important;opacity:1!important}
+#chatRoom .message-row.incoming .bubble{background:#e7e9ed!important;color:#2f343a!important;border:1px solid #d7dbe0!important}
+#chatRoom .message-row.incoming .bubble small{color:#69717a!important}
+#chatRoom #backChat{position:relative!important;z-index:100!important;pointer-events:auto!important;touch-action:manipulation!important}
+#chatRoom .pinggo-reply-preview{display:flex;align-items:center;gap:8px;margin:0 0 6px 50px;padding:8px 10px;border-radius:12px;background:#f1f2f4;border-left:3px solid #888;font-size:11px;color:#5e646b}
+#chatRoom .pinggo-reply-preview b{display:block;font-size:11px;color:#333}
+#chatRoom .pinggo-reply-preview span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#chatRoom .pinggo-reply-preview button{border:0;background:transparent;font-size:20px;line-height:1;color:#555;padding:0 4px}
+#chatRoom .bubble{user-select:none;-webkit-user-select:none}
+</style>
+<script id="pinggo-chat-stability-script">
+(function(){
+  'use strict';
+  const room=document.getElementById('chatRoom');
+  const back=document.getElementById('backChat');
+  const input=document.getElementById('messageInput');
+  const composer=room?.querySelector('.chat-composer');
+  const attach=document.getElementById('attachMenu');
+  const messages=document.getElementById('chatMessages');
+  if(!room||!back||!input||!composer||!messages) return;
+
+  let replyText='';
+  let replySide='';
+
+  function clearReply(){
+    replyText=''; replySide='';
+    composer.querySelector('.pinggo-reply-preview')?.remove();
+  }
+  function showReply(text,side){
+    clearReply();
+    replyText=(text||'').trim();
+    replySide=side||'incoming';
+    if(!replyText) return;
+    const bar=document.createElement('div');
+    bar.className='pinggo-reply-preview';
+    const copy=document.createElement('span');
+    copy.innerHTML='<b>Reply</b>';
+    copy.append(document.createTextNode(replyText));
+    const close=document.createElement('button');
+    close.type='button'; close.setAttribute('aria-label','Cancel reply'); close.textContent='×';
+    close.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();clearReply();input.focus();});
+    bar.append(copy,close);
+    composer.insertBefore(bar,composer.firstChild);
+    input.focus();
+  }
+
+  // Tap pesan untuk membalas. Tidak mengubah data chat yang sudah ada.
+  messages.addEventListener('click',function(e){
+    const bubble=e.target.closest('.message-row .bubble');
+    if(!bubble) return;
+    const row=bubble.closest('.message-row');
+    const clone=bubble.cloneNode(true);
+    clone.querySelector('small')?.remove();
+    showReply(clone.textContent||'',row?.classList.contains('outgoing')?'outgoing':'incoming');
+  },true);
+
+  // Tempel konteks reply ke pesan baru tanpa mengganggu sender lama.
+  const sendBtn=document.getElementById('sendMessage');
+  if(sendBtn){
+    sendBtn.addEventListener('click',function(){
+      if(replyText && input.value.trim()){
+        input.dataset.pinggoReply=replyText;
+        setTimeout(clearReply,0);
+      }
+    },false);
+  }
+  input.addEventListener('keydown',function(e){
+    if(e.key==='Enter' && replyText && input.value.trim()) setTimeout(clearReply,0);
+  },false);
+
+  function forceClose(e){
+    if(e){e.preventDefault();e.stopImmediatePropagation();}
+    clearReply();
+    try{input.blur();}catch(_){}
+    attach?.classList.remove('show');
+    room.classList.remove('open');
+    room.style.display='';
+    document.body.style.overflow='';
+  }
+
+  // Satu handler capture di document supaya Back tetap bekerja walau keyboard/reply aktif.
+  document.addEventListener('pointerup',function(e){
+    const t=e.target instanceof Element?e.target.closest('#backChat'):null;
+    if(t && room.contains(t)) forceClose(e);
+  },true);
+  document.addEventListener('click',function(e){
+    const t=e.target instanceof Element?e.target.closest('#backChat'):null;
+    if(t && room.contains(t)) forceClose(e);
+  },true);
+
+  // Saat room ditutup oleh handler lain, reply state ikut dibersihkan.
+  const obs=new MutationObserver(()=>{if(!room.classList.contains('open')) clearReply();});
+  obs.observe(room,{attributes:true,attributeFilter:['class']});
+})();
+</script>
 </body>
 </html>
