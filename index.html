@@ -1092,7 +1092,7 @@ html.pinggo-session-active .auth-screen{opacity:0!important;visibility:hidden!im
       <button class="back-btn" onclick="closeChatRoom()">←</button>
       <div class="avatar-container" style="width:38px; height:38px; font-size:14px;" id="roomAvatar">C</div>
       <div class="room-user-info">
-        <b id="roomName">Cinta</b>
+        <b id="roomName">PINGGO</b>
         <small>Online</small>
       </div>
       <button class="icon-btn" style="border:0; background:transparent;">⋮</button>
@@ -1179,26 +1179,14 @@ let prefs=Object.assign({privacy:false,secretPrivate:false,notifications:true,ap
 let walletHistory=read('pinggo_coin_history_v1',[]);
 const people={};
 let friendRowsByUser={};
-const defaultChat={
-  cinta:[{side:'in',kind:'text',text:'Haii, nanti malam ketemu?',time:'09:20'},{side:'out',kind:'text',text:'Bisa 😊',time:'09:22 ✓✓'}],
-  baliCrew:[{side:'in',kind:'text',text:'Rama: 📷 Foto',time:'08:41'}],
-  dika:[{side:'in',kind:'text',text:'Siap bro',time:'Kemarin'}],
-  nadya:[{side:'in',kind:'text',text:'🎙 Voice message',time:'Senin'}]
-};
-let chatStore=read(STORE.chat,{});
-const getHistory=id=>Array.isArray(chatStore[id])?chatStore[id]:((defaultChat[id]||[]).map(x=>({...x})));
-const setHistory=(id,h)=>{chatStore[id]=h;write(STORE.chat,chatStore)};
-let chatsData=[
-  {id:'cinta',name:'Cinta',preview:'Oke, sampai nanti 😊',time:'09:24',unread:2,avatar:'C',group:false,favorite:true},
-  {id:'baliCrew',name:'Bali Crew',preview:'Rama: 📷 Foto',time:'08:41',unread:0,avatar:'BC',group:true,favorite:false},
-  {id:'dika',name:'Dika',preview:'Siap bro',time:'Kemarin',unread:0,avatar:'D',group:false,favorite:false},
-  {id:'nadya',name:'Nadya',preview:'🎙 Voice message',time:'Senin',unread:1,avatar:'N',group:false,favorite:true}
-];
+const defaultChat={};
+let chatStore={};
+const getHistory=id=>[];
+const setHistory=(id,h)=>{};
+let chatsData=[];
 let friendsState=Object.assign({friends:[],requests:[],sent:[],blocked:[]},read(STORE.friends,{}));
 friendsState.friends=Array.isArray(friendsState.friends)?friendsState.friends:[];friendsState.requests=Array.isArray(friendsState.requests)?friendsState.requests:[];friendsState.sent=Array.isArray(friendsState.sent)?friendsState.sent:[];friendsState.blocked=Array.isArray(friendsState.blocked)?friendsState.blocked:[];
-let secretState=read(STORE.secret,null)||{
- received:[{id:'s1',name:'Sunset Bali',caption:'Exclusive sunset',price:1000,type:'image',url:'',unlocked:false,date:'Hari ini',author:'Cinta'},{id:'s2',name:'Free Preview',caption:'Untuk kamu',price:0,type:'image',url:'',unlocked:false,date:'Hari ini',author:'Nadya'}],sent:[],unlocked:[]
-};
+let secretState={received:[],sent:[],unlocked:[]};
 function account(){return read(STORE.account,null)}
 function createPinggoId(){return 'PG13'+String(Math.floor(Math.random()*10000)).padStart(4,'0')}
 
@@ -1258,6 +1246,8 @@ async function syncOwnProfile(patch){
 async function restoreBackendSession(){
   const sess=currentSession();
   if(!sess?.loggedIn)return false;
+  chatsData=[];backendChatHistory={};chatConversationByUser={};
+  renderChats();
 
   // Selama user belum menekan Logout, refresh halaman tidak boleh memaksa balik ke login.
   // Token diverifikasi / diperbarui di background. Jika jaringan atau Supabase sedang gagal,
@@ -1473,17 +1463,33 @@ function renderFeelings(){
 async function postFeeling(){
   const el=$('feelingText'),body=(el?.value||'').trim();if(!body)return;
   const btn=$('postFeelingBtn');if(btn){btn.disabled=true;btn.textContent='...'}
+  const uid=currentUserId();
+  if(!uid){if(btn){btn.disabled=false;btn.textContent='Update'}return alert('Session belum siap. Silakan buka ulang aplikasi.')}
+  let timer=null;
   try{
-    const uid=currentUserId();if(!uid)throw new Error('Session belum siap. Silakan buka ulang aplikasi.');
-    await supabaseRequest('/rest/v1/feelings',{
+    const controller=new AbortController();
+    timer=setTimeout(()=>controller.abort(),12000);
+    const res=await fetch(SUPABASE_URL+'/rest/v1/feelings',{
       method:'POST',
-      headers:{'Content-Type':'application/json','Prefer':'return=minimal'},
+      signal:controller.signal,
+      headers:authHeaders({'Content-Type':'application/json','Prefer':'return=representation'}),
       body:JSON.stringify({user_id:uid,body})
     });
+    let data=null;try{data=await res.json()}catch(_){data=null}
+    if(!res.ok)throw new Error(data?.message||data?.error||('Gagal update Feeling ('+res.status+')'));
     if(el)el.value='';
-    try{await loadFeelings()}catch(_){}
-  }catch(e){alert(e.message)}
-  finally{
+    const row=Array.isArray(data)?data[0]:data;
+    if(row?.id){
+      feelingsData=[{...row,comments:[],giftTotal:0},...feelingsData.filter(x=>x.id!==row.id)];
+      if(currentFriendView==='feelings')renderFeelings();
+    }
+    // Sinkronkan ulang di background; tidak menahan tombol Update.
+    loadFeelings().catch(e=>console.warn('Refresh Feeling gagal:',e));
+  }catch(e){
+    if(e?.name==='AbortError')alert('Koneksi ke server terlalu lama. Coba Update lagi.');
+    else alert(e.message||'Feeling gagal diupdate.');
+  }finally{
+    if(timer)clearTimeout(timer);
     const b=$('postFeelingBtn');if(b){b.disabled=false;b.textContent='Update'}
   }
 }
@@ -1668,7 +1674,7 @@ async function loadBackendChats(){
   try{
     const mine=await supabaseRequest('/rest/v1/conversation_members?user_id=eq.'+encodeURIComponent(uid)+'&select=conversation_id');
     const cids=[...new Set((mine||[]).map(x=>x.conversation_id).filter(Boolean))];
-    if(!cids.length){chatsData=[];chatConversationByUser={};renderChats();return true}
+    if(!cids.length){chatsData=[];chatConversationByUser={};backendChatHistory={};renderChats();return true}
     const [convs,members,msgs]=await Promise.all([
       supabaseRequest('/rest/v1/conversations?id=in.'+encodeURIComponent(postgrestIn(cids))+'&select=id,kind,title,last_message_at,created_at'),
       supabaseRequest('/rest/v1/conversation_members?conversation_id=in.'+encodeURIComponent(postgrestIn(cids))+'&select=conversation_id,user_id'),
@@ -1684,9 +1690,11 @@ async function loadBackendChats(){
       const other=mem.find(x=>x!==uid);if(c.kind==='direct'&&!other)continue;
       const p=other?people[other]:null;if(other)chatConversationByUser[other]=c.id;
       const cm=(byConv[c.id]||[]).slice().sort((a,b)=>new Date(b.created_at)-new Date(a.created_at));
-      const last=cm[0];const unread=cm.filter(m=>m.sender_id!==uid&&!m.read_at).length;
-      const preview=!last?'Mulai percakapan':last.media_type==='image'?'📷 Foto':last.media_type==='video'?'🎥 Video':(last.media_type==='voice'||String(last.media_type||'').startsWith('audio'))?'🎙 Voice message':(last.body||'Pesan');
-      rows.push({id:other||c.id,conversationId:c.id,name:p?.name||c.title||'PINGGO Chat',preview,time:fmtChatTime(last?.created_at||c.last_message_at||c.created_at),unread,avatar:p?.avatar||'P',group:c.kind!=='direct',favorite:false,online:!!p?.online,lastAt:new Date(last?.created_at||c.last_message_at||c.created_at||0).getTime()});
+      const last=cm[0];
+      if(!last)continue;
+      const unread=cm.filter(m=>m.sender_id!==uid&&!m.read_at).length;
+      const preview=last.media_type==='image'?'📷 Foto':last.media_type==='video'?'🎥 Video':(last.media_type==='voice'||String(last.media_type||'').startsWith('audio'))?'🎙 Voice message':(last.body||'Pesan');
+      rows.push({id:other||c.id,conversationId:c.id,name:p?.name||c.title||'PINGGO Chat',preview,time:fmtChatTime(last.created_at),unread,avatar:p?.avatar||'P',group:c.kind!=='direct',favorite:false,online:!!p?.online,lastAt:new Date(last.created_at||0).getTime()});
     }
     chatsData=rows.sort((a,b)=>b.lastAt-a.lastAt);renderChats();return true;
   }catch(e){console.warn('Chat backend gagal:',e);return false}
@@ -1764,7 +1772,7 @@ renderChats();renderFriends();renderSecret();renderProfile();
 (async()=>{
   const sess=currentSession();
   // Jangan tampilkan layar login lagi ketika sesi lokal masih berstatus login.
-  if(sess?.loggedIn){$('authScreen').classList.add('hide')}
+  if(sess?.loggedIn){$('authScreen').classList.add('hide');currentChatId=null;$('chatRoom').classList.remove('open')}
   const ok=await restoreBackendSession();
   if(ok){
     $('authScreen').classList.add('hide');
