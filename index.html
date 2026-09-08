@@ -1450,6 +1450,7 @@ window.logout=function(){
   try{
     if(chatPollTimer){clearInterval(chatPollTimer);chatPollTimer=null}
     if(presenceTimer){clearInterval(presenceTimer);presenceTimer=null}
+    if(appSyncTimer){clearInterval(appSyncTimer);appSyncTimer=null}
   }catch(_){}
   currentChatId=null;chatConversationByUser={};backendChatHistory={};chatsData=[];
   feelingsData=[];feelingsLoaded=false;feelingsLoading=null;
@@ -1806,7 +1807,7 @@ function renderProfile(){setProfile(activeAccount()||account()||{name:'PINGGO Us
 const PINGGO_VAPID_PUBLIC='BLGFombhPIIRBgbKbssVYzNID9BZcWqqhL6gaE3Cwp3GaKS9f80kv1wzesl4xroOC2P9S1NPS1c2wgVhgK_Vtzw';
 let backendChatHistory={};
 let chatConversationByUser={};
-let chatPollTimer=null,presenceTimer=null;
+let chatPollTimer=null,presenceTimer=null,appSyncTimer=null,appSyncBusy=false;
 const chatMediaUrlCache=new Map();
 function fmtChatTime(v){if(!v)return'';const d=new Date(v);const today=new Date();return d.toDateString()===today.toDateString()?d.toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit'}):d.toLocaleDateString('id-ID',{day:'2-digit',month:'short'})}
 function postgrestIn(ids){return '('+ids.map(String).join(',')+')'}
@@ -1860,7 +1861,7 @@ function renderChats(filter='all',query=''){
   const box=$('chatList');box.innerHTML='';const q=String(query||'').toLowerCase();
   const visible=chatsData.filter(c=>(filter==='all'||(filter==='unread'&&c.unread>0)||(filter==='group'&&c.group)||(filter==='favorite'&&c.favorite))&&(!q||(c.name+' '+c.preview).toLowerCase().includes(q)));
   if(!visible.length){box.innerHTML='<div class="empty-state">Belum ada percakapan.</div>';return}
-  visible.forEach(c=>{const p=people[c.id];const el=document.createElement('div');el.className='chat-item';el.innerHTML=`<div class="avatar-container">${esc(c.avatar)}${p?.online?'<div class="online-dot"></div>':''}</div><div class="chat-info"><div class="chat-top-row"><span class="chat-name">${esc(c.name)}</span><span class="chat-time">${esc(c.time)}</span></div><div class="chat-preview">${esc(c.preview)}</div></div>${c.unread?`<div class="unread-badge">${c.unread}</div>`:''}`;el.onclick=()=>openChatRoom(c.id);box.appendChild(el)})
+  visible.forEach(c=>{const p=people[c.id];const el=document.createElement('div');el.className='chat-item';const avatar=p?.photo?`<img class="friend-avatar-img" src="${esc(p.photo)}" alt="${esc(c.name)}">`:esc(c.avatar);el.innerHTML=`<div class="avatar-container">${avatar}${p?.online?'<div class="online-dot"></div>':''}</div><div class="chat-info"><div class="chat-top-row"><span class="chat-name">${esc(c.name)}</span><span class="chat-time">${esc(c.time)}</span></div><div class="chat-preview">${esc(c.preview)}</div></div>${c.unread?`<div class="unread-badge">${c.unread}</div>`:''}`;el.onclick=()=>openChatRoom(c.id);box.appendChild(el)})
 }
 function renderHistory(){
   if(!currentChatId)return;const cid=chatConversationByUser[currentChatId];const box=$('chatMessages');box.innerHTML='<div class="date-divider">Hari ini</div>';
@@ -1868,7 +1869,7 @@ function renderHistory(){
   arr.forEach(m=>{const row=document.createElement('div');row.className='msg-row '+(m.side==='out'?'outgoing':'incoming');if(m.kind==='image'||m.kind==='video'){const card=document.createElement('div');card.className='media-message';if(m.url){const media=document.createElement(m.kind==='image'?'img':'video');media.src=m.url;if(m.kind==='video'){media.controls=true;media.playsInline=true}media.onclick=()=>openMedia(m.kind,m.url);card.append(media)}const cap=document.createElement('div');cap.className='media-caption';cap.textContent=(m.kind==='image'?'📷 Foto':'🎥 Video')+' • '+m.time;card.append(cap);row.append(card)}else if(m.kind==='voice'){const b=document.createElement('div');b.className='msg-bubble voice-message';if(m.url){const a=document.createElement('audio');a.controls=true;a.src=m.url;b.append(a)}const t=document.createElement('span');t.className='msg-time';t.textContent=m.time;b.append(t);row.append(b)}else{const b=document.createElement('div');b.className='msg-bubble';b.innerHTML=esc(m.text||'')+` <span class="msg-time">${esc(m.time||'')}</span>`;row.append(b)}box.append(row)});requestAnimationFrame(()=>box.scrollTop=box.scrollHeight)
 }
 async function openChatRoom(id){
-  try{currentChatId=id;const p=people[id]||{name:id,avatar:'P',online:false};$('roomName').textContent=p.name;$('roomAvatar').textContent=p.avatar;const st=document.querySelector('#chatRoom .room-user-info small');if(st){st.textContent=p.online?'Online':(p.lastSeen||'Offline');st.style.color=p.online?'var(--green-online)':'var(--text-muted)'};$('chatRoom').classList.add('open');await ensureConversationForUser(id);await loadConversationMessages(chatConversationByUser[id]);await loadBackendChats();$('msgInput').focus({preventScroll:true})}catch(e){alert(e.message)}
+  try{currentChatId=id;const p=people[id]||{name:id,avatar:'P',online:false};$('roomName').textContent=p.name;const roomAvatar=$('roomAvatar');if(p.photo)roomAvatar.innerHTML=`<img class="friend-avatar-img" src="${esc(p.photo)}" alt="${esc(p.name)}">`;else roomAvatar.textContent=p.avatar;const st=document.querySelector('#chatRoom .room-user-info small');if(st){st.textContent=p.online?'Online':(p.lastSeen||'Offline');st.style.color=p.online?'var(--green-online)':'var(--text-muted)'};$('chatRoom').classList.add('open');await ensureConversationForUser(id);await loadConversationMessages(chatConversationByUser[id]);await loadBackendChats();$('msgInput').focus({preventScroll:true})}catch(e){alert(e.message)}
 }
 window.closeChatRoom=function(){$('attachMenu').classList.remove('show');$('chatRoom').classList.remove('open');currentChatId=null};
 async function sendPushTo(recipientId,title,body){if(!recipientId||!prefs.notifications)return;try{await fetch(SUPABASE_URL+'/functions/v1/send-push',{method:'POST',headers:authHeaders({'Content-Type':'application/json'}),body:JSON.stringify({recipient_id:recipientId,title,body,url:'./'})})}catch(e){console.warn('Push send gagal:',e)}}
@@ -1897,12 +1898,29 @@ async function saveProfilePhoto(file){
   try{const ext=(file.name.split('.').pop()||'jpg').replace(/[^a-zA-Z0-9]/g,'').toLowerCase();const path=currentUserId()+'/avatar.'+ext;await storageUpload('profile-media',path,file,true);const url=SUPABASE_URL+'/storage/v1/object/public/profile-media/'+path.split('/').map(encodeURIComponent).join('/');const a=account()||{name:'PINGGO User',pinggoId:''};a.photo=url;write(STORE.account,a);setProfile(a);await syncOwnProfile({avatar_url:url,updated_at:new Date().toISOString()});await loadBackendFriends()}catch(e){alert('Foto profil gagal disimpan: '+e.message)}
 }
 async function touchPresence(){if(!currentUserId()||!currentSession()?.accessToken)return;await syncOwnProfile({last_seen_at:new Date().toISOString()})}
-function startPresenceAndChatSync(){
-  if(presenceTimer)clearInterval(presenceTimer);if(chatPollTimer)clearInterval(chatPollTimer);
-  touchPresence().catch(()=>{});presenceTimer=setInterval(()=>{if(!document.hidden){touchPresence().catch(()=>{});const ids=[...new Set([...friendsState.friends,...friendsState.requests,...friendsState.sent])];if(ids.length)loadProfilesByIds(ids).then(()=>{renderFriends();renderChats()}).catch(()=>{})}},30000);
-  chatPollTimer=setInterval(async()=>{if(document.hidden||!currentSession()?.loggedIn)return;await Promise.allSettled([loadBackendChats(),loadBackendFriends()]);if(currentChatId&&chatConversationByUser[currentChatId])await loadConversationMessages(chatConversationByUser[currentChatId])},7000)
+async function syncLiveAppData(){
+  if(appSyncBusy||document.hidden||!currentSession()?.loggedIn)return;
+  appSyncBusy=true;
+  try{
+    const uid=currentUserId();
+    const tasks=[loadBackendChats(),loadBackendFriends(),loadWallet()];
+    if(currentFriendView==='feelings')tasks.push(loadFeelings(true));
+    if(document.querySelector('#panelDrop')?.classList.contains('active'))tasks.push(loadBackendSecrets());
+    if(uid){tasks.push(fetchOwnProfile(uid).then(p=>{if(p)applyRemoteProfile(p)}).catch(()=>{}))}
+    await Promise.allSettled(tasks);
+    if(currentChatId&&chatConversationByUser[currentChatId])await loadConversationMessages(chatConversationByUser[currentChatId]);
+    renderChats();renderFriends();renderProfile();
+  }finally{appSyncBusy=false}
 }
-document.addEventListener('visibilitychange',()=>{if(!document.hidden){touchPresence().catch(()=>{});loadBackendFriends().catch(()=>{})}});
+function startPresenceAndChatSync(){
+  if(presenceTimer)clearInterval(presenceTimer);if(chatPollTimer)clearInterval(chatPollTimer);if(appSyncTimer)clearInterval(appSyncTimer);
+  touchPresence().catch(()=>{});
+  presenceTimer=setInterval(()=>{if(!document.hidden){touchPresence().catch(()=>{});const ids=[...new Set([...friendsState.friends,...friendsState.requests,...friendsState.sent])];if(ids.length)loadProfilesByIds(ids).then(()=>{renderFriends();renderChats()}).catch(()=>{})}},30000);
+  chatPollTimer=setInterval(async()=>{if(document.hidden||!currentSession()?.loggedIn)return;await Promise.allSettled([loadBackendChats(),loadBackendFriends()]);if(currentChatId&&chatConversationByUser[currentChatId])await loadConversationMessages(chatConversationByUser[currentChatId])},4000);
+  appSyncTimer=setInterval(()=>{syncLiveAppData().catch(()=>{})},10000);
+}
+document.addEventListener('visibilitychange',()=>{if(!document.hidden){touchPresence().catch(()=>{});syncLiveAppData().catch(()=>{})}});
+window.addEventListener('focus',()=>{syncLiveAppData().catch(()=>{})});
 window.addEventListener('beforeunload',()=>{if(currentSession()?.loggedIn)navigator.sendBeacon?.('')});
 /* ===== end backend patch ===== */
 
