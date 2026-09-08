@@ -1882,5 +1882,36 @@ renderChats();renderFriends();renderSecret();renderProfile();
 })();
 </script>
 
+
+<script id="pinggo-feeling-tab-recovery">
+(function(){
+  function ensureFeelingTab(){
+    var tabs=document.getElementById('friendTabs');
+    if(!tabs)return;
+    var btn=tabs.querySelector('[data-friend-view="feelings"]');
+    if(!btn){
+      btn=document.createElement('button');
+      btn.type='button';
+      btn.className='cat-tab';
+      btn.setAttribute('data-friend-view','feelings');
+      btn.textContent='Feeling';
+      tabs.insertBefore(btn,tabs.firstChild);
+    }
+    if(btn.dataset.pinggoFeelingBound!=='1'){
+      btn.dataset.pinggoFeelingBound='1';
+      btn.addEventListener('click',function(ev){
+        ev.preventDefault();
+        ev.stopPropagation();
+        if(typeof window.setFriendView==='function') window.setFriendView('feelings');
+        else if(typeof setFriendView==='function') setFriendView('feelings');
+      });
+    }
+  }
+  ensureFeelingTab();
+  document.addEventListener('DOMContentLoaded',ensureFeelingTab,{once:true});
+  var obs=new MutationObserver(function(){ensureFeelingTab();});
+  obs.observe(document.documentElement,{childList:true,subtree:true});
+})();
+</script>
 </body>
 </html>
