@@ -841,7 +841,7 @@ button, input, select, textarea {
 .feeling-head{display:flex;align-items:center;gap:8px;margin-bottom:5px}.feeling-head .avatar{flex:0 0 auto;transform:scale(.9);transform-origin:left center}
 .feeling-name{font-size:13px;font-weight:850}.feeling-time{font-size:10px;color:var(--text-muted)}
 .feeling-body{font-size:13px;line-height:1.35;white-space:pre-wrap;word-break:break-word;margin:4px 0 6px}
-.feeling-comments{border-top:1px solid rgba(0,0,0,.05);padding-top:5px}
+.feeling-comments{border-top:1px solid rgba(0,0,0,.05);padding-top:5px}.feeling-comment-list{display:none;max-height:150px;overflow-y:auto;padding-right:2px}.feeling-comment-list.open{display:block}
 .feeling-comment{font-size:11px;margin:3px 0;line-height:1.3}.feeling-comment b{font-weight:850}
 .feeling-comment-form{display:none;gap:6px;margin-top:6px}.feeling-comment-form.open{display:flex}.feeling-comment-form input{flex:1;min-width:0;border:0;outline:0;background:rgba(230,225,232,.6);border-radius:13px;padding:7px 9px;font-size:12px}
 .feeling-comment-form button{width:auto;border:0;border-radius:13px;padding:7px 10px;background:var(--pinggo-pink);color:#fff;font-weight:800;font-size:11px}
@@ -1449,7 +1449,7 @@ async function loadFeelings(){
     if(fids.length){
       const filter='('+fids.join(',')+')';
       comments=await supabaseRequest('/rest/v1/feeling_comments?feeling_id=in.'+encodeURIComponent(filter)+'&select=id,feeling_id,user_id,body,created_at&order=created_at.asc');
-      gifts=await supabaseRequest('/rest/v1/feeling_gifts?feeling_id=in.'+encodeURIComponent(filter)+'&select=feeling_id,amount');
+      try{gifts=await supabaseRequest('/rest/v1/feeling_gifts?feeling_id=in.'+encodeURIComponent(filter)+'&select=feeling_id,amount')}catch(_){gifts=[]}
       await loadProfilesByIds([...new Set((comments||[]).map(x=>x.user_id))]);
     }
     feelingsData=(rows||[]).map(x=>({...x,comments:(comments||[]).filter(c=>c.feeling_id===x.id),giftTotal:(gifts||[]).filter(g=>g.feeling_id===x.id).reduce((n,g)=>n+(Number(g.amount)||0),0)}));
@@ -1458,23 +1458,45 @@ async function loadFeelings(){
 }
 function renderFeelings(){
   updateFriendBadges();$('friendSectionTitle').textContent='Feeling';$('friendCountLabel').textContent='';
-  $('friendList').innerHTML='<div class="feeling-compose"><textarea id="feelingText" maxlength="500" placeholder="Apa yang kamu rasakan sekarang?"></textarea><div class="feeling-compose-row"><small>Hanya kamu & teman</small><button class="btn-primary" id="postFeelingBtn">Update</button></div></div><div id="feelingsFeed"></div>';
+  $('friendList').innerHTML='<div class="feeling-compose"><textarea id="feelingText" maxlength="500" placeholder="Apa yang kamu rasakan sekarang?"></textarea><div class="feeling-compose-row"><small>Hanya kamu & teman</small><button type="button" class="btn-primary" id="postFeelingBtn">Update</button></div></div><div id="feelingsFeed"></div>';
   $('postFeelingBtn').onclick=postFeeling;
   const feed=$('feelingsFeed');if(!feelingsData.length){feed.innerHTML='<div class="friend-search-empty">Belum ada Feeling dari kamu atau temanmu.</div>';return}
   feelingsData.forEach(x=>{
     const p=feelingPerson(x.user_id),row=document.createElement('div');row.className='feeling-card';
     const cs=(x.comments||[]).map(c=>{const cp=feelingPerson(c.user_id);return '<div class="feeling-comment"><b>'+esc(cp.name)+'</b> '+esc(c.body)+'</div>'}).join('');
     const own=x.user_id===currentUserId();
-    row.innerHTML='<div class="feeling-head">'+friendAvatarHTML(p)+'<div><div class="feeling-name">'+esc(p.name)+'</div><div class="feeling-time">'+new Date(x.created_at).toLocaleString('id-ID',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})+'</div></div></div><div class="feeling-body">'+esc(x.body)+'</div><div class="feeling-comments">'+cs+'<div class="feeling-actions"><button class="feeling-action" data-feeling-comment-toggle="'+x.id+'">💬 Komentar'+((x.comments||[]).length?' '+(x.comments||[]).length:'')+'</button>'+(own?'':'<button class="feeling-action gift" data-feeling-gift="'+x.id+'">🎁 Hadiah</button>')+(x.giftTotal?'<span class="feeling-gift-total">🎁 '+formatRupiah(x.giftTotal)+'</span>':'')+'</div><div class="feeling-comment-form" data-feeling-form="'+x.id+'"><input maxlength="300" data-feeling-input="'+x.id+'" placeholder="Tulis komentar..."><button data-feeling-comment="'+x.id+'">Kirim</button></div></div>';
+    const cc=(x.comments||[]).length;
+    row.innerHTML='<div class="feeling-head">'+friendAvatarHTML(p)+'<div><div class="feeling-name">'+esc(p.name)+'</div><div class="feeling-time">'+new Date(x.created_at).toLocaleString('id-ID',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})+'</div></div></div><div class="feeling-body">'+esc(x.body)+'</div><div class="feeling-comments"><div class="feeling-comment-list" data-feeling-comments="'+x.id+'">'+cs+'</div><div class="feeling-actions"><button class="feeling-action" data-feeling-comments-toggle="'+x.id+'">💬 Komentar'+(cc?' '+cc:'')+'</button><button class="feeling-action" data-feeling-comment-toggle="'+x.id+'">✍️ Tulis</button>'+(own?'':'<button class="feeling-action gift" data-feeling-gift="'+x.id+'">🎁 Hadiah</button>')+(x.giftTotal?'<span class="feeling-gift-total">🎁 '+formatRupiah(x.giftTotal)+'</span>':'')+'</div><div class="feeling-comment-form" data-feeling-form="'+x.id+'"><input maxlength="300" data-feeling-input="'+x.id+'" placeholder="Tulis komentar..."><button data-feeling-comment="'+x.id+'">Kirim</button></div></div>';
     feed.append(row);
   });
 }
-async function postFeeling(){const el=$('feelingText'),body=(el?.value||'').trim();if(!body)return;try{await supabaseRequest('/rest/v1/feelings',{method:'POST',headers:{'Content-Type':'application/json','Prefer':'return=minimal'},body:JSON.stringify({user_id:currentUserId(),body})});el.value='';await loadFeelings()}catch(e){alert(e.message)}}
+async function postFeeling(){
+  const el=$('feelingText'),body=(el?.value||'').trim();if(!body)return;
+  const btn=$('postFeelingBtn');if(btn){btn.disabled=true;btn.textContent='...'}
+  try{
+    const uid=currentUserId();if(!uid)throw new Error('Session belum siap. Silakan buka ulang aplikasi.');
+    await supabaseRequest('/rest/v1/feelings',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','Prefer':'return=minimal'},
+      body:JSON.stringify({user_id:uid,body})
+    });
+    if(el)el.value='';
+    try{await loadFeelings()}catch(_){}
+  }catch(e){alert(e.message)}
+  finally{
+    const b=$('postFeelingBtn');if(b){b.disabled=false;b.textContent='Update'}
+  }
+}
 async function postFeelingComment(id){const el=document.querySelector('[data-feeling-input="'+id+'"]'),body=(el?.value||'').trim();if(!body)return;try{await supabaseRequest('/rest/v1/feeling_comments',{method:'POST',headers:{'Content-Type':'application/json','Prefer':'return=minimal'},body:JSON.stringify({feeling_id:id,user_id:currentUserId(),body})});await loadFeelings()}catch(e){alert(e.message)}}
 function toggleFeelingComment(id){
   const form=document.querySelector('[data-feeling-form="'+id+'"]');if(!form)return;
   form.classList.toggle('open');
   if(form.classList.contains('open'))form.querySelector('input')?.focus();
+}
+function toggleFeelingComments(id){
+  const list=document.querySelector('[data-feeling-comments="'+id+'"]');if(!list)return;
+  list.classList.toggle('open');
+  if(list.classList.contains('open'))list.scrollTop=list.scrollHeight;
 }
 async function giftFeeling(id){
   const x=feelingsData.find(f=>f.id===id);if(!x||x.user_id===currentUserId())return;
@@ -1522,7 +1544,7 @@ function renderFriendProfile(id){
 }
 window.closeFriendProfile=()=>$('friendProfileModal').classList.remove('show');
 $('friendTabs').onclick=e=>{const b=e.target.closest('[data-friend-view]');if(b)setFriendView(b.dataset.friendView)};
-$('friendList').onclick=e=>{const t=e.target;const action=t.closest('button');if(action){e.stopPropagation();if(action.dataset.feelingComment)return postFeelingComment(action.dataset.feelingComment);if(action.dataset.feelingCommentToggle)return toggleFeelingComment(action.dataset.feelingCommentToggle);if(action.dataset.feelingGift)return giftFeeling(action.dataset.feelingGift);const id=action.dataset.chat||action.dataset.accept||action.dataset.reject||action.dataset.cancel||action.dataset.add||action.dataset.unblock;if(action.dataset.chat)return goChatFromFriend(id);if(action.dataset.accept)return acceptFriend(id);if(action.dataset.reject)return rejectFriend(id);if(action.dataset.cancel)return cancelSent(id);if(action.dataset.add)return addFriend(id);if(action.dataset.unblock)return unblockFriend(id)}const row=t.closest('[data-profile-friend]');if(row)renderFriendProfile(row.dataset.profileFriend)};
+$('friendList').onclick=e=>{const t=e.target;const action=t.closest('button');if(action){e.stopPropagation();if(action.dataset.feelingComment)return postFeelingComment(action.dataset.feelingComment);if(action.dataset.feelingCommentsToggle)return toggleFeelingComments(action.dataset.feelingCommentsToggle);if(action.dataset.feelingCommentToggle)return toggleFeelingComment(action.dataset.feelingCommentToggle);if(action.dataset.feelingGift)return giftFeeling(action.dataset.feelingGift);const id=action.dataset.chat||action.dataset.accept||action.dataset.reject||action.dataset.cancel||action.dataset.add||action.dataset.unblock;if(action.dataset.chat)return goChatFromFriend(id);if(action.dataset.accept)return acceptFriend(id);if(action.dataset.reject)return rejectFriend(id);if(action.dataset.cancel)return cancelSent(id);if(action.dataset.add)return addFriend(id);if(action.dataset.unblock)return unblockFriend(id)}const row=t.closest('[data-profile-friend]');if(row)renderFriendProfile(row.dataset.profileFriend)};
 let friendSearchTimer=null;
 $('friendSearchInput').addEventListener('input',e=>{clearTimeout(friendSearchTimer);const q=e.target.value.trim();if(!q){renderFriends();return}friendSearchTimer=setTimeout(()=>searchBackendUsers(q),320)});
 async function searchBackendUsers(q){
