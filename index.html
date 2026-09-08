@@ -1900,9 +1900,9 @@ async function touchPresence(){if(!currentUserId()||!currentSession()?.accessTok
 function startPresenceAndChatSync(){
   if(presenceTimer)clearInterval(presenceTimer);if(chatPollTimer)clearInterval(chatPollTimer);
   touchPresence().catch(()=>{});presenceTimer=setInterval(()=>{if(!document.hidden){touchPresence().catch(()=>{});const ids=[...new Set([...friendsState.friends,...friendsState.requests,...friendsState.sent])];if(ids.length)loadProfilesByIds(ids).then(()=>{renderFriends();renderChats()}).catch(()=>{})}},30000);
-  chatPollTimer=setInterval(async()=>{if(document.hidden||!currentSession()?.loggedIn)return;await loadBackendChats();if(currentChatId&&chatConversationByUser[currentChatId])await loadConversationMessages(chatConversationByUser[currentChatId])},7000)
+  chatPollTimer=setInterval(async()=>{if(document.hidden||!currentSession()?.loggedIn)return;await Promise.allSettled([loadBackendChats(),loadBackendFriends()]);if(currentChatId&&chatConversationByUser[currentChatId])await loadConversationMessages(chatConversationByUser[currentChatId])},7000)
 }
-document.addEventListener('visibilitychange',()=>{if(!document.hidden)touchPresence().catch(()=>{})});
+document.addEventListener('visibilitychange',()=>{if(!document.hidden){touchPresence().catch(()=>{});loadBackendFriends().catch(()=>{})}});
 window.addEventListener('beforeunload',()=>{if(currentSession()?.loggedIn)navigator.sendBeacon?.('')});
 /* ===== end backend patch ===== */
 
