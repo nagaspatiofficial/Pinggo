@@ -1083,7 +1083,7 @@ html.pinggo-session-active .auth-screen{opacity:0!important;visibility:hidden!im
     <div id="panelFriends" class="panel">
       <div class="search-bar"><span>⌕</span><input type="text" id="friendSearchInput" placeholder="Cari Teman / PINGGO ID..."></div>
       <div class="category-tabs" id="friendTabs">
-        <button class="cat-tab" type="button" data-friend-view="feelings" onclick="setFriendView('feelings')">Feeling</button>
+        <button class="cat-tab" type="button" data-friend-view="feelings">Feeling</button>
         <button class="cat-tab active" data-friend-view="friends">Teman Saya</button>
         <button class="cat-tab" data-friend-view="requests">Permintaan <span id="requestCount">2</span></button>
         <button class="cat-tab" data-friend-view="sent">Terkirim</button>
@@ -1637,7 +1637,7 @@ function renderFriends(){
   if(!ids.length){$('friendList').innerHTML='<div class="friend-search-empty">Belum ada data di bagian ini.</div>';return}
   ids.forEach(id=>{const u=people[id];if(!u)return;const rel=relationFor(id);const row=document.createElement('div');row.className='friend-row';row.dataset.profileFriend=id;row.innerHTML=`${friendAvatarHTML(u)}<div class="friend-meta"><b>${esc(u.name)}</b><small>${esc(u.pinggo)}${u.private?' • 🔒 Private':''}</small></div><div class="friend-actions">${friendActionsHTML(id,rel)}</div>`;$('friendList').append(row)})
 }
-function setFriendView(view){currentFriendView=view;document.querySelectorAll('#friendTabs .cat-tab').forEach(x=>x.classList.toggle('active',x.dataset.friendView===view));if(view==='feelings'){renderFeelings();loadFeelings(true).catch(e=>console.warn('Feeling gagal dimuat:',e));return}renderFriends()}
+function setFriendView(view){currentFriendView=view;document.querySelectorAll('#friendTabs .cat-tab').forEach(x=>x.classList.toggle('active',x.dataset.friendView===view));if(view==='feelings'){renderFeelings();loadFeelings(false).catch(e=>console.warn('Feeling gagal dimuat:',e));return}renderFriends()}
 window.setFriendView=setFriendView;
 window.renderFeelings=renderFeelings;
 async function acceptFriend(id){try{const r=friendRowsByUser[id];if(!r)throw new Error('Permintaan tidak ditemukan.');await supabaseRequest('/rest/v1/friends?id=eq.'+encodeURIComponent(r.id),{method:'PATCH',headers:{'Content-Type':'application/json','Prefer':'return=minimal'},body:JSON.stringify({status:'accepted',updated_at:new Date().toISOString()})});await loadBackendFriends();pinggoNotify('PINGGO',(people[id]?.name||'User')+' sekarang menjadi teman.')}catch(e){alert(e.message)}}
@@ -1904,12 +1904,12 @@ async function syncLiveAppData(){
   try{
     const uid=currentUserId();
     const tasks=[loadBackendChats(),loadBackendFriends(),loadWallet()];
-    if(currentFriendView==='feelings')tasks.push(loadFeelings(true));
+    if(currentFriendView==='feelings')tasks.push(loadFeelings(false));
     if(document.querySelector('#panelDrop')?.classList.contains('active'))tasks.push(loadBackendSecrets());
     if(uid){tasks.push(fetchOwnProfile(uid).then(p=>{if(p)applyRemoteProfile(p)}).catch(()=>{}))}
     await Promise.allSettled(tasks);
     if(currentChatId&&chatConversationByUser[currentChatId])await loadConversationMessages(chatConversationByUser[currentChatId]);
-    renderChats();renderFriends();renderProfile();
+    renderChats();if(document.querySelector('#panelFriends')?.classList.contains('active')){if(currentFriendView==='feelings')renderFeelings();else renderFriends()}renderProfile();
   }finally{appSyncBusy=false}
 }
 function startPresenceAndChatSync(){
