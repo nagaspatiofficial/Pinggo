@@ -821,6 +821,16 @@ button, input, select, textarea {
 .wallet-note{font-size:10px;color:var(--text-muted);line-height:1.4;margin:8px 0 12px}
 @media(max-width:390px){.coin-pack img{width:58px;height:58px}.coin-pack b{font-size:10px}.coin-price-grid{gap:5px}}
 </style>
+<script>
+/* Prevent login-screen flash on refresh when a local PINGGO session is active. */
+try{
+  const __pinggoBootSession=JSON.parse(localStorage.getItem('pinggo_session_v2')||'null');
+  if(__pinggoBootSession?.loggedIn)document.documentElement.classList.add('pinggo-session-active');
+}catch(_){}
+</script>
+<style id="pinggo-session-flash-fix">
+html.pinggo-session-active .auth-screen{opacity:0!important;visibility:hidden!important;pointer-events:none!important}
+</style>
 
 <style id="pinggo-merged-ui-missing-styles">
 /* Restores styles for merged interactive modules without changing core layout */
