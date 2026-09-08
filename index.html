@@ -1269,11 +1269,24 @@ async function backendLogin(pinggoId,password){
   const profile=await fetchOwnProfile(data.user.id);
   return {auth:data,profile};
 }
-async function backendRegister(name,password,pinggoId){
-  const id=normalizePinggoId(pinggoId),email=id.toLowerCase()+'@'+PINGGO_AUTH_DOMAIN;
-  let data=await supabaseRequest('/auth/v1/signup',{method:'POST',auth:false,headers:{'Content-Type':'application/json'},body:JSON.stringify({email,password,data:{display_name:name,pinggo_id:id}})});
-  if(!data?.access_token){data=await supabaseRequest('/auth/v1/token?grant_type=password',{method:'POST',auth:false,headers:{'Content-Type':'application/json'},body:JSON.stringify({email,password})})}
-  if(!data?.user||!data?.access_token)throw new Error('Akun berhasil dibuat tetapi sesi login belum tersedia.');
+async function backendRegister(name,password){
+  // Registrasi dibuat melalui Edge Function agar tidak memicu email konfirmasi/rate limit.
+  // PINGGO ID dibuat di server dan dicek unik terhadap profiles.
+  const created=await invokeEdge('pinggo-register',{name,password});
+  const id=normalizePinggoId(created?.pinggo_id||'');
+  if(!created?.ok||!id)throw new Error(created?.error||'Akun gagal dibuat.');
+
+  // Ambil session hanya untuk membuat profile. Setelah selesai user tetap diarahkan ke layar Masuk.
+  let data=null,lastError=null;
+  for(const domain of [PINGGO_AUTH_DOMAIN,PINGGO_LEGACY_AUTH_DOMAIN]){
+    const email=id.toLowerCase()+'@'+domain;
+    try{
+      data=await supabaseRequest('/auth/v1/token?grant_type=password',{method:'POST',auth:false,headers:{'Content-Type':'application/json'},body:JSON.stringify({email,password})});
+      if(data?.access_token&&data?.user)break;
+    }catch(e){lastError=e;data=null}
+  }
+  if(!data?.user||!data?.access_token)throw(lastError||new Error('Akun berhasil dibuat tetapi sesi login belum tersedia.'));
+
   write(STORE.session,{loggedIn:false,pinggoId:id,userId:data.user.id,accessToken:data.access_token,refreshToken:data.refresh_token||''});
   await supabaseRequest('/rest/v1/profiles',{method:'POST',headers:{'Content-Type':'application/json','Prefer':'resolution=merge-duplicates,return=representation'},body:JSON.stringify({id:data.user.id,pinggo_id:id,display_name:name,private_profile:!!prefs.privacy,secret_private_default:!!prefs.secretPrivate,notifications_enabled:!!prefs.notifications,appearance:prefs.appearance||'Pink & Gray'})});
   return {user:data.user,pinggoId:id};
@@ -1401,8 +1414,8 @@ window.handleAuth=async function(){
     if(authMode==='register'){
       if(!raw||!p)throw new Error('Isi nama pengguna dan kata sandi terlebih dahulu.');
       if(p.length<6)throw new Error('Kata sandi minimal 6 karakter.');
-      const id=normalizePinggoId(createPinggoId());
-      const created=await backendRegister(raw,p,id);
+      const created=await backendRegister(raw,p);
+      const id=normalizePinggoId(created.pinggoId);
       const a={userId:created.user.id,name:raw,pinggoId:id,photo:''};saveAccount(a);setProfile(a);
       pendingPinggoId=id;$('generatedPinggoId').textContent=id;$('generatedIdBox').style.display='block';
       $('authUsername').value='';$('authPassword').value='';$('authUsername').disabled=true;$('authPassword').disabled=true;
