@@ -1417,16 +1417,55 @@ async function loadWallet(){
   }catch(e){console.warn('Wallet backend:',e)}
 }
 async function loadBackendSecrets(){
-  if(!currentUserId())return;try{
-    const [drops,unlocks]=await Promise.all([
-      supabaseRequest('/rest/v1/secret_drops?status=eq.active&select=id,sender_id,media_path,media_type,price_gems,status,caption,created_at&order=created_at.desc'),
-      supabaseRequest('/rest/v1/secret_drop_recipients?recipient_id=eq.'+encodeURIComponent(currentUserId())+'&select=secret_drop_id,unlocked_at')
-    ]);
-    const ids=[...new Set((drops||[]).map(x=>x.sender_id).filter(Boolean))];if(ids.length)await loadPeople(ids);
-    const unlockedSet=new Set((unlocks||[]).filter(x=>x.unlocked_at).map(x=>x.secret_drop_id));
-    const mapped=(drops||[]).map(d=>({id:d.id,senderId:d.sender_id,caption:d.caption||'Secret PINGGO',price:Number(d.price_gems)||0,type:(d.media_type||'image').startsWith('video')?'video':'image',mediaPath:d.media_path,url:'',unlocked:d.sender_id===currentUserId()||unlockedSet.has(d.id),date:new Date(d.created_at).toLocaleString('id-ID',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}),author:d.sender_id===currentUserId()?'Saya':(people[d.sender_id]?.name||'PINGGO User')}));
-    backendSecrets.sent=mapped.filter(x=>x.senderId===currentUserId());backendSecrets.received=mapped.filter(x=>x.senderId!==currentUserId());backendSecrets.unlocked=backendSecrets.received.filter(x=>x.unlocked||x.price===0);secretState=backendSecrets;renderSecret();
-  }catch(e){console.warn('Secret backend:',e);$('secretFeed').innerHTML='<div class="empty-state">Secret PINGGO gagal dimuat.</div>'}
+  const uid=currentUserId();
+  if(!uid)return;
+
+  // Ambil daftar Secret terlebih dahulu. Data unlock dibuat opsional supaya
+  // kegagalan tabel recipient tidak mematikan seluruh halaman Secret Drop.
+  let drops=[];
+  try{
+    drops=await supabaseRequest('/rest/v1/secret_drops?status=eq.active&select=id,sender_id,media_path,media_type,price_gems,status,caption,created_at&order=created_at.desc');
+  }catch(e){
+    console.warn('Secret drops gagal:',e);
+    backendSecrets={received:[],sent:[],unlocked:[]};secretState=backendSecrets;
+    $('secretFeed').innerHTML='<div class="empty-state">Secret PINGGO belum dapat dimuat.<br><small>Coba buka lagi beberapa saat.</small></div>';
+    return;
+  }
+
+  let unlocks=[];
+  try{
+    unlocks=await supabaseRequest('/rest/v1/secret_drop_recipients?recipient_id=eq.'+encodeURIComponent(uid)+'&select=secret_drop_id,unlocked_at');
+  }catch(e){
+    // Tetap tampilkan Secret yang tersedia. Secret gratis dan milik sendiri
+    // tetap bisa dibuka meskipun status recipient belum berhasil dibaca.
+    console.warn('Secret recipients gagal, memakai fallback:',e);
+    unlocks=[];
+  }
+
+  const ids=[...new Set((drops||[]).map(x=>x.sender_id).filter(Boolean))];
+  if(ids.length){
+    try{await loadPeople(ids)}catch(e){console.warn('Profil creator Secret gagal dimuat:',e)}
+  }
+
+  const unlockedSet=new Set((unlocks||[]).filter(x=>x.unlocked_at).map(x=>x.secret_drop_id));
+  const mapped=(drops||[]).map(d=>({
+    id:d.id,
+    senderId:d.sender_id,
+    caption:d.caption||'Secret PINGGO',
+    price:Number(d.price_gems)||0,
+    type:(d.media_type||'image').startsWith('video')?'video':'image',
+    mediaPath:d.media_path,
+    url:'',
+    unlocked:d.sender_id===uid||unlockedSet.has(d.id),
+    date:d.created_at?new Date(d.created_at).toLocaleString('id-ID',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}):'',
+    author:d.sender_id===uid?'Saya':(people[d.sender_id]?.name||'PINGGO User')
+  }));
+
+  backendSecrets.sent=mapped.filter(x=>x.senderId===uid);
+  backendSecrets.received=mapped.filter(x=>x.senderId!==uid);
+  backendSecrets.unlocked=backendSecrets.received.filter(x=>x.unlocked||x.price===0);
+  secretState=backendSecrets;
+  renderSecret();
 }
 async function getSecretUrl(x){if(x.url)return x.url;try{x.url=await signedStorageUrl('secret-media',x.mediaPath,900);return x.url}catch(e){throw new Error('Media belum dapat dibuka: '+e.message)}}
 function renderSecret(){const arr=secretState[currentSecretView]||[];$('secretFeed').innerHTML='';if(!arr.length){$('secretFeed').innerHTML='<div class="empty-state">Belum ada Secret PINGGO.</div>';return}arr.forEach(x=>{const card=document.createElement('div');card.className='secret-card';const free=Number(x.price)===0,unlocked=!!x.unlocked||x.senderId===currentUserId();const canPreview=unlocked||free;card.innerHTML=`<div class="secret-thumb ${unlocked?'unlocked':''}"><div style="width:100%;height:100%;display:grid;place-items:center;font-size:26px;">${canPreview?'🎞️':'🔒'}</div>${!unlocked&&!free?'<div class="lock-overlay">🔒</div>':''}</div><div class="secret-info"><div class="secret-title">${esc(x.caption||'Secret PINGGO')}</div><div style="font-size:11px;color:var(--text-muted);">${esc(x.author||'PINGGO User')} • ${esc(x.date||'')}</div><div class="secret-price">${coinPriceHtml(x.price)}</div></div>${currentSecretView==='received'?`<button class="btn-unlock" data-unlock="${x.id}">${unlocked?'Open':free?'Open Free':'Unlock'}</button>`:`<button class="btn-unlock" data-open-secret="${x.id}">Open</button>`}`;$('secretFeed').append(card)})}
