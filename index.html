@@ -1220,23 +1220,44 @@ async function syncOwnProfile(patch){
   try{await supabaseRequest('/rest/v1/profiles?id=eq.'+encodeURIComponent(uid),{method:'PATCH',headers:{'Content-Type':'application/json','Prefer':'return=minimal'},body:JSON.stringify(patch)});return true}catch(e){console.warn('Profile sync gagal:',e);return false}
 }
 async function restoreBackendSession(){
-  const sess=currentSession();if(!sess?.loggedIn||!sess.accessToken)return false;
+  const sess=currentSession();
+  if(!sess?.loggedIn||!sess.accessToken)return false;
+
+  let user=null;
   try{
-    const user=await supabaseRequest('/auth/v1/user');
-    if(!user?.id)return false;
-    sess.userId=user.id;write(STORE.session,sess);
-    const p=await fetchOwnProfile(user.id);if(p)applyRemoteProfile(p);
-    await loadBackendFriends();await loadWallet();await loadBackendSecrets();
-    return true;
-  }catch(err){
+    user=await supabaseRequest('/auth/v1/user');
+  }catch(authErr){
     if(!sess.refreshToken)return false;
     try{
-      const d=await supabaseRequest('/auth/v1/token?grant_type=refresh_token',{method:'POST',auth:false,headers:{'Content-Type':'application/json'},body:JSON.stringify({refresh_token:sess.refreshToken})});
+      const d=await supabaseRequest('/auth/v1/token?grant_type=refresh_token',{
+        method:'POST',auth:false,headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({refresh_token:sess.refreshToken})
+      });
       if(!d?.access_token||!d?.user)return false;
-      write(STORE.session,{loggedIn:true,pinggoId:sess.pinggoId,userId:d.user.id,accessToken:d.access_token,refreshToken:d.refresh_token||sess.refreshToken});
-      const p=await fetchOwnProfile(d.user.id);if(p)applyRemoteProfile(p);await loadBackendFriends();await loadWallet();await loadBackendSecrets();return true;
-    }catch(_){return false}
+      write(STORE.session,{
+        loggedIn:true,
+        pinggoId:sess.pinggoId,
+        userId:d.user.id,
+        accessToken:d.access_token,
+        refreshToken:d.refresh_token||sess.refreshToken
+      });
+      user=d.user;
+    }catch(refreshErr){
+      console.warn('Session refresh gagal:',refreshErr);
+      return false;
+    }
   }
+
+  if(!user?.id)return false;
+  const active=currentSession()||sess;
+  active.loggedIn=true;
+  active.userId=user.id;
+  write(STORE.session,active);
+
+  // Data profil/teman/wallet/secret tidak boleh membatalkan sesi login.
+  try{const p=await fetchOwnProfile(user.id);if(p)applyRemoteProfile(p)}catch(e){console.warn('Profile restore gagal:',e)}
+  await Promise.allSettled([loadBackendFriends(),loadWallet(),loadBackendSecrets()]);
+  return true;
 }
 
 function saveAccount(a){
@@ -1519,7 +1540,20 @@ let chatFilter='all';document.querySelectorAll('#panelChats .cat-tab').forEach((
 // fast back behavior: one handler only
 window.addEventListener('popstate',()=>{if($('chatRoom').classList.contains('open'))closeChatRoom()});
 renderChats();renderFriends();renderSecret();renderProfile();
-(async()=>{const ok=await restoreBackendSession();if(ok){$('authScreen').classList.add('hide');renderProfile();renderFriends()}else{const savedAccount=account();write(STORE.session,{loggedIn:false,pinggoId:savedAccount?.pinggoId||'',userId:savedAccount?.userId||''});}})();
+(async()=>{
+  const sess=currentSession();
+  // Jika sebelumnya sudah login, jangan tampilkan layar login hanya karena halaman di-refresh.
+  if(sess?.loggedIn&&sess.accessToken){$('authScreen').classList.add('hide')}
+  const ok=await restoreBackendSession();
+  if(ok){
+    $('authScreen').classList.add('hide');
+    renderProfile();renderFriends();renderSecret();
+  }else{
+    $('authScreen').classList.remove('hide');
+    const savedAccount=account();
+    write(STORE.session,{loggedIn:false,pinggoId:savedAccount?.pinggoId||'',userId:savedAccount?.userId||''});
+  }
+})();
 })();
 </script>
 
