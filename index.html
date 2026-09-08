@@ -1251,16 +1251,26 @@ async function signedStorageUrl(bucket,path,expires=900){
   if(!path)return'';const d=await supabaseRequest('/storage/v1/object/sign/'+encodeURIComponent(bucket)+'/'+path.split('/').map(encodeURIComponent).join('/'),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({expiresIn:expires})});
   const u=d?.signedURL||d?.signedUrl||'';return u?(u.startsWith('http')?u:SUPABASE_URL+'/storage/v1'+u):'';
 }
+const PINGGO_AUTH_DOMAIN='pinggo.app';
+const PINGGO_LEGACY_AUTH_DOMAIN='pinggo.local';
 async function backendLogin(pinggoId,password){
-  const email=normalizePinggoId(pinggoId).toLowerCase()+'@pinggo.local';
-  const data=await supabaseRequest('/auth/v1/token?grant_type=password',{method:'POST',auth:false,headers:{'Content-Type':'application/json'},body:JSON.stringify({email,password})});
-  const token=data?.access_token;if(!token||!data?.user)throw new Error('Login gagal.');
-  write(STORE.session,{loggedIn:true,pinggoId:normalizePinggoId(pinggoId),userId:data.user.id,accessToken:token,refreshToken:data.refresh_token||''});
+  const id=normalizePinggoId(pinggoId);
+  let data=null,lastError=null;
+  // Akun baru memakai domain email internal yang valid. Fallback .local dipertahankan agar akun lama tetap bisa login.
+  for(const domain of [PINGGO_AUTH_DOMAIN,PINGGO_LEGACY_AUTH_DOMAIN]){
+    const email=id.toLowerCase()+'@'+domain;
+    try{
+      data=await supabaseRequest('/auth/v1/token?grant_type=password',{method:'POST',auth:false,headers:{'Content-Type':'application/json'},body:JSON.stringify({email,password})});
+      if(data?.access_token&&data?.user)break;
+    }catch(e){lastError=e;data=null}
+  }
+  const token=data?.access_token;if(!token||!data?.user)throw(lastError||new Error('Login gagal.'));
+  write(STORE.session,{loggedIn:true,pinggoId:id,userId:data.user.id,accessToken:token,refreshToken:data.refresh_token||''});
   const profile=await fetchOwnProfile(data.user.id);
   return {auth:data,profile};
 }
 async function backendRegister(name,password,pinggoId){
-  const id=normalizePinggoId(pinggoId),email=id.toLowerCase()+'@pinggo.local';
+  const id=normalizePinggoId(pinggoId),email=id.toLowerCase()+'@'+PINGGO_AUTH_DOMAIN;
   let data=await supabaseRequest('/auth/v1/signup',{method:'POST',auth:false,headers:{'Content-Type':'application/json'},body:JSON.stringify({email,password,data:{display_name:name,pinggo_id:id}})});
   if(!data?.access_token){data=await supabaseRequest('/auth/v1/token?grant_type=password',{method:'POST',auth:false,headers:{'Content-Type':'application/json'},body:JSON.stringify({email,password})})}
   if(!data?.user||!data?.access_token)throw new Error('Akun berhasil dibuat tetapi sesi login belum tersedia.');
