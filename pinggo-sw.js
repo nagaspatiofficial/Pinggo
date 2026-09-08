@@ -1,5 +1,15 @@
+const PINGGO_SW_VERSION='2026-09-08-auth-fresh-v1';
 self.addEventListener('install',event=>self.skipWaiting());
 self.addEventListener('activate',event=>event.waitUntil(self.clients.claim()));
+
+// Jangan cache dokumen HTML PINGGO. Navigasi selalu mengambil versi terbaru dari server.
+self.addEventListener('fetch',event=>{
+  const req=event.request;
+  if(req.mode==='navigate'){
+    event.respondWith(fetch(req,{cache:'no-store'}).catch(()=>fetch(req)));
+  }
+});
+
 self.addEventListener('push',event=>{
   let data={title:'PINGGO',body:'Aktivitas baru di PINGGO',url:'./'};
   try{if(event.data)data=Object.assign(data,event.data.json())}catch(_){try{data.body=event.data.text()}catch(__){}}
