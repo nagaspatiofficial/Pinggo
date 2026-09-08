@@ -1206,14 +1206,29 @@ async function supabaseRequest(path,options={}){
   return data;
 }
 async function rpc(name,payload={}){return supabaseRequest('/rest/v1/rpc/'+encodeURIComponent(name),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)})}
+function readableError(value,fallback='Terjadi kesalahan.') {
+  if(!value)return fallback;
+  if(typeof value==='string')return value;
+  if(value instanceof Error)return value.message||fallback;
+  if(typeof value==='object'){
+    const direct=value.message||value.error_description||value.details||value.hint;
+    if(typeof direct==='string'&&direct.trim())return direct;
+    if(value.error)return readableError(value.error,fallback);
+    try{const text=JSON.stringify(value);if(text&&text!=='{}')return text}catch(_){}
+  }
+  return String(value)||fallback;
+}
 async function invokeEdge(name,payload={}){
   const res=await fetch(SUPABASE_URL+'/functions/v1/'+encodeURIComponent(name),{
     method:'POST',
     headers:authHeaders({'Content-Type':'application/json'}),
     body:JSON.stringify(payload)
   });
-  let data=null;try{data=await res.json()}catch(_){data=null}
-  if(!res.ok)throw new Error(data?.error||data?.message||('Server error '+res.status));
+  const raw=await res.text();
+  let data=null;
+  try{data=raw?JSON.parse(raw):null}catch(_){data=raw}
+  if(!res.ok)throw new Error(readableError(data,'Server error '+res.status));
+  if(data&&typeof data==='object'&&data.error)throw new Error(readableError(data.error));
   return data;
 }
 async function storageUpload(bucket,path,file,upsert=false){
@@ -1671,7 +1686,7 @@ function formatCoin(v){return Math.max(0,Math.floor(Number(v)||0)).toLocaleStrin
 function updateCoin(){$('gemBalance').textContent='💎 '+formatCoin(coinBalance)}
 function coinMeta(){return {type:'pinggo',unit:1000,name:'PINGGO Coin',img:COIN_IMAGES.diamond}}
 async function loadPaymentConfig(){try{const r=await supabaseRequest('/rest/v1/payment_config?id=eq.1&select=*');paymentConfig=r?.[0]||null;if(paymentConfig?.qris_path){try{paymentConfig.qris_url=await signedStorageUrl('payment-assets',paymentConfig.qris_path,900)}catch(_){paymentConfig.qris_url=''}}return paymentConfig}catch(_){return null}}
-function renderTopupMarket(){const p=coinMeta(),q=Math.max(1,Number(selectedTopup.qty)||1),total=p.unit*q;selectedTopup={...p,qty:q};$('walletPackages').innerHTML=`<div class="wallet-note">Pilih jumlah PINGGO Coin. Pembayaran diproses aman melalui Midtrans dan saldo coin masuk otomatis setelah pembayaran berhasil.</div><div class="market-coin-grid"><div class="market-coin active" style="cursor:default"><img src="${p.img}"><b>PINGGO Coin</b></div></div><label class="field-label">Jumlah Coin</label><div class="qty-grid">${[10,25,50,100].map(n=>`<button class="qty-chip ${q===n?'active':''}" data-qty="${n}" type="button">${n}</button>`).join('')}</div><input id="customCoinQty" class="auth-input" type="number" min="1" max="100000" value="${q}" placeholder="Jumlah lain"><div class="total-box"><span>${formatCoin(q)} PINGGO Coin</span><strong>${formatRupiah(total)}</strong></div><button class="btn-primary" type="button" id="goPayTopup">Lanjut Bayar</button><div id="topupPayArea"></div>`}
+function renderTopupMarket(){const p=coinMeta(),q=Math.max(1,Number(selectedTopup.qty)||1),total=p.unit*q;selectedTopup={...p,qty:q};$('walletPackages').innerHTML=`<div class="wallet-note">Pilih jumlah PINGGO Coin. Pembayaran diproses aman melalui Midtrans dan saldo coin masuk otomatis setelah pembayaran berhasil.</div><div class="market-coin-grid"><div class="market-coin active" style="cursor:default"><div aria-hidden="true" style="font-size:64px;line-height:1;margin:4px 0 10px">💎</div><b>PINGGO Coin</b></div></div><label class="field-label">Jumlah Coin</label><div class="qty-grid">${[10,25,50,100].map(n=>`<button class="qty-chip ${q===n?'active':''}" data-qty="${n}" type="button">${n}</button>`).join('')}</div><input id="customCoinQty" class="auth-input" type="number" min="1" max="100000" value="${q}" placeholder="Jumlah lain"><div class="total-box"><span>${formatCoin(q)} PINGGO Coin</span><strong>${formatRupiah(total)}</strong></div><button class="btn-primary" type="button" id="goPayTopup">Lanjut Bayar</button><div id="topupPayArea"></div>`}
 async function refreshMidtransTopup(){for(let i=0;i<5;i++){try{await Promise.all([loadWallet(),renderTopupHistory()]);if(i<4)await new Promise(r=>setTimeout(r,1800))}catch(_){break}}}
 async function renderTopupHistory(){try{const rows=await supabaseRequest('/rest/v1/topup_requests?user_id=eq.'+encodeURIComponent(currentUserId())+'&select=*&order=created_at.desc&limit=8');$('walletHistory').innerHTML='<div class="section-label"><b>Riwayat Top Up</b><small>Saldo 💎 '+formatCoin(coinBalance)+'</small></div>'+((rows||[]).length?(rows||[]).map(r=>`<div class="tx-mini"><span>💎 ${formatCoin(r.quantity)} PINGGO Coin<br><small>${new Date(r.created_at).toLocaleString('id-ID')}</small></span><span style="text-align:right"><b>${formatRupiah(r.total_amount)}</b><br><span class="status-pill status-${r.status}">${r.status==='pending'?'MENUNGGU':r.status==='approved'?'BERHASIL':r.status==='rejected'?'DITOLAK':'GAGAL'}</span></span></div>`).join(''):'<div class="empty-state">Belum ada top up.</div>')}catch(e){$('walletHistory').innerHTML='<div class="empty-state">Riwayat gagal dimuat.</div>'}}
 window.openWalletModal=async function(){selectedTopup=Object.assign(coinMeta(),{qty:10});selectedProofFile=null;renderTopupMarket();await Promise.all([loadWallet(),loadPaymentConfig(),renderTopupHistory()]);$('walletModal').classList.add('show')};window.closeWalletModal=()=>$('walletModal').classList.remove('show');
