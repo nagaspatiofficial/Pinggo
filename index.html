@@ -1063,7 +1063,7 @@ html.pinggo-session-active .auth-screen{opacity:0!important;visibility:hidden!im
     <div id="panelFriends" class="panel">
       <div class="search-bar"><span>⌕</span><input type="text" id="friendSearchInput" placeholder="Cari Teman / PINGGO ID..."></div>
       <div class="category-tabs" id="friendTabs">
-        <button class="cat-tab" data-friend-view="feelings">Feeling</button>
+        <button class="cat-tab" type="button" data-friend-view="feelings" onclick="setFriendView('feelings')">Feeling</button>
         <button class="cat-tab active" data-friend-view="friends">Teman Saya</button>
         <button class="cat-tab" data-friend-view="requests">Permintaan <span id="requestCount">2</span></button>
         <button class="cat-tab" data-friend-view="sent">Terkirim</button>
@@ -1593,7 +1593,9 @@ function renderFriends(){
   if(!ids.length){$('friendList').innerHTML='<div class="friend-search-empty">Belum ada data di bagian ini.</div>';return}
   ids.forEach(id=>{const u=people[id];if(!u)return;const rel=relationFor(id);const row=document.createElement('div');row.className='friend-row';row.dataset.profileFriend=id;row.innerHTML=`${friendAvatarHTML(u)}<div class="friend-meta"><b>${esc(u.name)}</b><small>${esc(u.pinggo)}${u.private?' • 🔒 Private':''}</small></div><div class="friend-actions">${friendActionsHTML(id,rel)}</div>`;$('friendList').append(row)})
 }
-function setFriendView(view){currentFriendView=view;document.querySelectorAll('#friendTabs .cat-tab').forEach(x=>x.classList.toggle('active',x.dataset.friendView===view));if(view==='feelings'){renderFeelings();if(!feelingsLoaded)loadFeelings()}else renderFriends()}
+function setFriendView(view){currentFriendView=view;document.querySelectorAll('#friendTabs .cat-tab').forEach(x=>x.classList.toggle('active',x.dataset.friendView===view));if(view==='feelings'){renderFeelings();loadFeelings(true).catch(e=>console.warn('Feeling gagal dimuat:',e));return}renderFriends()}
+window.setFriendView=setFriendView;
+window.renderFeelings=renderFeelings;
 async function acceptFriend(id){try{const r=friendRowsByUser[id];if(!r)throw new Error('Permintaan tidak ditemukan.');await supabaseRequest('/rest/v1/friends?id=eq.'+encodeURIComponent(r.id),{method:'PATCH',headers:{'Content-Type':'application/json','Prefer':'return=minimal'},body:JSON.stringify({status:'accepted',updated_at:new Date().toISOString()})});await loadBackendFriends();pinggoNotify('PINGGO',(people[id]?.name||'User')+' sekarang menjadi teman.')}catch(e){alert(e.message)}}
 async function rejectFriend(id){try{const r=friendRowsByUser[id];if(r)await supabaseRequest('/rest/v1/friends?id=eq.'+encodeURIComponent(r.id),{method:'DELETE',headers:{'Prefer':'return=minimal'}});await loadBackendFriends()}catch(e){alert(e.message)}}
 async function cancelSent(id){return rejectFriend(id)}
@@ -1883,35 +1885,6 @@ renderChats();renderFriends();renderSecret();renderProfile();
 </script>
 
 
-<script id="pinggo-feeling-tab-recovery">
-(function(){
-  function ensureFeelingTab(){
-    var tabs=document.getElementById('friendTabs');
-    if(!tabs)return;
-    var btn=tabs.querySelector('[data-friend-view="feelings"]');
-    if(!btn){
-      btn=document.createElement('button');
-      btn.type='button';
-      btn.className='cat-tab';
-      btn.setAttribute('data-friend-view','feelings');
-      btn.textContent='Feeling';
-      tabs.insertBefore(btn,tabs.firstChild);
-    }
-    if(btn.dataset.pinggoFeelingBound!=='1'){
-      btn.dataset.pinggoFeelingBound='1';
-      btn.addEventListener('click',function(ev){
-        ev.preventDefault();
-        ev.stopPropagation();
-        if(typeof window.setFriendView==='function') window.setFriendView('feelings');
-        else if(typeof setFriendView==='function') setFriendView('feelings');
-      });
-    }
-  }
-  ensureFeelingTab();
-  document.addEventListener('DOMContentLoaded',ensureFeelingTab,{once:true});
-  var obs=new MutationObserver(function(){ensureFeelingTab();});
-  obs.observe(document.documentElement,{childList:true,subtree:true});
-})();
-</script>
+
 </body>
 </html>
