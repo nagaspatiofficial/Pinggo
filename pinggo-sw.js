@@ -1,4 +1,4 @@
-const PINGGO_SW_VERSION='2026-09-08-auth-fresh-v1';
+const PINGGO_SW_VERSION='2026-09-09-push-fix-v2';
 self.addEventListener('install',event=>self.skipWaiting());
 self.addEventListener('activate',event=>event.waitUntil(self.clients.claim()));
 
@@ -15,6 +15,8 @@ self.addEventListener('push',event=>{
   try{if(event.data)data=Object.assign(data,event.data.json())}catch(_){try{data.body=event.data.text()}catch(__){}}
   event.waitUntil(self.registration.showNotification(data.title||'PINGGO',{
     body:data.body||'',
+    icon:'./pinggo-icon-192.png',
+    badge:'./pinggo-icon-192.png',
     tag:'pinggo-push',
     data:{url:data.url||'./'},
     renotify:true
