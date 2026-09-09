@@ -9,11 +9,20 @@
 <meta http-equiv="Expires" content="0">
 <script>
 if('serviceWorker' in navigator){
-  window.addEventListener('load',()=>{
-    navigator.serviceWorker.register('./pinggo-sw.js?v=20260909-feeling-swipe-v3',{updateViaCache:'none'})
-      .then(reg=>reg.update().catch(()=>{}))
-      .catch(()=>{});
+  window.addEventListener('load',async()=>{
+    try{
+      // Cache-buster otomatis: setiap aplikasi dibuka, browser memeriksa SW terbaru dari server.
+      const swUrl='./pinggo-sw.js?fresh='+Date.now();
+      const reg=await navigator.serviceWorker.register(swUrl,{updateViaCache:'none'});
+      await reg.update().catch(()=>{});
+    }catch(_){ }
   });
+  navigator.serviceWorker.addEventListener('controllerchange',()=>{
+    if(sessionStorage.getItem('pinggo_sw_reloaded')==='1')return;
+    sessionStorage.setItem('pinggo_sw_reloaded','1');
+    location.reload();
+  });
+  window.addEventListener('pageshow',e=>{if(e.persisted)location.reload()});
 }
 </script>
 <link rel="manifest" href="./manifest.webmanifest">
@@ -886,9 +895,9 @@ button, input, select, textarea {
 .feeling-compose-row button{width:auto;padding:7px 14px;border-radius:15px}
 .feeling-card{background:rgba(255,255,255,.72);border-radius:16px;padding:10px 11px;margin-bottom:8px}
 .feeling-swipe-wrap{position:relative;overflow:hidden;border-radius:16px;margin-bottom:8px;touch-action:pan-y}
-.feeling-swipe-wrap .feeling-card{position:relative;z-index:1;margin-bottom:0;transition:transform .18s ease;background:rgba(255,255,255,.72)}
+.feeling-swipe-wrap .feeling-card{position:relative;z-index:2;margin-bottom:0;transition:transform .18s ease;background:rgba(255,255,255,.72);touch-action:pan-y}
 .feeling-swipe-wrap.open .feeling-card{transform:translateX(-86px)}
-.feeling-delete-action{position:absolute;inset:0 0 0 auto;width:86px;border:0;border-radius:16px;background:#e5484d;color:#fff;font-weight:850;display:flex;align-items:center;justify-content:center;cursor:pointer}
+.feeling-delete-action{position:absolute;right:0;top:0;bottom:0;width:86px;border:0;background:#e5484d;color:#fff;font-weight:850;font-size:12px;z-index:1;display:grid;place-items:center;cursor:pointer}
 .feeling-head{display:flex;align-items:center;gap:8px;margin-bottom:5px}.feeling-head .avatar{flex:0 0 auto;transform:scale(.9);transform-origin:left center}
 .feeling-name{font-size:13px;font-weight:850}.feeling-time{font-size:10px;color:var(--text-muted)}
 .feeling-body{font-size:13px;line-height:1.35;white-space:pre-wrap;word-break:break-word;margin:4px 0 6px}
@@ -1585,25 +1594,19 @@ function renderFeelings(){
   $('postFeelingBtn').onclick=postFeeling;
   const feed=$('feelingsFeed');if(!feelingsData.length){feed.innerHTML='<div class="friend-search-empty">Belum ada Feeling dari kamu atau temanmu.</div>';return}
   feelingsData.forEach(x=>{
-    const p=feelingPerson(x.user_id),row=document.createElement('div');row.className='feeling-card';
+    const p=feelingPerson(x.user_id),own=x.user_id===currentUserId();
+    const card=document.createElement('div');card.className='feeling-card';
     const cs=(x.comments||[]).map(c=>{const cp=feelingPerson(c.user_id);return '<div class="feeling-comment"><b>'+esc(cp.name)+'</b> '+esc(c.body)+'</div>'}).join('');
-    const own=x.user_id===currentUserId();
     const cc=(x.comments||[]).length;
-    row.innerHTML='<div class="feeling-head">'+friendAvatarHTML(p)+'<div><div class="feeling-name">'+esc(p.name)+'</div><div class="feeling-time">'+new Date(x.created_at).toLocaleString('id-ID',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})+'</div></div></div><div class="feeling-body">'+esc(x.body)+'</div><div class="feeling-comments"><div class="feeling-comment-list" data-feeling-comments="'+x.id+'">'+cs+'</div><div class="feeling-actions"><button class="feeling-action" data-feeling-comments-toggle="'+x.id+'">💬 Komentar'+(cc?' '+cc:'')+'</button><button class="feeling-action" data-feeling-comment-toggle="'+x.id+'">✍️ Tulis</button><button class="feeling-action gift" data-feeling-gift="'+x.id+'">🎁 Hadiah</button>'+(x.giftTotal?'<span class="feeling-gift-total">🎁 '+formatRupiah(x.giftTotal)+'</span>':'')+'</div><div class="feeling-comment-form" data-feeling-form="'+x.id+'"><input maxlength="300" data-feeling-input="'+x.id+'" placeholder="Tulis komentar..."><button data-feeling-comment="'+x.id+'">Kirim</button></div></div>';
-    if(!own){feed.append(row);return}
-    const wrap=document.createElement('div'),del=document.createElement('button');
-    wrap.className='feeling-swipe-wrap';del.className='feeling-delete-action';del.type='button';del.textContent='Hapus';
-    let startX=0,startY=0,currentX=0,tracking=false,horizontal=false,dragged=false;
-    const closeOthers=()=>document.querySelectorAll('.feeling-swipe-wrap.open').forEach(el=>{if(el!==wrap)el.classList.remove('open')});
-    const applyX=v=>{currentX=Math.max(-86,Math.min(0,v));row.style.transition='none';row.style.transform='translateX('+currentX+'px)'};
-    const settle=open=>{tracking=false;horizontal=false;wrap.classList.toggle('open',open);row.style.transition='';row.style.transform='';currentX=open?-86:0};
-    row.addEventListener('touchstart',e=>{const t=e.touches[0];startX=t.clientX;startY=t.clientY;tracking=true;horizontal=false;dragged=false;currentX=wrap.classList.contains('open')?-86:0;closeOthers()},{passive:true});
-    row.addEventListener('touchmove',e=>{if(!tracking)return;const t=e.touches[0],dx=t.clientX-startX,dy=t.clientY-startY;if(!horizontal){if(Math.abs(dx)<8)return;if(Math.abs(dx)<=Math.abs(dy)){tracking=false;return}horizontal=true}dragged=true;e.preventDefault();applyX((wrap.classList.contains('open')?-86:0)+dx)},{passive:false});
-    row.addEventListener('touchend',()=>{if(!tracking&&!horizontal)return;settle(currentX<-38);setTimeout(()=>{dragged=false},100)},{passive:true});
-    row.addEventListener('touchcancel',()=>settle(wrap.classList.contains('open')),{passive:true});
-    row.addEventListener('click',e=>{if(dragged){e.preventDefault();e.stopPropagation()}},true);
-    del.onclick=e=>{e.stopPropagation();deleteFeeling(x.id)};
-    wrap.append(del,row);feed.append(wrap);
+    card.innerHTML='<div class="feeling-head">'+friendAvatarHTML(p)+'<div><div class="feeling-name">'+esc(p.name)+'</div><div class="feeling-time">'+new Date(x.created_at).toLocaleString('id-ID',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})+'</div></div></div><div class="feeling-body">'+esc(x.body)+'</div><div class="feeling-comments"><div class="feeling-comment-list" data-feeling-comments="'+x.id+'">'+cs+'</div><div class="feeling-actions"><button class="feeling-action" data-feeling-comments-toggle="'+x.id+'">💬 Komentar'+(cc?' '+cc:'')+'</button><button class="feeling-action" data-feeling-comment-toggle="'+x.id+'">✍️ Tulis</button><button class="feeling-action gift" data-feeling-gift="'+x.id+'">🎁 Hadiah</button>'+(x.giftTotal?'<span class="feeling-gift-total">🎁 '+formatRupiah(x.giftTotal)+'</span>':'')+'</div><div class="feeling-comment-form" data-feeling-form="'+x.id+'"><input maxlength="300" data-feeling-input="'+x.id+'" placeholder="Tulis komentar..."><button data-feeling-comment="'+x.id+'">Kirim</button></div></div>';
+    if(!own){feed.append(card);return}
+    const wrap=document.createElement('div');wrap.className='feeling-swipe-wrap';
+    const del=document.createElement('button');del.type='button';del.className='feeling-delete-action';del.textContent='🗑 Hapus';del.onclick=e=>{e.stopPropagation();deleteFeeling(x.id)};
+    wrap.append(del,card);feed.append(wrap);
+    let sx=0,sy=0,dx=0,locked='';
+    card.addEventListener('touchstart',e=>{const t=e.touches[0];sx=t.clientX;sy=t.clientY;dx=0;locked='';document.querySelectorAll('.feeling-swipe-wrap.open').forEach(w=>{if(w!==wrap)w.classList.remove('open')})},{passive:true});
+    card.addEventListener('touchmove',e=>{const t=e.touches[0],mx=t.clientX-sx,my=t.clientY-sy;if(!locked&&Math.max(Math.abs(mx),Math.abs(my))>7)locked=Math.abs(mx)>Math.abs(my)?'x':'y';if(locked==='x')dx=mx},{passive:true});
+    card.addEventListener('touchend',()=>{if(locked!=='x')return;if(dx<-38)wrap.classList.add('open');else if(dx>28)wrap.classList.remove('open')},{passive:true});
   });
 }
 async function postFeeling(){
@@ -2013,7 +2016,7 @@ async function ensurePushSubscription(forcePrompt=false){
   let permission=Notification.permission;
   if(permission==='default'){if(!forcePrompt)return false;permission=await Notification.requestPermission()}
   if(permission!=='granted')return false;
-  const reg=await navigator.serviceWorker.register('./pinggo-sw.js?v=20260909-feeling-swipe-v3',{updateViaCache:'none'});await navigator.serviceWorker.ready;
+  const reg=await navigator.serviceWorker.ready;
   let sub=await reg.pushManager.getSubscription();
   if(!sub)sub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:urlBase64ToUint8Array(PINGGO_VAPID_PUBLIC)});
   const j=sub.toJSON();
