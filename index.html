@@ -1067,13 +1067,12 @@ html.pinggo-session-active .auth-screen{opacity:0!important;visibility:hidden!im
         <span>⌕</span>
         <input type="text" placeholder="Cari pesan atau PINGGO ID...">
       </div>
-      <div class="category-tabs">
-        <button class="cat-tab active">Semua</button>
-        <button class="cat-tab">Belum dibaca</button>
-        <button class="cat-tab">Grup</button>
-        <button class="cat-tab">Favorit</button>
+      <div class="category-tabs" id="chatTabs">
+        <button class="cat-tab active" type="button" data-chat-filter="all">Semua</button>
+        <button class="cat-tab" type="button" data-chat-filter="unread">Belum dibaca</button>
+        <button class="cat-tab" type="button" data-chat-filter="feelings">Feeling</button>
       </div>
-      <div class="section-label"><b>Pesan</b><small>Semua Chat</small></div>
+      <div class="section-label"><b id="chatSectionTitle">Pesan</b><small id="chatSectionLabel">Semua Chat</small></div>
       <div class="chat-list" id="chatList">
         <!-- Dynamic chat items rendered via JS -->
       </div>
@@ -1083,7 +1082,6 @@ html.pinggo-session-active .auth-screen{opacity:0!important;visibility:hidden!im
     <div id="panelFriends" class="panel">
       <div class="search-bar"><span>⌕</span><input type="text" id="friendSearchInput" placeholder="Cari Teman / PINGGO ID..."></div>
       <div class="category-tabs" id="friendTabs">
-        <button class="cat-tab" type="button" data-friend-view="feelings">Feeling</button>
         <button class="cat-tab active" data-friend-view="friends">Teman Saya</button>
         <button class="cat-tab" data-friend-view="requests">Permintaan <span id="requestCount">2</span></button>
         <button class="cat-tab" data-friend-view="sent">Terkirim</button>
@@ -1459,7 +1457,7 @@ window.logout=function(){
   $('authScreen').classList.remove('hide');switchAuthTab('login');if(a?.pinggoId)$('authUsername').value=normalizePinggoId(a.pinggoId)
 };
 window.switchPanel=function(name,btn){document.querySelectorAll('.panel').forEach(x=>x.classList.remove('active'));document.querySelectorAll('.nav-item').forEach(x=>x.classList.remove('active'));$('panel'+name).classList.add('active');btn.classList.add('active');if(name==='Profile'){renderProfile();loadWallet()}if(name==='Friends')renderFriends();if(name==='Drop'){loadBackendSecrets();renderSecret()}};
-window.openGlobalSearch=function(){const nav=document.querySelector('.nav-item[onclick*="Chats"]');if(nav)switchPanel('Chats',nav);const input=document.querySelector('#panelChats .search-bar input');if(input){input.focus({preventScroll:true});try{input.setSelectionRange(input.value.length,input.value.length)}catch(_){}}};
+window.openGlobalSearch=function(){const nav=document.querySelector('.nav-item[onclick*="Chats"]');if(nav)switchPanel('Chats',nav);if(typeof setChatFilter==='function')setChatFilter('all');const input=document.querySelector('#panelChats .search-bar input');if(input){input.focus({preventScroll:true});try{input.setSelectionRange(input.value.length,input.value.length)}catch(_){}}};
 window.openCurrentChatProfile=function(){if(!currentChatId)return;const u=people[currentChatId];if(!u)return alert('Profil pengguna belum tersedia.');renderFriendProfile(currentChatId)};
 function legacy_renderChats(filter='all',query=''){const box=$('chatList');box.innerHTML='';const q=query.toLowerCase();chatsData.forEach(c=>{const okFilter=filter==='all'||(filter==='unread'&&c.unread>0)||(filter==='group'&&c.group)||(filter==='favorite'&&c.favorite);const okSearch=!q||(c.name+' '+c.preview).toLowerCase().includes(q);if(!okFilter||!okSearch)return;const el=document.createElement('div');el.className='chat-item';el.innerHTML=`<div class="avatar-container">${esc(c.avatar)}<div class="online-dot"></div></div><div class="chat-info"><div class="chat-top-row"><span class="chat-name">${esc(c.name)}</span><span class="chat-time">${esc(c.time)}</span></div><div class="chat-preview">${esc(c.preview)}</div></div>${c.unread?`<div class="unread-badge">${c.unread}</div>`:''}`;el.onclick=()=>openChatRoom(c.id);box.appendChild(el)})}
 function legacy_renderHistory(){if(!currentChatId)return;const box=$('chatMessages');box.innerHTML='<div class="date-divider">Hari ini</div>';getHistory(currentChatId).forEach(m=>{const row=document.createElement('div');row.className='msg-row '+(m.side==='out'?'outgoing':'incoming');if(m.kind==='image'||m.kind==='video'){const card=document.createElement('div');card.className='media-message';const media=document.createElement(m.kind==='image'?'img':'video');media.src=m.url;if(m.kind==='video'){media.controls=true;media.playsInline=true}media.onclick=()=>openMedia(m.kind,m.url);const cap=document.createElement('div');cap.className='media-caption';cap.textContent=(m.kind==='image'?'📷 Foto':'🎥 Video')+' • '+(m.time||'');card.append(media,cap);row.append(card)}else if(m.kind==='voice'){const bubble=document.createElement('div');bubble.className='msg-bubble voice-message';const a=document.createElement('audio');a.controls=true;a.src=m.url;bubble.append(a);row.append(bubble)}else if(m.kind==='secret'){const card=document.createElement('div');card.className='secret-chat-card';card.innerHTML=`<div class="secret-chat-thumb">🔒</div><div class="secret-chat-meta"><b>SECRET DROP</b><div>${m.price===0?'FREE':'PINGGO Coin • '+formatRupiah(m.price)}</div><small>${esc(m.time||'')}</small></div>`;row.append(card)}else{const b=document.createElement('div');b.className='msg-bubble';b.innerHTML=esc(m.text||'')+` <span class="msg-time">${esc(m.time||'')}</span>`;row.append(b)}box.append(row)});requestAnimationFrame(()=>box.scrollTop=box.scrollHeight)}
@@ -1519,10 +1517,10 @@ async function loadFeelings(force=false){
       const rows=await supabaseRequest('/rest/v1/feelings?select=id,user_id,body,created_at&order=created_at.desc&limit=100');
       feelingsData=(rows||[]).map(x=>({...x,comments:[],giftTotal:0}));
       feelingsLoaded=true;
-      if(currentFriendView==='feelings')renderFeelings();
+      if(chatFilter==='feelings')renderFeelings();
 
       const userIds=[...new Set((rows||[]).map(x=>x.user_id))];
-      if(userIds.length)loadProfilesByIds(userIds).then(()=>{if(currentFriendView==='feelings')renderFeelings()}).catch(()=>{});
+      if(userIds.length)loadProfilesByIds(userIds).then(()=>{if(chatFilter==='feelings')renderFeelings()}).catch(()=>{});
 
       const fids=(rows||[]).map(x=>x.id);
       if(!fids.length)return;
@@ -1539,18 +1537,20 @@ async function loadFeelings(force=false){
       }));
       const commentUserIds=[...new Set(comments.map(x=>x.user_id))];
       if(commentUserIds.length)loadProfilesByIds(commentUserIds).catch(()=>{});
-      if(currentFriendView==='feelings')renderFeelings();
+      if(chatFilter==='feelings')renderFeelings();
     }catch(e){
       console.warn('Feeling backend gagal:',e);
-      if(currentFriendView==='feelings'&&!feelingsLoaded)$('friendList').innerHTML='<div class="friend-search-empty">Feeling belum dapat dimuat.</div>';
+      if(chatFilter==='feelings'&&!feelingsLoaded)$('chatList').innerHTML='<div class="friend-search-empty">Feeling belum dapat dimuat.</div>';
     }finally{feelingsLoading=null}
   })();
   return feelingsLoading;
 }
 function preloadFeelings(){if(currentSession()?.loggedIn&&!feelingsLoaded&&!feelingsLoading)loadFeelings().catch(()=>{})}
 function renderFeelings(){
-  updateFriendBadges();$('friendSectionTitle').textContent='Feeling';$('friendCountLabel').textContent='';
-  $('friendList').innerHTML='<div class="feeling-compose"><textarea id="feelingText" maxlength="500" placeholder="Apa yang kamu rasakan sekarang?"></textarea><div class="feeling-compose-row"><small>Hanya kamu & teman</small><button type="button" class="btn-primary" id="postFeelingBtn">Update</button></div></div><div id="feelingsFeed"></div>';
+  const title=$('chatSectionTitle'),label=$('chatSectionLabel');
+  if(title)title.textContent='Feeling';
+  if(label)label.textContent='Kamu & Teman';
+  $('chatList').innerHTML='<div class="feeling-compose"><textarea id="feelingText" maxlength="500" placeholder="Apa yang kamu rasakan sekarang?"></textarea><div class="feeling-compose-row"><small>Hanya kamu & teman</small><button type="button" class="btn-primary" id="postFeelingBtn">Update</button></div></div><div id="feelingsFeed"></div>';
   $('postFeelingBtn').onclick=postFeeling;
   const feed=$('feelingsFeed');if(!feelingsData.length){feed.innerHTML='<div class="friend-search-empty">Belum ada Feeling dari kamu atau temanmu.</div>';return}
   feelingsData.forEach(x=>{
@@ -1583,7 +1583,7 @@ async function postFeeling(){
     const row=Array.isArray(data)?data[0]:data;
     if(row?.id){
       feelingsData=[{...row,comments:[],giftTotal:0},...feelingsData.filter(x=>x.id!==row.id)];
-      if(currentFriendView==='feelings')renderFeelings();
+      if(chatFilter==='feelings')renderFeelings();
     }
     // Sinkronkan ulang di background; tidak menahan tombol Update.
     loadFeelings().catch(e=>console.warn('Refresh Feeling gagal:',e));
@@ -1633,13 +1633,12 @@ async function deleteFeeling(id){
 
 
 function renderFriends(){
-  if(currentFriendView==='feelings'){renderFeelings();return}
   updateFriendBadges();const ids=(friendsState[currentFriendView]||[]).filter(id=>!friendsState.blocked.includes(id));
   $('friendList').innerHTML='';$('friendCountLabel').textContent=ids.length+' user';$('friendSectionTitle').textContent=currentFriendView==='friends'?'Daftar Teman':currentFriendView==='requests'?'Permintaan Masuk':'Permintaan Terkirim';
   if(!ids.length){$('friendList').innerHTML='<div class="friend-search-empty">Belum ada data di bagian ini.</div>';return}
   ids.forEach(id=>{const u=people[id];if(!u)return;const rel=relationFor(id);const row=document.createElement('div');row.className='friend-row';row.dataset.profileFriend=id;row.innerHTML=`${friendAvatarHTML(u)}<div class="friend-meta"><b>${esc(u.name)}</b><small>${esc(u.pinggo)}${u.private?' • 🔒 Private':''}</small></div><div class="friend-actions">${friendActionsHTML(id,rel)}</div>`;$('friendList').append(row)})
 }
-function setFriendView(view){currentFriendView=view;document.querySelectorAll('#friendTabs .cat-tab').forEach(x=>x.classList.toggle('active',x.dataset.friendView===view));if(view==='feelings'){renderFeelings();loadFeelings(false).catch(e=>console.warn('Feeling gagal dimuat:',e));return}renderFriends()}
+function setFriendView(view){currentFriendView=view;document.querySelectorAll('#friendTabs .cat-tab').forEach(x=>x.classList.toggle('active',x.dataset.friendView===view));renderFriends()}
 window.setFriendView=setFriendView;
 window.renderFeelings=renderFeelings;
 async function acceptFriend(id){try{const r=friendRowsByUser[id];if(!r)throw new Error('Permintaan tidak ditemukan.');await supabaseRequest('/rest/v1/friends?id=eq.'+encodeURIComponent(r.id),{method:'PATCH',headers:{'Content-Type':'application/json','Prefer':'return=minimal'},body:JSON.stringify({status:'accepted',updated_at:new Date().toISOString()})});await loadBackendFriends();pinggoNotify('PINGGO',(people[id]?.name||'User')+' sekarang menjadi teman.')}catch(e){alert(e.message)}}
@@ -1665,6 +1664,15 @@ function renderFriendProfile(id){
 }
 window.closeFriendProfile=()=>$('friendProfileModal').classList.remove('show');
 $('friendTabs').onclick=e=>{const b=e.target.closest('[data-friend-view]');if(b)setFriendView(b.dataset.friendView)};
+$('chatList').addEventListener('click',e=>{
+  if(chatFilter!=='feelings')return;
+  const action=e.target.closest('button');if(!action)return;
+  if(action.dataset.feelingComment)return postFeelingComment(action.dataset.feelingComment);
+  if(action.dataset.feelingCommentsToggle)return toggleFeelingComments(action.dataset.feelingCommentsToggle);
+  if(action.dataset.feelingCommentToggle)return toggleFeelingComment(action.dataset.feelingCommentToggle);
+  if(action.dataset.feelingDelete)return deleteFeeling(action.dataset.feelingDelete);
+  if(action.dataset.feelingGift)return giftFeeling(action.dataset.feelingGift);
+});
 $('friendList').onclick=e=>{const t=e.target;const action=t.closest('button');if(action){e.stopPropagation();if(action.dataset.feelingComment)return postFeelingComment(action.dataset.feelingComment);if(action.dataset.feelingCommentsToggle)return toggleFeelingComments(action.dataset.feelingCommentsToggle);if(action.dataset.feelingCommentToggle)return toggleFeelingComment(action.dataset.feelingCommentToggle);if(action.dataset.feelingDelete)return deleteFeeling(action.dataset.feelingDelete);if(action.dataset.feelingGift)return giftFeeling(action.dataset.feelingGift);const id=action.dataset.chat||action.dataset.accept||action.dataset.reject||action.dataset.cancel||action.dataset.add||action.dataset.unblock;if(action.dataset.chat)return goChatFromFriend(id);if(action.dataset.accept)return acceptFriend(id);if(action.dataset.reject)return rejectFriend(id);if(action.dataset.cancel)return cancelSent(id);if(action.dataset.add)return addFriend(id);if(action.dataset.unblock)return unblockFriend(id)}const row=t.closest('[data-profile-friend]');if(row)renderFriendProfile(row.dataset.profileFriend)};
 let friendSearchTimer=null;
 $('friendSearchInput').addEventListener('input',e=>{clearTimeout(friendSearchTimer);const q=e.target.value.trim();if(!q){renderFriends();return}friendSearchTimer=setTimeout(()=>searchBackendUsers(q),320)});
@@ -1859,7 +1867,11 @@ async function loadConversationMessages(conversationId){
     renderHistory();
   }catch(e){console.warn('Pesan gagal dimuat:',e)}
 }
-function renderChats(filter='all',query=''){
+function renderChats(filter=(typeof chatFilter!=='undefined'?chatFilter:'all'),query=''){
+  if(filter==='feelings'){renderFeelings();return}
+  const title=$('chatSectionTitle'),label=$('chatSectionLabel');
+  if(title)title.textContent='Pesan';
+  if(label)label.textContent=filter==='unread'?'Belum dibaca':'Semua Chat';
   const box=$('chatList');box.innerHTML='';const q=String(query||'').toLowerCase();
   const visible=chatsData.filter(c=>(filter==='all'||(filter==='unread'&&c.unread>0)||(filter==='group'&&c.group)||(filter==='favorite'&&c.favorite))&&(!q||(c.name+' '+c.preview).toLowerCase().includes(q)));
   if(!visible.length){box.innerHTML='<div class="empty-state">Belum ada percakapan.</div>';return}
@@ -1906,12 +1918,12 @@ async function syncLiveAppData(){
   try{
     const uid=currentUserId();
     const tasks=[loadBackendChats(),loadBackendFriends(),loadWallet()];
-    if(currentFriendView==='feelings')tasks.push(loadFeelings(false));
+    if(chatFilter==='feelings')tasks.push(loadFeelings(false));
     if(document.querySelector('#panelDrop')?.classList.contains('active'))tasks.push(loadBackendSecrets());
     if(uid){tasks.push(fetchOwnProfile(uid).then(p=>{if(p)applyRemoteProfile(p)}).catch(()=>{}))}
     await Promise.allSettled(tasks);
     if(currentChatId&&chatConversationByUser[currentChatId])await loadConversationMessages(chatConversationByUser[currentChatId]);
-    renderChats();if(document.querySelector('#panelFriends')?.classList.contains('active')){if(currentFriendView==='feelings')renderFeelings();else renderFriends()}renderProfile();
+    renderChats();if(document.querySelector('#panelFriends')?.classList.contains('active')){if(chatFilter==='feelings')renderFeelings();else renderFriends()}renderProfile();
   }finally{appSyncBusy=false}
 }
 function startPresenceAndChatSync(){
@@ -1926,7 +1938,21 @@ window.addEventListener('focus',()=>{syncLiveAppData().catch(()=>{})});
 window.addEventListener('beforeunload',()=>{if(currentSession()?.loggedIn)navigator.sendBeacon?.('')});
 /* ===== end backend patch ===== */
 
-let chatFilter='all';document.querySelectorAll('#panelChats .cat-tab').forEach((b,i)=>{b.onclick=()=>{document.querySelectorAll('#panelChats .cat-tab').forEach(x=>x.classList.remove('active'));b.classList.add('active');chatFilter=['all','unread','group','favorite'][i];renderChats(chatFilter,document.querySelector('#panelChats .search-bar input').value)}});document.querySelector('#panelChats .search-bar input').addEventListener('input',e=>renderChats(chatFilter,e.target.value));
+let chatFilter='all';
+function setChatFilter(filter){
+  chatFilter=filter;
+  document.querySelectorAll('#chatTabs [data-chat-filter]').forEach(x=>x.classList.toggle('active',x.dataset.chatFilter===filter));
+  const input=document.querySelector('#panelChats .search-bar input');
+  if(filter==='feelings'){
+    if(input){input.value='';input.placeholder='Cari pesan atau PINGGO ID...'}
+    renderFeelings();
+    loadFeelings(false).catch(e=>console.warn('Feeling gagal dimuat:',e));
+  }else{
+    renderChats(filter,input?.value||'');
+  }
+}
+document.querySelectorAll('#chatTabs [data-chat-filter]').forEach(b=>{b.onclick=()=>setChatFilter(b.dataset.chatFilter)});
+document.querySelector('#panelChats .search-bar input').addEventListener('input',e=>renderChats(chatFilter,e.target.value));
 // fast back behavior: one handler only
 window.addEventListener('popstate',()=>{if($('chatRoom').classList.contains('open'))closeChatRoom(true)});
 renderChats();renderFriends();renderSecret();renderProfile();
