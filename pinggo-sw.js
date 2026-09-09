@@ -1,6 +1,10 @@
-const PINGGO_SW_VERSION='2026-09-09-push-fix-v2';
+const PINGGO_SW_VERSION='2026-09-09-auto-update-feeling-v4';
 self.addEventListener('install',event=>self.skipWaiting());
-self.addEventListener('activate',event=>event.waitUntil(self.clients.claim()));
+self.addEventListener('activate',event=>event.waitUntil((async()=>{
+  const keys=await caches.keys();
+  await Promise.all(keys.map(k=>caches.delete(k)));
+  await self.clients.claim();
+})()));
 
 // Jangan cache dokumen HTML PINGGO. Navigasi selalu mengambil versi terbaru dari server.
 self.addEventListener('fetch',event=>{

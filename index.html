@@ -10,7 +10,7 @@
 <script>
 if('serviceWorker' in navigator){
   window.addEventListener('load',()=>{
-    navigator.serviceWorker.register('./pinggo-sw.js',{updateViaCache:'none'})
+    navigator.serviceWorker.register('./pinggo-sw.js?v=20260909-feeling-swipe-v3',{updateViaCache:'none'})
       .then(reg=>reg.update().catch(()=>{}))
       .catch(()=>{});
   });
@@ -885,6 +885,10 @@ button, input, select, textarea {
 .feeling-compose-row{display:flex;justify-content:space-between;align-items:center;gap:6px;margin-top:3px}
 .feeling-compose-row button{width:auto;padding:7px 14px;border-radius:15px}
 .feeling-card{background:rgba(255,255,255,.72);border-radius:16px;padding:10px 11px;margin-bottom:8px}
+.feeling-swipe-wrap{position:relative;overflow:hidden;border-radius:16px;margin-bottom:8px;touch-action:pan-y}
+.feeling-swipe-wrap .feeling-card{position:relative;z-index:1;margin-bottom:0;transition:transform .18s ease;background:rgba(255,255,255,.72)}
+.feeling-swipe-wrap.open .feeling-card{transform:translateX(-86px)}
+.feeling-delete-action{position:absolute;inset:0 0 0 auto;width:86px;border:0;border-radius:16px;background:#e5484d;color:#fff;font-weight:850;display:flex;align-items:center;justify-content:center;cursor:pointer}
 .feeling-head{display:flex;align-items:center;gap:8px;margin-bottom:5px}.feeling-head .avatar{flex:0 0 auto;transform:scale(.9);transform-origin:left center}
 .feeling-name{font-size:13px;font-weight:850}.feeling-time{font-size:10px;color:var(--text-muted)}
 .feeling-body{font-size:13px;line-height:1.35;white-space:pre-wrap;word-break:break-word;margin:4px 0 6px}
@@ -1585,8 +1589,21 @@ function renderFeelings(){
     const cs=(x.comments||[]).map(c=>{const cp=feelingPerson(c.user_id);return '<div class="feeling-comment"><b>'+esc(cp.name)+'</b> '+esc(c.body)+'</div>'}).join('');
     const own=x.user_id===currentUserId();
     const cc=(x.comments||[]).length;
-    row.innerHTML='<div class="feeling-head">'+friendAvatarHTML(p)+'<div><div class="feeling-name">'+esc(p.name)+'</div><div class="feeling-time">'+new Date(x.created_at).toLocaleString('id-ID',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})+'</div></div></div><div class="feeling-body">'+esc(x.body)+'</div><div class="feeling-comments"><div class="feeling-comment-list" data-feeling-comments="'+x.id+'">'+cs+'</div><div class="feeling-actions"><button class="feeling-action" data-feeling-comments-toggle="'+x.id+'">💬 Komentar'+(cc?' '+cc:'')+'</button><button class="feeling-action" data-feeling-comment-toggle="'+x.id+'">✍️ Tulis</button>'+(own?'<button class="feeling-action delete" data-feeling-delete="'+x.id+'">🗑 Hapus</button>':'<button class="feeling-action gift" data-feeling-gift="'+x.id+'">🎁 Hadiah</button>')+(x.giftTotal?'<span class="feeling-gift-total">🎁 '+formatRupiah(x.giftTotal)+'</span>':'')+'</div><div class="feeling-comment-form" data-feeling-form="'+x.id+'"><input maxlength="300" data-feeling-input="'+x.id+'" placeholder="Tulis komentar..."><button data-feeling-comment="'+x.id+'">Kirim</button></div></div>';
-    feed.append(row);
+    row.innerHTML='<div class="feeling-head">'+friendAvatarHTML(p)+'<div><div class="feeling-name">'+esc(p.name)+'</div><div class="feeling-time">'+new Date(x.created_at).toLocaleString('id-ID',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})+'</div></div></div><div class="feeling-body">'+esc(x.body)+'</div><div class="feeling-comments"><div class="feeling-comment-list" data-feeling-comments="'+x.id+'">'+cs+'</div><div class="feeling-actions"><button class="feeling-action" data-feeling-comments-toggle="'+x.id+'">💬 Komentar'+(cc?' '+cc:'')+'</button><button class="feeling-action" data-feeling-comment-toggle="'+x.id+'">✍️ Tulis</button><button class="feeling-action gift" data-feeling-gift="'+x.id+'">🎁 Hadiah</button>'+(x.giftTotal?'<span class="feeling-gift-total">🎁 '+formatRupiah(x.giftTotal)+'</span>':'')+'</div><div class="feeling-comment-form" data-feeling-form="'+x.id+'"><input maxlength="300" data-feeling-input="'+x.id+'" placeholder="Tulis komentar..."><button data-feeling-comment="'+x.id+'">Kirim</button></div></div>';
+    if(!own){feed.append(row);return}
+    const wrap=document.createElement('div'),del=document.createElement('button');
+    wrap.className='feeling-swipe-wrap';del.className='feeling-delete-action';del.type='button';del.textContent='Hapus';
+    let startX=0,startY=0,currentX=0,tracking=false,horizontal=false,dragged=false;
+    const closeOthers=()=>document.querySelectorAll('.feeling-swipe-wrap.open').forEach(el=>{if(el!==wrap)el.classList.remove('open')});
+    const applyX=v=>{currentX=Math.max(-86,Math.min(0,v));row.style.transition='none';row.style.transform='translateX('+currentX+'px)'};
+    const settle=open=>{tracking=false;horizontal=false;wrap.classList.toggle('open',open);row.style.transition='';row.style.transform='';currentX=open?-86:0};
+    row.addEventListener('touchstart',e=>{const t=e.touches[0];startX=t.clientX;startY=t.clientY;tracking=true;horizontal=false;dragged=false;currentX=wrap.classList.contains('open')?-86:0;closeOthers()},{passive:true});
+    row.addEventListener('touchmove',e=>{if(!tracking)return;const t=e.touches[0],dx=t.clientX-startX,dy=t.clientY-startY;if(!horizontal){if(Math.abs(dx)<8)return;if(Math.abs(dx)<=Math.abs(dy)){tracking=false;return}horizontal=true}dragged=true;e.preventDefault();applyX((wrap.classList.contains('open')?-86:0)+dx)},{passive:false});
+    row.addEventListener('touchend',()=>{if(!tracking&&!horizontal)return;settle(currentX<-38);setTimeout(()=>{dragged=false},100)},{passive:true});
+    row.addEventListener('touchcancel',()=>settle(wrap.classList.contains('open')),{passive:true});
+    row.addEventListener('click',e=>{if(dragged){e.preventDefault();e.stopPropagation()}},true);
+    del.onclick=e=>{e.stopPropagation();deleteFeeling(x.id)};
+    wrap.append(del,row);feed.append(wrap);
   });
 }
 async function postFeeling(){
@@ -1634,7 +1651,7 @@ function toggleFeelingComments(id){
   if(list.classList.contains('open'))list.scrollTop=list.scrollHeight;
 }
 async function giftFeeling(id){
-  const x=feelingsData.find(f=>f.id===id);if(!x||x.user_id===currentUserId())return;
+  const x=feelingsData.find(f=>f.id===id);if(!x)return;if(x.user_id===currentUserId())return alert('Hadiah hanya bisa dikirim ke Feeling teman.');
   const raw=prompt('Jumlah hadiah PINGGO Coin untuk '+feelingPerson(x.user_id).name+'?\nContoh: 10, 50, 100');
   if(raw===null)return;
   const amount=parseInt(String(raw).replace(/[^0-9]/g,''),10);
@@ -1996,7 +2013,7 @@ async function ensurePushSubscription(forcePrompt=false){
   let permission=Notification.permission;
   if(permission==='default'){if(!forcePrompt)return false;permission=await Notification.requestPermission()}
   if(permission!=='granted')return false;
-  const reg=await navigator.serviceWorker.register('./pinggo-sw.js',{updateViaCache:'none'});await navigator.serviceWorker.ready;
+  const reg=await navigator.serviceWorker.register('./pinggo-sw.js?v=20260909-feeling-swipe-v3',{updateViaCache:'none'});await navigator.serviceWorker.ready;
   let sub=await reg.pushManager.getSubscription();
   if(!sub)sub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:urlBase64ToUint8Array(PINGGO_VAPID_PUBLIC)});
   const j=sub.toJSON();
