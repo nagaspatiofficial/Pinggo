@@ -1,4 +1,4 @@
-const PINGGO_SW_VERSION='2026-09-09-auto-update-feeling-v4';
+const PINGGO_SW_VERSION='2026-09-09-feeling-unread-dot-v5';
 self.addEventListener('install',event=>self.skipWaiting());
 self.addEventListener('activate',event=>event.waitUntil((async()=>{
   const keys=await caches.keys();

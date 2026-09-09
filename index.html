@@ -357,6 +357,15 @@ button, input, select, textarea {
   align-items: center;
   justify-content: center;
   cursor: pointer;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .08s ease;
+}
+
+.chat-swipe-wrap.open .chat-delete-action,
+.chat-swipe-wrap.dragging .chat-delete-action {
+  opacity: 1;
+  pointer-events: auto;
 }
 
 .chat-item {
@@ -375,7 +384,7 @@ button, input, select, textarea {
 }
 
 .chat-item:active {
-  background: rgba(255,255,255,0.4);
+  background: #ffffff;
 }
 
 .avatar-container {
@@ -911,6 +920,22 @@ button, input, select, textarea {
 .feeling-action.gift{background:rgba(255,232,243,.92);color:var(--pinggo-pink-dark)}
 .feeling-action.delete{background:rgba(255,226,230,.9);color:#c53a50}
 .feeling-gift-total{margin-left:auto;font-size:10px;color:var(--text-muted);font-weight:700}
+#chatTabs [data-chat-filter="feelings"]{position:relative}
+.feeling-tab-badge{
+  position:absolute;
+  top:3px;
+  right:7px;
+  width:8px;
+  height:8px;
+  border-radius:50%;
+  background:#e5484d;
+  border:2px solid rgba(255,255,255,.95);
+  box-sizing:content-box;
+  display:none;
+  pointer-events:none;
+}
+.feeling-tab-badge.show{display:block}
+
 
     .pinggo-coin-icon{width:32px;height:32px;object-fit:contain;vertical-align:middle;display:inline-block;margin-right:8px}
     .pinggo-coin-icon.small{width:20px;height:20px;margin-right:5px}
@@ -1549,6 +1574,79 @@ async function loadBackendFriends(){
 
 let feelingsData=[];
 let feelingsLoaded=false,feelingsLoading=null;
+const FEELING_SEEN_KEY='pinggo_feeling_seen_v1';
+let feelingSeenInitialized=false;
+
+function feelingSeenStorageKey(){
+  return FEELING_SEEN_KEY+':'+(currentUserId()||'guest');
+}
+function getFeelingSeenAt(){
+  const v=localStorage.getItem(feelingSeenStorageKey());
+  return v ? Number(v)||0 : 0;
+}
+function setFeelingSeenAt(ts=Date.now()){
+  try{localStorage.setItem(feelingSeenStorageKey(),String(ts))}catch(_){}
+}
+function ensureFeelingBadgeEl(){
+  const btn=document.querySelector('#chatTabs [data-chat-filter="feelings"]');
+  if(!btn)return null;
+  let dot=btn.querySelector('.feeling-tab-badge');
+  if(!dot){
+    dot=document.createElement('span');
+    dot.className='feeling-tab-badge';
+    dot.setAttribute('aria-hidden','true');
+    btn.appendChild(dot);
+  }
+  return dot;
+}
+function setFeelingUnreadBadge(show){
+  const dot=ensureFeelingBadgeEl();
+  if(dot)dot.classList.toggle('show',!!show);
+}
+function latestFriendFeelingTime(rows=feelingsData){
+  const uid=currentUserId();
+  return (rows||[]).reduce((max,x)=>{
+    if(!x||x.user_id===uid)return max;
+    const t=Date.parse(x.created_at||'')||0;
+    return Math.max(max,t);
+  },0);
+}
+function refreshFeelingUnreadBadge(rows=feelingsData){
+  if(chatFilter==='feelings'){setFeelingUnreadBadge(false);return}
+  const latest=latestFriendFeelingTime(rows);
+  if(!latest){setFeelingUnreadBadge(false);return}
+  let seen=getFeelingSeenAt();
+  if(!seen && !feelingSeenInitialized){
+    // Pertama kali setelah update: jadikan Feeling yang sudah ada sebagai baseline,
+    // supaya posting lama tidak tiba-tiba dianggap update baru.
+    setFeelingSeenAt(latest);
+    seen=latest;
+    feelingSeenInitialized=true;
+  }
+  setFeelingUnreadBadge(latest>seen);
+}
+function markFeelingsSeen(){
+  const latest=latestFriendFeelingTime();
+  setFeelingSeenAt(Math.max(Date.now(),latest));
+  feelingSeenInitialized=true;
+  setFeelingUnreadBadge(false);
+}
+async function checkFeelingUpdates(){
+  if(document.hidden||!currentSession()?.loggedIn||chatFilter==='feelings')return;
+  try{
+    const uid=currentUserId(); if(!uid)return;
+    const rows=await supabaseRequest('/rest/v1/feelings?user_id=neq.'+encodeURIComponent(uid)+'&select=id,user_id,created_at&order=created_at.desc&limit=1');
+    const latest=latestFriendFeelingTime(rows||[]);
+    if(!latest){setFeelingUnreadBadge(false);return}
+    let seen=getFeelingSeenAt();
+    if(!seen && !feelingSeenInitialized){
+      setFeelingSeenAt(latest);
+      seen=latest;
+      feelingSeenInitialized=true;
+    }
+    setFeelingUnreadBadge(latest>seen);
+  }catch(e){console.warn('Cek update Feeling gagal:',e)}
+}
 function feelingPerson(uid){if(uid===currentUserId()){const a=account()||{};return{id:uid,name:a.name||'Saya',avatar:(a.name||'S').slice(0,2).toUpperCase(),photo:a.photo||''}}return people[uid]||{id:uid,name:'PINGGO User',avatar:'P',photo:''}}
 async function loadFeelings(force=false){
   if(feelingsLoading&&!force)return feelingsLoading;
@@ -1557,6 +1655,7 @@ async function loadFeelings(force=false){
       const rows=await supabaseRequest('/rest/v1/feelings?select=id,user_id,body,created_at&order=created_at.desc&limit=100');
       feelingsData=(rows||[]).map(x=>({...x,comments:[],giftTotal:0}));
       feelingsLoaded=true;
+      refreshFeelingUnreadBadge(feelingsData);
       if(chatFilter==='feelings')renderFeelings();
 
       const userIds=[...new Set((rows||[]).map(x=>x.user_id))];
@@ -1940,7 +2039,7 @@ function renderChats(filter=(typeof chatFilter!=='undefined'?chatFilter:'all'),q
     let startX=0,startY=0,currentX=0,tracking=false,horizontal=false,dragged=false;
     const closeOtherRows=()=>document.querySelectorAll('.chat-swipe-wrap.open').forEach(x=>{if(x!==wrap)x.classList.remove('open')});
     const applyX=x=>{currentX=Math.max(-86,Math.min(0,x));el.style.transition='none';el.style.transform=`translateX(${currentX}px)`};
-    const settle=open=>{tracking=false;horizontal=false;wrap.classList.toggle('open',open);el.style.transition='';el.style.transform='';currentX=open?-86:0};
+    const settle=open=>{tracking=false;horizontal=false;wrap.classList.remove('dragging');wrap.classList.toggle('open',open);el.style.transition='';el.style.transform='';currentX=open?-86:0};
     el.addEventListener('touchstart',e=>{
       const t=e.touches[0];startX=t.clientX;startY=t.clientY;tracking=true;horizontal=false;dragged=false;
       currentX=wrap.classList.contains('open')?-86:0;closeOtherRows();
@@ -1948,7 +2047,7 @@ function renderChats(filter=(typeof chatFilter!=='undefined'?chatFilter:'all'),q
     el.addEventListener('touchmove',e=>{
       if(!tracking)return;
       const t=e.touches[0],mx=t.clientX-startX,my=t.clientY-startY;
-      if(!horizontal){if(Math.abs(mx)<8)return;if(Math.abs(mx)<=Math.abs(my)){tracking=false;return}horizontal=true}
+      if(!horizontal){if(Math.abs(mx)<8)return;if(Math.abs(mx)<=Math.abs(my)){tracking=false;return}horizontal=true;wrap.classList.add('dragging')}
       dragged=true;e.preventDefault();applyX((wrap.classList.contains('open')?-86:0)+mx);
     },{passive:false});
     el.addEventListener('touchend',()=>{if(!tracking&&!horizontal)return;const open=currentX<-38;settle(open);setTimeout(()=>{dragged=false},80)},{passive:true});
@@ -2051,12 +2150,13 @@ async function syncLiveAppData(){
 function startPresenceAndChatSync(){
   if(presenceTimer)clearInterval(presenceTimer);if(chatPollTimer)clearInterval(chatPollTimer);if(appSyncTimer)clearInterval(appSyncTimer);
   touchPresence().catch(()=>{});
+  checkFeelingUpdates().catch(()=>{});
   presenceTimer=setInterval(()=>{if(!document.hidden){touchPresence().catch(()=>{});const ids=[...new Set([...friendsState.friends,...friendsState.requests,...friendsState.sent])];if(ids.length)loadProfilesByIds(ids).then(()=>{renderFriends();renderChats()}).catch(()=>{})}},30000);
   chatPollTimer=setInterval(async()=>{if(document.hidden||!currentSession()?.loggedIn)return;await Promise.allSettled([loadBackendChats(),loadBackendFriends()]);if(currentChatId&&chatConversationByUser[currentChatId])await loadConversationMessages(chatConversationByUser[currentChatId])},4000);
-  appSyncTimer=setInterval(()=>{syncLiveAppData().catch(()=>{})},10000);
+  appSyncTimer=setInterval(()=>{syncLiveAppData().catch(()=>{});checkFeelingUpdates().catch(()=>{})},10000);
 }
-document.addEventListener('visibilitychange',()=>{if(!document.hidden){touchPresence().catch(()=>{});syncLiveAppData().catch(()=>{})}});
-window.addEventListener('focus',()=>{syncLiveAppData().catch(()=>{})});
+document.addEventListener('visibilitychange',()=>{if(!document.hidden){touchPresence().catch(()=>{});syncLiveAppData().catch(()=>{});checkFeelingUpdates().catch(()=>{})}});
+window.addEventListener('focus',()=>{syncLiveAppData().catch(()=>{});checkFeelingUpdates().catch(()=>{})});
 window.addEventListener('beforeunload',()=>{if(currentSession()?.loggedIn)navigator.sendBeacon?.('')});
 /* ===== end backend patch ===== */
 
@@ -2067,8 +2167,9 @@ function setChatFilter(filter){
   const input=document.querySelector('#panelChats .search-bar input');
   if(filter==='feelings'){
     if(input){input.value='';input.placeholder='Cari pesan atau PINGGO ID...'}
+    markFeelingsSeen();
     renderFeelings();
-    loadFeelings(false).catch(e=>console.warn('Feeling gagal dimuat:',e));
+    loadFeelings(false).then(()=>markFeelingsSeen()).catch(e=>console.warn('Feeling gagal dimuat:',e));
   }else{
     renderChats(filter,input?.value||'');
   }
