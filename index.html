@@ -327,6 +327,27 @@ button, input, select, textarea {
   flex-direction: column;
 }
 
+.chat-swipe-wrap {
+  position: relative;
+  overflow: hidden;
+  border-radius: 12px;
+}
+
+.chat-delete-action {
+  position: absolute;
+  inset: 0 0 0 auto;
+  width: 86px;
+  border: 0;
+  border-radius: 12px;
+  background: #e5484d;
+  color: #fff;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
 .chat-item {
   display: flex;
   align-items: center;
@@ -335,7 +356,10 @@ button, input, select, textarea {
   border-bottom: 1px solid rgba(0,0,0,0.05);
   cursor: pointer;
   border-radius: 12px;
-  transition: background 0.15s;
+  transition: background 0.15s, transform 0.18s ease;
+  position: relative;
+  z-index: 1;
+  background: var(--bg-main, #fff);
 }
 
 .chat-item:active {
@@ -1824,8 +1848,9 @@ function postgrestIn(ids){return '('+ids.map(String).join(',')+')'}
 async function loadBackendChats(){
   const uid=currentUserId();if(!uid||!currentSession()?.accessToken)return false;
   try{
-    const mine=await supabaseRequest('/rest/v1/conversation_members?user_id=eq.'+encodeURIComponent(uid)+'&select=conversation_id');
+    const mine=await supabaseRequest('/rest/v1/conversation_members?user_id=eq.'+encodeURIComponent(uid)+'&select=conversation_id,hidden_at');
     const cids=[...new Set((mine||[]).map(x=>x.conversation_id).filter(Boolean))];
+    const hiddenAtByConv=Object.fromEntries((mine||[]).map(x=>[x.conversation_id,x.hidden_at?new Date(x.hidden_at).getTime():0]));
     if(!cids.length){chatsData=[];chatConversationByUser={};backendChatHistory={};renderChats();return true}
     const [convs,members,msgs]=await Promise.all([
       supabaseRequest('/rest/v1/conversations?id=in.'+encodeURIComponent(postgrestIn(cids))+'&select=id,kind,title,last_message_at,created_at'),
@@ -1841,7 +1866,8 @@ async function loadBackendChats(){
       const mem=(members||[]).filter(x=>x.conversation_id===c.id).map(x=>x.user_id);
       const other=mem.find(x=>x!==uid);if(c.kind==='direct'&&!other)continue;
       const p=other?people[other]:null;if(other)chatConversationByUser[other]=c.id;
-      const cm=(byConv[c.id]||[]).slice().sort((a,b)=>new Date(b.created_at)-new Date(a.created_at));
+      const hiddenAt=hiddenAtByConv[c.id]||0;
+      const cm=(byConv[c.id]||[]).filter(m=>new Date(m.created_at).getTime()>hiddenAt).slice().sort((a,b)=>new Date(b.created_at)-new Date(a.created_at));
       const last=cm[0];
       if(!last)continue;
       const unread=cm.filter(m=>m.sender_id!==uid&&!m.read_at).length;
@@ -1853,10 +1879,18 @@ async function loadBackendChats(){
 }
 async function ensureConversationForUser(userId){let cid=chatConversationByUser[userId];if(cid)return cid;cid=await rpc('get_or_create_direct_conversation',{p_other:userId});if(!cid)throw new Error('Percakapan tidak dapat dibuat.');chatConversationByUser[userId]=cid;return cid}
 async function resolveChatMedia(path){if(!path)return'';if(chatMediaUrlCache.has(path))return chatMediaUrlCache.get(path);const u=await signedStorageUrl('chat-media',path,900);chatMediaUrlCache.set(path,u);return u}
+async function getConversationHiddenAt(conversationId){
+  try{
+    const rows=await supabaseRequest('/rest/v1/conversation_members?conversation_id=eq.'+encodeURIComponent(conversationId)+'&user_id=eq.'+encodeURIComponent(currentUserId())+'&select=hidden_at&limit=1');
+    return rows?.[0]?.hidden_at||null;
+  }catch(_){return null}
+}
 async function loadConversationMessages(conversationId){
   if(!conversationId)return;
   try{
-    const rows=await supabaseRequest('/rest/v1/messages?conversation_id=eq.'+encodeURIComponent(conversationId)+'&deleted_at=is.null&select=id,conversation_id,sender_id,body,media_path,media_type,created_at,read_at&order=created_at.asc&limit=250');
+    const hiddenAt=await getConversationHiddenAt(conversationId);
+    const after=hiddenAt?'&created_at=gt.'+encodeURIComponent(hiddenAt):'';
+    const rows=await supabaseRequest('/rest/v1/messages?conversation_id=eq.'+encodeURIComponent(conversationId)+'&deleted_at=is.null'+after+'&select=id,conversation_id,sender_id,body,media_path,media_type,created_at,read_at&order=created_at.asc&limit=250');
     const uid=currentUserId();const mapped=[];
     for(const m of (rows||[])){
       let kind='text',url='';if(m.media_type){kind=m.media_type==='audio'?'voice':m.media_type;if(kind==='voice'||kind==='image'||kind==='video'){try{url=await resolveChatMedia(m.media_path)}catch(_){url=''}}}
@@ -1875,7 +1909,29 @@ function renderChats(filter=(typeof chatFilter!=='undefined'?chatFilter:'all'),q
   const box=$('chatList');box.innerHTML='';const q=String(query||'').toLowerCase();
   const visible=chatsData.filter(c=>(filter==='all'||(filter==='unread'&&c.unread>0)||(filter==='group'&&c.group)||(filter==='favorite'&&c.favorite))&&(!q||(c.name+' '+c.preview).toLowerCase().includes(q)));
   if(!visible.length){box.innerHTML='<div class="empty-state">Belum ada percakapan.</div>';return}
-  visible.forEach(c=>{const p=people[c.id];const el=document.createElement('div');el.className='chat-item';const avatar=p?.photo?`<img class="friend-avatar-img" src="${esc(p.photo)}" alt="${esc(c.name)}">`:esc(c.avatar);el.innerHTML=`<div class="avatar-container">${avatar}${p?.online?'<div class="online-dot"></div>':''}</div><div class="chat-info"><div class="chat-top-row"><span class="chat-name">${esc(c.name)}</span><span class="chat-time">${esc(c.time)}</span></div><div class="chat-preview">${esc(c.preview)}</div></div>${c.unread?`<div class="unread-badge">${c.unread}</div>`:''}`;el.onclick=()=>openChatRoom(c.id);box.appendChild(el)})
+  visible.forEach(c=>{
+    const p=people[c.id],wrap=document.createElement('div'),del=document.createElement('button'),el=document.createElement('div');
+    wrap.className='chat-swipe-wrap';del.className='chat-delete-action';del.type='button';del.textContent='Hapus';el.className='chat-item';
+    const avatar=p?.photo?`<img class="friend-avatar-img" src="${esc(p.photo)}" alt="${esc(c.name)}">`:esc(c.avatar);
+    el.innerHTML=`<div class="avatar-container">${avatar}${p?.online?'<div class="online-dot"></div>':''}</div><div class="chat-info"><div class="chat-top-row"><span class="chat-name">${esc(c.name)}</span><span class="chat-time">${esc(c.time)}</span></div><div class="chat-preview">${esc(c.preview)}</div></div>${c.unread?`<div class="unread-badge">${c.unread}</div>`:''}`;
+    let startX=0,startY=0,dx=0,dragging=false,opened=false;
+    const setX=x=>{dx=Math.max(-86,Math.min(0,x));el.style.transform=`translateX(${dx}px)`};
+    el.addEventListener('touchstart',e=>{const t=e.touches[0];startX=t.clientX;startY=t.clientY;dragging=true},{passive:true});
+    el.addEventListener('touchmove',e=>{if(!dragging)return;const t=e.touches[0],mx=t.clientX-startX,my=t.clientY-startY;if(Math.abs(mx)>Math.abs(my)&&mx<0)setX(mx)},{passive:true});
+    el.addEventListener('touchend',()=>{dragging=false;opened=dx<-42;setX(opened?-86:0)},{passive:true});
+    el.onclick=()=>{if(opened){opened=false;setX(0);return}openChatRoom(c.id)};
+    del.onclick=e=>{e.stopPropagation();hideConversationForMe(c)};
+    wrap.append(del,el);box.appendChild(wrap);
+  })
+}
+async function hideConversationForMe(c){
+  if(!c?.conversationId)return;
+  if(!confirm('Hapus seluruh obrolan dengan '+c.name+' dari akun kamu?'))return;
+  try{
+    await supabaseRequest('/rest/v1/conversation_members?conversation_id=eq.'+encodeURIComponent(c.conversationId)+'&user_id=eq.'+encodeURIComponent(currentUserId()),{method:'PATCH',headers:{'Content-Type':'application/json','Prefer':'return=minimal'},body:JSON.stringify({hidden_at:new Date().toISOString()})});
+    delete backendChatHistory[c.conversationId];
+    await loadBackendChats();
+  }catch(e){alert('Chat gagal dihapus: '+e.message)}
 }
 function bindDeleteGesture(el,m){
   if(!el||m.side!=='out'||!m.id)return;
