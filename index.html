@@ -1877,10 +1877,32 @@ function renderChats(filter=(typeof chatFilter!=='undefined'?chatFilter:'all'),q
   if(!visible.length){box.innerHTML='<div class="empty-state">Belum ada percakapan.</div>';return}
   visible.forEach(c=>{const p=people[c.id];const el=document.createElement('div');el.className='chat-item';const avatar=p?.photo?`<img class="friend-avatar-img" src="${esc(p.photo)}" alt="${esc(c.name)}">`:esc(c.avatar);el.innerHTML=`<div class="avatar-container">${avatar}${p?.online?'<div class="online-dot"></div>':''}</div><div class="chat-info"><div class="chat-top-row"><span class="chat-name">${esc(c.name)}</span><span class="chat-time">${esc(c.time)}</span></div><div class="chat-preview">${esc(c.preview)}</div></div>${c.unread?`<div class="unread-badge">${c.unread}</div>`:''}`;el.onclick=()=>openChatRoom(c.id);box.appendChild(el)})
 }
+function bindDeleteGesture(el,m){
+  if(!el||m.side!=='out'||!m.id)return;
+  el.title='Tekan lama untuk hapus pesan';
+  let timer=null,moved=false;
+  const start=()=>{moved=false;clearTimeout(timer);timer=setTimeout(()=>{if(!moved)deleteChatMessage(m.id)},550)};
+  const cancel=()=>{clearTimeout(timer);timer=null};
+  el.addEventListener('touchstart',start,{passive:true});
+  el.addEventListener('touchmove',()=>{moved=true;cancel()},{passive:true});
+  el.addEventListener('touchend',cancel,{passive:true});
+  el.addEventListener('touchcancel',cancel,{passive:true});
+  el.addEventListener('contextmenu',e=>{e.preventDefault();deleteChatMessage(m.id)});
+}
+async function deleteChatMessage(messageId){
+  if(!messageId||!currentChatId)return;
+  if(!confirm('Hapus pesan ini untuk semua?'))return;
+  const cid=chatConversationByUser[currentChatId];
+  try{
+    await supabaseRequest('/rest/v1/messages?id=eq.'+encodeURIComponent(messageId)+'&sender_id=eq.'+encodeURIComponent(currentUserId()),{method:'PATCH',headers:{'Content-Type':'application/json','Prefer':'return=minimal'},body:JSON.stringify({deleted_at:new Date().toISOString()})});
+    await loadConversationMessages(cid);
+    await loadBackendChats();
+  }catch(e){alert('Pesan gagal dihapus: '+e.message)}
+}
 function renderHistory(){
   if(!currentChatId)return;const cid=chatConversationByUser[currentChatId];const box=$('chatMessages');box.innerHTML='<div class="date-divider">Hari ini</div>';
   const arr=backendChatHistory[cid]||[];if(!arr.length){box.innerHTML+='<div class="empty-state">Belum ada pesan. Mulai percakapan.</div>';return}
-  arr.forEach(m=>{const row=document.createElement('div');row.className='msg-row '+(m.side==='out'?'outgoing':'incoming');if(m.kind==='image'||m.kind==='video'){const card=document.createElement('div');card.className='media-message';if(m.url){const media=document.createElement(m.kind==='image'?'img':'video');media.src=m.url;if(m.kind==='video'){media.controls=true;media.playsInline=true}media.onclick=()=>openMedia(m.kind,m.url);card.append(media)}const cap=document.createElement('div');cap.className='media-caption';cap.textContent=(m.kind==='image'?'📷 Foto':'🎥 Video')+' • '+m.time;card.append(cap);row.append(card)}else if(m.kind==='voice'){const b=document.createElement('div');b.className='msg-bubble voice-message';if(m.url){const a=document.createElement('audio');a.controls=true;a.src=m.url;b.append(a)}const t=document.createElement('span');t.className='msg-time';t.textContent=m.time;b.append(t);row.append(b)}else{const b=document.createElement('div');b.className='msg-bubble';b.innerHTML=esc(m.text||'')+` <span class="msg-time">${esc(m.time||'')}</span>`;row.append(b)}box.append(row)});requestAnimationFrame(()=>box.scrollTop=box.scrollHeight)
+  arr.forEach(m=>{const row=document.createElement('div');row.className='msg-row '+(m.side==='out'?'outgoing':'incoming');row.dataset.messageId=m.id||'';if(m.kind==='image'||m.kind==='video'){const card=document.createElement('div');card.className='media-message';if(m.url){const media=document.createElement(m.kind==='image'?'img':'video');media.src=m.url;if(m.kind==='video'){media.controls=true;media.playsInline=true}media.onclick=()=>openMedia(m.kind,m.url);card.append(media)}const cap=document.createElement('div');cap.className='media-caption';cap.textContent=(m.kind==='image'?'📷 Foto':'🎥 Video')+' • '+m.time;card.append(cap);row.append(card);bindDeleteGesture(card,m)}else if(m.kind==='voice'){const b=document.createElement('div');b.className='msg-bubble voice-message';if(m.url){const a=document.createElement('audio');a.controls=true;a.src=m.url;b.append(a)}const t=document.createElement('span');t.className='msg-time';t.textContent=m.time;b.append(t);row.append(b);bindDeleteGesture(b,m)}else{const b=document.createElement('div');b.className='msg-bubble';b.innerHTML=esc(m.text||'')+` <span class="msg-time">${esc(m.time||'')}</span>`;row.append(b);bindDeleteGesture(b,m)}box.append(row)});requestAnimationFrame(()=>box.scrollTop=box.scrollHeight)
 }
 async function openChatRoom(id){
   try{if(!$('chatRoom').classList.contains('open')&&!history.state?.pinggoChat)history.pushState({pinggoChat:true},'',location.href);currentChatId=id;const p=people[id]||{name:id,avatar:'P',online:false};$('roomName').textContent=p.name;const roomAvatar=$('roomAvatar');if(p.photo)roomAvatar.innerHTML=`<img class="friend-avatar-img" src="${esc(p.photo)}" alt="${esc(p.name)}">`;else roomAvatar.textContent=p.avatar;const st=document.querySelector('#chatRoom .room-user-info small');if(st){st.textContent=p.online?'Online':(p.lastSeen||'Offline');st.style.color=p.online?'var(--green-online)':'var(--text-muted)'};$('chatRoom').classList.add('open');await ensureConversationForUser(id);await loadConversationMessages(chatConversationByUser[id]);await loadBackendChats();$('msgInput').focus({preventScroll:true})}catch(e){alert(e.message)}
