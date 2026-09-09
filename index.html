@@ -331,7 +331,9 @@ button, input, select, textarea {
   position: relative;
   overflow: hidden;
   border-radius: 12px;
+  touch-action: pan-y;
 }
+.chat-swipe-wrap.open .chat-item { transform: translateX(-86px); }
 
 .chat-delete-action {
   position: absolute;
@@ -358,6 +360,7 @@ button, input, select, textarea {
   border-radius: 12px;
   transition: background 0.15s, transform 0.18s ease;
   position: relative;
+  touch-action: pan-y;
   z-index: 1;
   background: var(--bg-main, #fff);
 }
@@ -1914,12 +1917,23 @@ function renderChats(filter=(typeof chatFilter!=='undefined'?chatFilter:'all'),q
     wrap.className='chat-swipe-wrap';del.className='chat-delete-action';del.type='button';del.textContent='Hapus';el.className='chat-item';
     const avatar=p?.photo?`<img class="friend-avatar-img" src="${esc(p.photo)}" alt="${esc(c.name)}">`:esc(c.avatar);
     el.innerHTML=`<div class="avatar-container">${avatar}${p?.online?'<div class="online-dot"></div>':''}</div><div class="chat-info"><div class="chat-top-row"><span class="chat-name">${esc(c.name)}</span><span class="chat-time">${esc(c.time)}</span></div><div class="chat-preview">${esc(c.preview)}</div></div>${c.unread?`<div class="unread-badge">${c.unread}</div>`:''}`;
-    let startX=0,startY=0,dx=0,dragging=false,opened=false;
-    const setX=x=>{dx=Math.max(-86,Math.min(0,x));el.style.transform=`translateX(${dx}px)`};
-    el.addEventListener('touchstart',e=>{const t=e.touches[0];startX=t.clientX;startY=t.clientY;dragging=true},{passive:true});
-    el.addEventListener('touchmove',e=>{if(!dragging)return;const t=e.touches[0],mx=t.clientX-startX,my=t.clientY-startY;if(Math.abs(mx)>Math.abs(my)&&mx<0)setX(mx)},{passive:true});
-    el.addEventListener('touchend',()=>{dragging=false;opened=dx<-42;setX(opened?-86:0)},{passive:true});
-    el.onclick=()=>{if(opened){opened=false;setX(0);return}openChatRoom(c.id)};
+    let startX=0,startY=0,currentX=0,tracking=false,horizontal=false,dragged=false;
+    const closeOtherRows=()=>document.querySelectorAll('.chat-swipe-wrap.open').forEach(x=>{if(x!==wrap)x.classList.remove('open')});
+    const applyX=x=>{currentX=Math.max(-86,Math.min(0,x));el.style.transition='none';el.style.transform=`translateX(${currentX}px)`};
+    const settle=open=>{tracking=false;horizontal=false;wrap.classList.toggle('open',open);el.style.transition='';el.style.transform='';currentX=open?-86:0};
+    el.addEventListener('touchstart',e=>{
+      const t=e.touches[0];startX=t.clientX;startY=t.clientY;tracking=true;horizontal=false;dragged=false;
+      currentX=wrap.classList.contains('open')?-86:0;closeOtherRows();
+    },{passive:true});
+    el.addEventListener('touchmove',e=>{
+      if(!tracking)return;
+      const t=e.touches[0],mx=t.clientX-startX,my=t.clientY-startY;
+      if(!horizontal){if(Math.abs(mx)<8)return;if(Math.abs(mx)<=Math.abs(my)){tracking=false;return}horizontal=true}
+      dragged=true;e.preventDefault();applyX((wrap.classList.contains('open')?-86:0)+mx);
+    },{passive:false});
+    el.addEventListener('touchend',()=>{if(!tracking&&!horizontal)return;const open=currentX<-38;settle(open);setTimeout(()=>{dragged=false},80)},{passive:true});
+    el.addEventListener('touchcancel',()=>settle(wrap.classList.contains('open')),{passive:true});
+    el.onclick=e=>{if(dragged){e.preventDefault();return}if(wrap.classList.contains('open')){settle(false);return}openChatRoom(c.id)};
     del.onclick=e=>{e.stopPropagation();hideConversationForMe(c)};
     wrap.append(del,el);box.appendChild(wrap);
   })
