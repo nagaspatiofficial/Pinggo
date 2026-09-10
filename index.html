@@ -1279,6 +1279,24 @@ const SUPABASE_URL='https://fgvsqzjfrouypgudhrsc.supabase.co';
 const SUPABASE_KEY='sb_publishable_ojLOMPCW07M068trjToZ7w_PFu4XUw_';
 function currentSession(){return read(STORE.session,null)}
 function currentUserId(){return currentSession()?.userId||account()?.userId||''}
+const FAST_CACHE_VERSION='v1';
+function userCacheKey(kind,uid=currentUserId()){return uid?`pinggo_${kind}_cache_${FAST_CACHE_VERSION}_${uid}`:''}
+function saveFastCache(kind,payload){const k=userCacheKey(kind);if(k)write(k,{uid:currentUserId(),savedAt:Date.now(),...payload})}
+function restoreFastCaches(){
+  const uid=currentUserId();if(!uid)return;
+  const chatCache=read(userCacheKey('chats',uid),null);
+  if(chatCache?.uid===uid&&Array.isArray(chatCache.chats)){
+    chatsData=chatCache.chats;
+    (chatCache.profiles||[]).forEach(x=>{if(x?.id)people[x.id]=Object.assign({},people[x.id]||{},x)});
+    if(chatCache.chatConversationByUser&&typeof chatCache.chatConversationByUser==='object')chatConversationByUser=chatCache.chatConversationByUser;
+  }
+  const feelingCache=read(userCacheKey('feelings',uid),null);
+  if(feelingCache?.uid===uid&&Array.isArray(feelingCache.feelings)){
+    feelingsData=feelingCache.feelings;feelingsLoaded=true;
+    (feelingCache.profiles||[]).forEach(x=>{if(x?.id)people[x.id]=Object.assign({},people[x.id]||{},x)});
+  }
+}
+function cachedProfiles(ids){return [...new Set((ids||[]).filter(Boolean))].map(id=>people[id]).filter(Boolean).map(p=>({id:p.id,name:p.name||'',avatar:p.avatar||'P',photo:p.photo||'',online:!!p.online,lastSeen:p.lastSeen||''}))}
 function authHeaders(extra={}){const token=currentSession()?.accessToken;return Object.assign({'apikey':SUPABASE_KEY,'Authorization':'Bearer '+(token||SUPABASE_KEY)},extra)}
 async function supabaseRequest(path,options={}){
   const headers=Object.assign({},options.auth===false?{'apikey':SUPABASE_KEY}:authHeaders(),options.headers||{});
@@ -1661,6 +1679,11 @@ function requestFeelingsRender(){
   feelingsRenderPending=false;
   renderFeelings();
 }
+function saveFeelingsCache(){
+  const ids=[];
+  (feelingsData||[]).forEach(x=>{ids.push(x.user_id);(x.comments||[]).forEach(c=>ids.push(c.user_id))});
+  saveFastCache('feelings',{feelings:feelingsData,profiles:cachedProfiles(ids)});
+}
 async function loadFeelings(force=false){
   if(feelingsLoading&&!force)return feelingsLoading;
   feelingsLoading=(async()=>{
@@ -1668,11 +1691,12 @@ async function loadFeelings(force=false){
       const rows=await supabaseRequest('/rest/v1/feelings?select=id,user_id,body,created_at&order=created_at.desc&limit=100');
       feelingsData=(rows||[]).map(x=>({...x,comments:[],giftTotal:0}));
       feelingsLoaded=true;
+      saveFeelingsCache();
       refreshFeelingUnreadBadge(feelingsData);
       requestFeelingsRender();
 
       const userIds=[...new Set((rows||[]).map(x=>x.user_id))];
-      if(userIds.length)loadProfilesByIds(userIds).then(()=>{requestFeelingsRender()}).catch(()=>{});
+      if(userIds.length)loadProfilesByIds(userIds).then(()=>{saveFeelingsCache();requestFeelingsRender()}).catch(()=>{});
 
       const fids=(rows||[]).map(x=>x.id);
       if(!fids.length)return;
@@ -1688,7 +1712,8 @@ async function loadFeelings(force=false){
         giftTotal:gifts.filter(g=>g.feeling_id===x.id).reduce((n,g)=>n+(Number(g.amount)||0),0)
       }));
       const commentUserIds=[...new Set(comments.map(x=>x.user_id))];
-      if(commentUserIds.length)loadProfilesByIds(commentUserIds).catch(()=>{});
+      if(commentUserIds.length)loadProfilesByIds(commentUserIds).then(()=>{saveFeelingsCache();requestFeelingsRender()}).catch(()=>{});
+      saveFeelingsCache();
       requestFeelingsRender();
     }catch(e){
       console.warn('Feeling backend gagal:',e);
@@ -1995,7 +2020,7 @@ async function loadBackendChats(){
     const mine=await supabaseRequest('/rest/v1/conversation_members?user_id=eq.'+encodeURIComponent(uid)+'&select=conversation_id,hidden_at');
     const cids=[...new Set((mine||[]).map(x=>x.conversation_id).filter(Boolean))];
     const hiddenAtByConv=Object.fromEntries((mine||[]).map(x=>[x.conversation_id,x.hidden_at?new Date(x.hidden_at).getTime():0]));
-    if(!cids.length){chatsData=[];chatConversationByUser={};backendChatHistory={};renderChats();return true}
+    if(!cids.length){chatsData=[];chatConversationByUser={};backendChatHistory={};saveFastCache('chats',{chats:[],chatConversationByUser:{},profiles:[]});renderChats();return true}
     const [convs,members,msgs]=await Promise.all([
       supabaseRequest('/rest/v1/conversations?id=in.'+encodeURIComponent(postgrestIn(cids))+'&select=id,kind,title,last_message_at,created_at'),
       supabaseRequest('/rest/v1/conversation_members?conversation_id=in.'+encodeURIComponent(postgrestIn(cids))+'&select=conversation_id,user_id'),
@@ -2016,9 +2041,11 @@ async function loadBackendChats(){
       if(!last)continue;
       const unread=cm.filter(m=>m.sender_id!==uid&&!m.read_at).length;
       const preview=last.media_type==='image'?'📷 Foto':last.media_type==='video'?'🎥 Video':(last.media_type==='voice'||String(last.media_type||'').startsWith('audio'))?'🎙 Voice message':(last.body||'Pesan');
-      rows.push({id:other||c.id,conversationId:c.id,name:p?.name||c.title||'PINGGO Chat',preview,time:fmtChatTime(last.created_at),unread,avatar:p?.avatar||'P',group:c.kind!=='direct',favorite:false,online:!!p?.online,lastAt:new Date(last.created_at||0).getTime()});
+      rows.push({id:other||c.id,conversationId:c.id,name:p?.name||c.title||'PINGGO Chat',preview,time:fmtChatTime(last.created_at),unread,avatar:p?.avatar||'P',photo:p?.photo||'',group:c.kind!=='direct',favorite:false,online:!!p?.online,lastAt:new Date(last.created_at||0).getTime()});
     }
-    chatsData=rows.sort((a,b)=>b.lastAt-a.lastAt);renderChats();return true;
+    chatsData=rows.sort((a,b)=>b.lastAt-a.lastAt);
+    saveFastCache('chats',{chats:chatsData,chatConversationByUser:{...chatConversationByUser},profiles:cachedProfiles(chatsData.map(x=>x.id))});
+    renderChats();return true;
   }catch(e){console.warn('Chat backend gagal:',e);return false}
 }
 async function ensureConversationForUser(userId){let cid=chatConversationByUser[userId];if(cid)return cid;cid=await rpc('get_or_create_direct_conversation',{p_other:userId});if(!cid)throw new Error('Percakapan tidak dapat dibuat.');chatConversationByUser[userId]=cid;return cid}
@@ -2056,7 +2083,7 @@ function renderChats(filter=(typeof chatFilter!=='undefined'?chatFilter:'all'),q
   visible.forEach(c=>{
     const p=people[c.id],wrap=document.createElement('div'),del=document.createElement('button'),el=document.createElement('div');
     wrap.className='chat-swipe-wrap';del.className='chat-delete-action';del.type='button';del.textContent='Hapus';el.className='chat-item';
-    const avatar=p?.photo?`<img class="friend-avatar-img" src="${esc(p.photo)}" alt="${esc(c.name)}">`:esc(c.avatar);
+    const photo=p?.photo||c.photo||'';const avatar=photo?`<img class="friend-avatar-img" src="${esc(photo)}" alt="${esc(c.name)}">`:esc(c.avatar);
     el.innerHTML=`<div class="avatar-container">${avatar}${p?.online?'<div class="online-dot"></div>':''}</div><div class="chat-info"><div class="chat-top-row"><span class="chat-name">${esc(c.name)}</span><span class="chat-time">${esc(c.time)}</span></div><div class="chat-preview">${esc(c.preview)}</div></div>${c.unread?`<div class="unread-badge">${c.unread}</div>`:''}`;
     let startX=0,startY=0,currentX=0,tracking=false,horizontal=false,dragged=false;
     const closeOtherRows=()=>document.querySelectorAll('.chat-swipe-wrap.open').forEach(x=>{if(x!==wrap)x.classList.remove('open')});
@@ -2200,6 +2227,7 @@ document.querySelectorAll('#chatTabs [data-chat-filter]').forEach(b=>{b.onclick=
 document.querySelector('#panelChats .search-bar input').addEventListener('input',e=>renderChats(chatFilter,e.target.value));
 // fast back behavior: one handler only
 window.addEventListener('popstate',()=>{if($('chatRoom').classList.contains('open'))closeChatRoom(true)});
+restoreFastCaches();
 renderChats();renderFriends();renderSecret();renderProfile();
 (async()=>{
   const sess=currentSession();
