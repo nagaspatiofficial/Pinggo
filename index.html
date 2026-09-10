@@ -880,7 +880,7 @@ button, input, select, textarea {
 .coin-wallet-sub{font-size:11px;opacity:.9;margin-top:4px}
 .coin-pack-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:8px 0 14px}
 .coin-pack{border:1px solid rgba(255,255,255,.92);border-radius:17px;background:rgba(255,255,255,.72);padding:9px 6px;text-align:center;cursor:pointer;color:var(--text-main);box-shadow:0 5px 15px rgba(0,0,0,.04)}
-.coin-pack img{width:66px;height:66px;object-fit:cover;border-radius:50%;display:block;margin:0 auto 5px}
+.coin-pack img{width:66px;height:66px;object-fit:cover;border-radius:10px;display:block;margin:0 auto 5px}
 .coin-pack b{display:block;font-size:11px}
 .coin-pack small{display:block;font-size:10px;color:var(--text-muted);margin-top:2px}
 .coin-pack:active{transform:scale(.97)}
@@ -901,7 +901,7 @@ button, input, select, textarea {
 .feeling-swipe-wrap{position:relative;overflow:hidden;border-radius:16px;margin-bottom:8px;touch-action:pan-y}
 .feeling-swipe-wrap .feeling-card{position:relative;z-index:2;margin-bottom:0;transition:transform .18s ease;background:rgba(255,255,255,.72);touch-action:pan-y}
 .feeling-swipe-wrap.open .feeling-card{transform:translateX(-86px)}
-.feeling-delete-action{position:absolute;right:0;top:0;bottom:0;width:86px;border:0;background:#e5484d;color:#fff;font-weight:850;font-size:12px;z-index:1;display:grid;place-items:center;cursor:pointer}
+.feeling-delete-action{position:absolute;right:0;top:0;bottom:0;width:86px;border:0;background:#2388ff;color:#fff;font-weight:850;font-size:12px;z-index:1;display:grid;place-items:center;cursor:pointer}
 .feeling-head{display:flex;align-items:center;gap:8px;margin-bottom:5px}.feeling-head .avatar{flex:0 0 auto;transform:scale(.9);transform-origin:left center}
 .feeling-name{font-size:13px;font-weight:850}.feeling-time{font-size:10px;color:var(--text-muted)}
 .feeling-body{font-size:13px;line-height:1.35;white-space:pre-wrap;word-break:break-word;margin:4px 0 6px}
@@ -920,16 +920,22 @@ button, input, select, textarea {
   position:absolute;
   top:3px;
   right:7px;
-  width:8px;
-  height:8px;
+  min-width:17px;
+  height:17px;
+  padding:0 4px;
   border-radius:50%;
   background:#e5484d;
   border:2px solid rgba(255,255,255,.95);
-  box-sizing:content-box;
+  box-sizing:border-box;
   display:none;
+  align-items:center;
+  justify-content:center;
+  color:#fff;
+  font-size:9px;
+  font-weight:900;
   pointer-events:none;
 }
-.feeling-tab-badge.show{display:block}
+.feeling-tab-badge.show{display:flex}
 
 
     .pinggo-coin-icon{width:32px;height:32px;object-fit:contain;vertical-align:middle;display:inline-block;margin-right:8px}
@@ -1645,9 +1651,12 @@ function ensureFeelingBadgeEl(){
   }
   return dot;
 }
-function setFeelingUnreadBadge(show){
+function setFeelingUnreadBadge(value){
   const dot=ensureFeelingBadgeEl();
-  if(dot)dot.classList.toggle('show',!!show);
+  if(!dot)return;
+  const count=(typeof value==='number')?Math.max(0,value):(value?1:0);
+  dot.textContent=count>99?'99+':String(count||'');
+  dot.classList.toggle('show',count>0);
 }
 function latestFriendFeelingTime(rows=feelingsData){
   const uid=currentUserId();
@@ -1681,16 +1690,17 @@ async function checkFeelingUpdates(){
   if(document.hidden||!currentSession()?.loggedIn||$('panelFeeling')?.classList.contains('active'))return;
   try{
     const uid=currentUserId(); if(!uid)return;
-    const rows=await supabaseRequest('/rest/v1/feelings?user_id=neq.'+encodeURIComponent(uid)+'&select=id,user_id,created_at&order=created_at.desc&limit=1');
-    const latest=latestFriendFeelingTime(rows||[]);
-    if(!latest){setFeelingUnreadBadge(false);return}
     let seen=getFeelingSeenAt();
+    const rows=await supabaseRequest('/rest/v1/feelings?user_id=neq.'+encodeURIComponent(uid)+'&select=id,user_id,created_at&order=created_at.desc&limit=100');
+    const latest=latestFriendFeelingTime(rows||[]);
+    if(!latest){setFeelingUnreadBadge(0);return}
     if(!seen && !feelingSeenInitialized){
       setFeelingSeenAt(latest);
       seen=latest;
       feelingSeenInitialized=true;
     }
-    setFeelingUnreadBadge(latest>seen);
+    const unread=(rows||[]).filter(x=>(Date.parse(x.created_at||'')||0)>seen).length;
+    setFeelingUnreadBadge(unread);
   }catch(e){console.warn('Cek update Feeling gagal:',e)}
 }
 function feelingPerson(uid){if(uid===currentUserId()){const a=account()||{};return{id:uid,name:a.name||'Saya',avatar:(a.name||'S').slice(0,2).toUpperCase(),photo:a.photo||''}}return people[uid]||{id:uid,name:'PINGGO User',avatar:'P',photo:''}}
@@ -2056,6 +2066,7 @@ function scheduleRealtimeFeelingRefresh(){
   if(realtimeFeelingRefreshTimer)clearTimeout(realtimeFeelingRefreshTimer);
   realtimeFeelingRefreshTimer=setTimeout(()=>{
     realtimeFeelingRefreshTimer=null;if(document.hidden||!currentSession()?.loggedIn)return;
+    if(!$('panelFeeling')?.classList.contains('active'))checkFeelingUpdates().catch(()=>{});
     loadFeelings(true).catch(()=>{});
   },180);
 }
