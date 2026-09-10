@@ -1692,18 +1692,24 @@ function latestFriendFeelingTime(rows=feelingsData){
   },0);
 }
 function refreshFeelingUnreadBadge(rows=feelingsData){
-  if($('panelFeeling')?.classList.contains('active')){setFeelingUnreadBadge(false);return}
-  const latest=latestFriendFeelingTime(rows);
-  if(!latest){setFeelingUnreadBadge(false);return}
+  if($('panelFeeling')?.classList.contains('active')){
+    setFeelingUnreadBadge(0);
+    return;
+  }
+  const list=(rows||[]).filter(x=>x&&x.user_id!==currentUserId());
+  const latest=latestFriendFeelingTime(list);
+  if(!latest){
+    setFeelingUnreadBadge(0);
+    return;
+  }
   let seen=getFeelingSeenAt();
   if(!seen && !feelingSeenInitialized){
-    // Pertama kali setelah update: jadikan Feeling yang sudah ada sebagai baseline,
-    // supaya posting lama tidak tiba-tiba dianggap update baru.
     setFeelingSeenAt(latest);
     seen=latest;
     feelingSeenInitialized=true;
   }
-  setFeelingUnreadBadge(latest>seen);
+  const unread=list.filter(x=>(Date.parse(x.created_at||'')||0)>seen).length;
+  setFeelingUnreadBadge(unread);
 }
 function markFeelingsSeen(){
   const latest=latestFriendFeelingTime();
@@ -2089,10 +2095,20 @@ function scheduleRealtimeChatRefresh(){
 }
 function scheduleRealtimeFeelingRefresh(){
   if(realtimeFeelingRefreshTimer)clearTimeout(realtimeFeelingRefreshTimer);
-  realtimeFeelingRefreshTimer=setTimeout(()=>{
-    realtimeFeelingRefreshTimer=null;if(document.hidden||!currentSession()?.loggedIn)return;
-    if(!$('panelFeeling')?.classList.contains('active'))checkFeelingUpdates().catch(()=>{});
-    loadFeelings(true).catch(()=>{});
+  realtimeFeelingRefreshTimer=setTimeout(async()=>{
+    realtimeFeelingRefreshTimer=null;
+    if(document.hidden||!currentSession()?.loggedIn)return;
+    try{
+      if($('panelFeeling')?.classList.contains('active')){
+        await loadFeelings(true);
+        markFeelingsSeen();
+      }else{
+        await loadFeelings(true);
+        refreshFeelingUnreadBadge(feelingsData);
+      }
+    }catch(e){
+      checkFeelingUpdates().catch(()=>{});
+    }
   },180);
 }
 async function stopRealtimeSync(){
