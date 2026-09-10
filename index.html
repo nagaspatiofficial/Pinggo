@@ -2195,12 +2195,24 @@ function ensureChatBadgeEl(){
   }
   return badge;
 }
+function syncAppIconChatBadge(count){
+  const n=Math.max(0,Number(count)||0);
+  try{
+    if(n>0&&'setAppBadge' in navigator)navigator.setAppBadge(n).catch(()=>{});
+    else if(n===0&&'clearAppBadge' in navigator)navigator.clearAppBadge().catch(()=>{});
+  }catch(_){}
+  try{
+    const sw=navigator.serviceWorker?.controller;
+    if(sw)sw.postMessage({type:'PINGGO_BADGE_SYNC',count:n});
+  }catch(_){}
+}
 function updateChatUnreadBadge(){
   const badge=ensureChatBadgeEl();
   if(!badge)return;
   const count=(chatsData||[]).reduce((n,c)=>n+(Number(c?.unread)||0),0);
   badge.textContent=count>99?'99+':String(count||'');
   badge.classList.toggle('show',count>0);
+  syncAppIconChatBadge(count);
 }
 function realtimeMessagePreview(m){
   if(!m)return 'Pesan';

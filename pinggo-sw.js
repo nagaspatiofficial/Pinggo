@@ -40,17 +40,69 @@ self.addEventListener('fetch',event=>{
   }
 });
 
+
+
+// App-icon badge counter for unread chat. Stored locally so push can update it while PINGGO is closed.
+const PINGGO_BADGE_DB='pinggo-badge-db';
+const PINGGO_BADGE_STORE='state';
+function openBadgeDb(){
+  return new Promise((resolve,reject)=>{
+    const req=indexedDB.open(PINGGO_BADGE_DB,1);
+    req.onupgradeneeded=()=>{if(!req.result.objectStoreNames.contains(PINGGO_BADGE_STORE))req.result.createObjectStore(PINGGO_BADGE_STORE)};
+    req.onsuccess=()=>resolve(req.result);
+    req.onerror=()=>reject(req.error);
+  });
+}
+async function getStoredBadgeCount(){
+  try{
+    const db=await openBadgeDb();
+    return await new Promise(resolve=>{
+      const tx=db.transaction(PINGGO_BADGE_STORE,'readonly');
+      const req=tx.objectStore(PINGGO_BADGE_STORE).get('chatUnread');
+      req.onsuccess=()=>resolve(Math.max(0,Number(req.result)||0));
+      req.onerror=()=>resolve(0);
+    });
+  }catch(_){return 0}
+}
+async function setStoredBadgeCount(count){
+  const n=Math.max(0,Number(count)||0);
+  try{
+    const db=await openBadgeDb();
+    await new Promise(resolve=>{
+      const tx=db.transaction(PINGGO_BADGE_STORE,'readwrite');
+      tx.objectStore(PINGGO_BADGE_STORE).put(n,'chatUnread');
+      tx.oncomplete=()=>resolve();tx.onerror=()=>resolve();tx.onabort=()=>resolve();
+    });
+  }catch(_){}
+  try{
+    if(n>0&&self.navigator?.setAppBadge)await self.navigator.setAppBadge(n);
+    else if(n===0&&self.navigator?.clearAppBadge)await self.navigator.clearAppBadge();
+  }catch(_){}
+  return n;
+}
+async function incrementChatBadge(){
+  const current=await getStoredBadgeCount();
+  return setStoredBadgeCount(current+1);
+}
+self.addEventListener('message',event=>{
+  const data=event.data||{};
+  if(data.type==='PINGGO_BADGE_SYNC')event.waitUntil?.(setStoredBadgeCount(data.count));
+});
+
 self.addEventListener('push',event=>{
   let data={title:'PINGGO',body:'Aktivitas baru di PINGGO',url:'./'};
   try{if(event.data)data=Object.assign(data,event.data.json())}catch(_){try{data.body=event.data.text()}catch(__){}}
-  event.waitUntil(self.registration.showNotification(data.title||'PINGGO',{
-    body:data.body||'',
-    icon:'./pinggo-icon-192.png',
-    badge:'./pinggo-icon-192.png',
-    tag:'pinggo-push',
-    data:{url:data.url||'./'},
-    renotify:true
-  }));
+  event.waitUntil(Promise.all([
+    incrementChatBadge(),
+    self.registration.showNotification(data.title||'PINGGO',{
+      body:data.body||'',
+      icon:'./pinggo-icon-192.png',
+      badge:'./pinggo-icon-192.png',
+      tag:'pinggo-push',
+      data:{url:data.url||'./'},
+      renotify:true
+    })
+  ]));
 });
 self.addEventListener('notificationclick',event=>{
   event.notification.close();
