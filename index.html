@@ -1598,12 +1598,17 @@ window.logout=function(){
   friendsState={friends:[],requests:[],sent:[],blocked:[]};friendRowsByUser={};Object.keys(people).forEach(k=>delete people[k]);persistFriends();
   $('authScreen').classList.remove('hide');switchAuthTab('login');if(a?.pinggoId)$('authUsername').value=normalizePinggoId(a.pinggoId)
 };
-window.switchPanel=function(name,btn){document.querySelectorAll('.panel').forEach(x=>x.classList.remove('active'));document.querySelectorAll('.nav-item').forEach(x=>x.classList.remove('active'));$('panel'+name).classList.add('active');btn.classList.add('active');if(name==='Feeling'){markFeelingsSeen();requestFeelingsRender();loadFeelings(false).then(()=>markFeelingsSeen()).catch(e=>console.warn('Feeling gagal dimuat:',e))}if(name==='Profile'){renderProfile();loadWallet()}if(name==='Friends')renderFriends();if(name==='Drop'){loadBackendSecrets();renderSecret()}};
+window.switchPanel=function(name,btn){document.querySelectorAll('.panel').forEach(x=>x.classList.remove('active'));document.querySelectorAll('.nav-item').forEach(x=>x.classList.remove('active'));$('panel'+name).classList.add('active');btn.classList.add('active');if(name==='Feeling'){markFeelingsSeen();requestFeelingsRender();loadFeelings(false).then(()=>{markFeelingsSeen();requestFeelingsRender()}).catch(e=>console.warn('Feeling gagal dimuat:',e))}if(name==='Profile'){renderProfile();loadWallet()}if(name==='Friends')renderFriends();if(name==='Drop'){loadBackendSecrets();renderSecret()}};
 window.openGlobalSearch=function(){const nav=document.querySelector('.nav-item[onclick*="Chats"]');if(nav)switchPanel('Chats',nav);if(typeof setChatFilter==='function')setChatFilter('all');const input=document.querySelector('#panelChats .search-bar input');if(input){input.focus({preventScroll:true});try{input.setSelectionRange(input.value.length,input.value.length)}catch(_){}}};
 window.openCurrentChatProfile=function(){if(!currentChatId)return;const u=people[currentChatId];if(!u)return alert('Profil pengguna belum tersedia.');renderFriendProfile(currentChatId)};
+function legacy_renderChats(filter='all',query=''){const box=$('chatList');box.innerHTML='';const q=query.toLowerCase();chatsData.forEach(c=>{const okFilter=filter==='all'||(filter==='unread'&&c.unread>0)||(filter==='group'&&c.group)||(filter==='favorite'&&c.favorite);const okSearch=!q||(c.name+' '+c.preview).toLowerCase().includes(q);if(!okFilter||!okSearch)return;const el=document.createElement('div');el.className='chat-item';el.innerHTML=`<div class="avatar-container">${esc(c.avatar)}<div class="online-dot"></div></div><div class="chat-info"><div class="chat-top-row"><span class="chat-name">${esc(c.name)}</span><span class="chat-time">${esc(c.time)}</span></div><div class="chat-preview">${esc(c.preview)}</div></div>${c.unread?`<div class="unread-badge">${c.unread}</div>`:''}`;el.onclick=()=>openChatRoom(c.id);box.appendChild(el)})}
+function legacy_renderHistory(){if(!currentChatId)return;const box=$('chatMessages');box.innerHTML='<div class="date-divider">Hari ini</div>';getHistory(currentChatId).forEach(m=>{const row=document.createElement('div');row.className='msg-row '+(m.side==='out'?'outgoing':'incoming');if(m.kind==='image'||m.kind==='video'){const card=document.createElement('div');card.className='media-message';const media=document.createElement(m.kind==='image'?'img':'video');media.src=m.url;if(m.kind==='video'){media.controls=true;media.playsInline=true}media.onclick=()=>openMedia(m.kind,m.url);const cap=document.createElement('div');cap.className='media-caption';cap.textContent=(m.kind==='image'?'📷 Foto':'🎥 Video')+' • '+(m.time||'');card.append(media,cap);row.append(card)}else if(m.kind==='voice'){const bubble=document.createElement('div');bubble.className='msg-bubble voice-message';const a=document.createElement('audio');a.controls=true;a.src=m.url;bubble.append(a);row.append(bubble)}else if(m.kind==='secret'){const card=document.createElement('div');card.className='secret-chat-card';card.innerHTML=`<div class="secret-chat-thumb">🔒</div><div class="secret-chat-meta"><b>SECRET DROP</b><div>${m.price===0?'FREE':'PINGGO Coin • '+formatRupiah(m.price)}</div><small>${esc(m.time||'')}</small></div>`;row.append(card)}else{const b=document.createElement('div');b.className='msg-bubble';b.innerHTML=esc(m.text||'')+` <span class="msg-time">${esc(m.time||'')}</span>`;row.append(b)}box.append(row)});requestAnimationFrame(()=>box.scrollTop=box.scrollHeight)}
+function legacy_openChatRoom(id){currentChatId=id;const p=people[id]||{name:id,avatar:'P'};$('roomName').textContent=p.name;$('roomAvatar').textContent=p.avatar;$('chatRoom').classList.add('open');const c=chatsData.find(x=>x.id===id);if(c)c.unread=0;renderChats();renderHistory();$('msgInput').focus({preventScroll:true})}
 window.closeChatRoom=function(fromHistory=false){$('attachMenu').classList.remove('show');$('chatRoom').classList.remove('open');currentChatId=null;if(!fromHistory&&history.state?.pinggoChat){history.back()}};
 function pushChat(item,preview){if(!currentChatId)return false;const h=getHistory(currentChatId);h.push(item);setHistory(currentChatId,h);const c=chatsData.find(x=>x.id===currentChatId);if(c){c.preview=preview;c.time=now()}renderHistory();renderChats();return true}
+function legacy_sendText(){const t=$('msgInput').value.trim();if(!t)return;pushChat({side:'out',kind:'text',text:t,time:now()+' ✓✓'},t);$('msgInput').value=''}
 $('sendBtn').onclick=sendText;$('msgInput').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();sendText()}});$('attachBtn').onclick=()=>$('attachMenu').classList.toggle('show');
+function legacy_addMedia(file,kind){if(!file)return;const url=URL.createObjectURL(file);pushChat({side:'out',kind,url,time:now()+' ✓'},kind==='image'?'📷 Foto':'🎥 Video');$('attachMenu').classList.remove('show')}
 $('chatPhotoFile').onchange=()=>{addMedia($('chatPhotoFile').files?.[0],'image');$('chatPhotoFile').value=''};$('chatVideoFile').onchange=()=>{addMedia($('chatVideoFile').files?.[0],'video');$('chatVideoFile').value=''};
 function openMedia(kind,url){const box=$('mediaViewerContent');box.innerHTML='';const m=document.createElement(kind==='image'?'img':'video');m.src=url;if(kind==='video'){m.controls=true;m.autoplay=true;m.playsInline=true}box.append(m);$('mediaViewer').classList.add('show')}$('closeMediaViewer').onclick=()=>{$('mediaViewer').classList.remove('show');$('mediaViewerContent').innerHTML=''};
 let recorder=null,voiceStream=null,voiceChunks=[],voiceUrl='',voiceSecs=0,voiceTick=null;
@@ -1754,7 +1759,7 @@ function saveFeelingsCache(){
   saveFastCache('feelings',{feelings:feelingsData,profiles:cachedProfiles(ids)});
 }
 async function loadFeelings(force=false){
-  if(feelingsLoading)return feelingsLoading;
+  if(feelingsLoading&&!force)return feelingsLoading;
   feelingsLoading=(async()=>{
     try{
       const rows=await supabaseRequest('/rest/v1/feelings?select=id,user_id,body,created_at&order=created_at.desc&limit=100');
@@ -1905,6 +1910,7 @@ async function removeFriend(id){try{const r=friendRowsByUser[id];if(r)await supa
 async function blockFriend(id){
   const uid=currentUserId();if(!uid)return alert('Silakan login kembali.');try{const r=friendRowsByUser[id];if(r)await supabaseRequest('/rest/v1/friends?id=eq.'+encodeURIComponent(r.id),{method:'DELETE',headers:{'Prefer':'return=minimal'}});await supabaseRequest('/rest/v1/blocks',{method:'POST',headers:{'Content-Type':'application/json','Prefer':'resolution=ignore-duplicates,return=minimal'},body:JSON.stringify({blocker_id:uid,blocked_id:id})});await loadBackendFriends();closeFriendProfile()}catch(e){alert(e.message)}}
 async function unblockFriend(id){const uid=currentUserId();if(!uid)return;try{await supabaseRequest('/rest/v1/blocks?blocker_id=eq.'+encodeURIComponent(uid)+'&blocked_id=eq.'+encodeURIComponent(id),{method:'DELETE',headers:{'Prefer':'return=minimal'}});await loadBackendFriends();if(people[id])renderFriendProfile(id)}catch(e){alert(e.message)}}
+function legacy_goChatFromFriend(id){const u=people[id];if(!u)return;closeFriendProfile();switchPanel('Chats',document.querySelector('.nav-item[onclick*="Chats"]'));if(!chatsData.some(c=>c.id===id))chatsData.unshift({id,name:u.name,preview:'Mulai percakapan',time:'Sekarang',unread:0,avatar:u.avatar,group:false,favorite:false});openChatRoom(id)}
 function renderFriendProfile(id){
   const u=people[id];if(!u)return;const rel=relationFor(id),isFriend=rel==='friend',hidden=u.private&&!isFriend&&rel!=='request';let actions='';
   if(rel==='friend')actions=`<button class="primary" data-fp-chat="${id}">Chat</button><button data-fp-secret="${id}">Secret Drop</button><button data-fp-remove="${id}">Hapus Teman</button><button class="danger full" data-fp-block="${id}">Blokir</button>`;
@@ -2044,12 +2050,30 @@ function updateWithdrawEstimate(){const coins=Math.max(0,Math.floor(Number($('wi
 window.openWithdrawModal=async()=>{await loadWallet();$('withdrawAmount').value='';$('withdrawMethod').value='';$('withdrawAccount').value='';$('withdrawName').value='';updateWithdrawEstimate();await loadWithdrawHistory();$('withdrawModal').classList.add('show')};window.closeWithdrawModal=()=>$('withdrawModal').classList.remove('show');$('withdrawAmount').addEventListener('input',updateWithdrawEstimate);$('submitWithdrawBtn').onclick=async()=>{const amount=Math.floor(Number($('withdrawAmount').value)||0),method=$('withdrawMethod').value.trim(),acct=$('withdrawAccount').value.trim(),name=$('withdrawName').value.trim();if(amount<1)return alert('Masukkan jumlah PINGGO Coin yang ingin dicairkan.');if(amount*300<10000)return alert('Minimal pencairan setara Rp10.000.');if(amount>creatorBalance)return alert('Saldo PINGGO Coin creator tidak cukup.');if(!method||!acct||!name)return alert('Lengkapi data pencairan.');const b=$('submitWithdrawBtn');b.disabled=true;try{await rpc('request_withdrawal',{p_amount:amount,p_payout_method:method,p_payout_account:acct,p_payout_name:name});alert('Permintaan pencairan '+formatCoin(amount)+' Coin = '+formatRupiah(amount*300)+' dikirim ke Admin PINGGO.');await loadWallet();await loadWithdrawHistory()}catch(e){alert(e.message)}finally{b.disabled=false}};
 window.copyMyId=async function(){const id=account()?.pinggoId||'';try{await navigator.clipboard.writeText(id);alert('PINGGO ID disalin.')}catch{alert(id)}};window.shareMyId=async function(){const id=account()?.pinggoId||'';const text='Add me on PINGGO: '+id;try{if(navigator.share)await navigator.share({title:'My PINGGO ID',text});else await navigator.clipboard.writeText(text)}catch{}};
 
+async function legacy_pinggoNotify(title,body){
+  if(!prefs.notifications)return false;
+  if(!('Notification' in window))return false;
+  try{
+    let permission=Notification.permission;
+    if(permission==='default') permission=await Notification.requestPermission();
+    if(permission!=='granted')return false;
+    new Notification(title,{body:body||'',tag:'pinggo-local'});
+    return true;
+  }catch(_){return false}
+}
 function refreshProfileSettingLabels(){
   const p=$('privacyLabel'),n=$('notificationsLabel');
   if(p)p.textContent='Private Profile: '+(prefs.privacy?'ON':'OFF')+' • Secret Drop Default: '+(prefs.secretPrivate?'Private':'Normal');
   if(n)n.textContent='Chat & activity alerts: '+(prefs.notifications?'ON':'OFF');
 }
 
+function legacy_saveProfilePhoto(file){
+  if(!file||!file.type.startsWith('image/'))return;
+  if(file.size>4*1024*1024){alert('Ukuran foto maksimal 4 MB.');return;}
+  const r=new FileReader();
+  r.onload=async()=>{const a=account()||{name:'PINGGO User',pinggoId:''};a.photo=String(r.result||'');write(STORE.account,a);setProfile(a);await syncOwnProfile({avatar_url:a.photo})};
+  r.readAsDataURL(file);
+}
 $('profilePhotoInput').addEventListener('change',function(){const f=this.files?.[0];if(f)saveProfilePhoto(f);this.value=''});
 window.openProfileModal=function(type){const a=account()||{name:'PINGGO User',pinggoId:''};let html='';if(type==='account'){html=`<label class="field-label">Foto Profil</label><div class="profile-photo-actions"><button type="button" class="primary" id="changeProfilePhotoBtn">Pilih Foto</button><button type="button" id="removeProfilePhotoBtn">Hapus Foto</button></div><p class="profile-note">Foto tersimpan di akun PINGGO dan tampil di perangkat lain setelah login.</p><label class="field-label">Display Name</label><input id="editProfileName" class="auth-input" value="${esc(a.name)}"><label class="field-label">PINGGO ID</label><input class="auth-input" value="${esc(a.pinggoId)}" readonly><button id="saveProfileBtn" class="btn-primary" type="button">Save Changes</button>`;$('profileModalTitle').textContent='Account Information'}else if(type==='privacy'){html=`<div class="setting-item"><div><b>Private Profile</b><div class="setting-detail">Saat aktif, profil ditandai private dan permintaan teman tetap diperlukan.</div></div><button class="toggle ${prefs.privacy?'on':''}" data-pref="privacy"></button></div><div class="setting-item"><div><b>Secret Drop Private by Default</b><div class="setting-detail">Secret Drop baru otomatis ditandai Private.</div></div><button class="toggle ${prefs.secretPrivate?'on':''}" data-pref="secretPrivate"></button></div>`;$('profileModalTitle').textContent='Privacy & Security'}else if(type==='notifications'){html=`<div class="setting-item"><div><b>Chat & Activity Notifications</b><div class="setting-detail">Menggunakan izin notifikasi browser/perangkat.</div></div><button class="toggle ${prefs.notifications?'on':''}" data-pref="notifications"></button></div><button class="btn-primary" id="testNotificationBtn" type="button" style="margin-top:12px">Test Notification</button><p class="profile-note" id="notificationStatus"></p>`;$('profileModalTitle').textContent='Notifications'}else{html=`<button class="setting-item" style="width:100%" data-theme="Pink & Gray"><span>Pink & Gray</span><span>${prefs.appearance==='Pink & Gray'?'✓':''}</span></button><button class="setting-item" style="width:100%" data-theme="White & Gray"><span>White & Gray</span><span>${prefs.appearance==='White & Gray'?'✓':''}</span></button>`;$('profileModalTitle').textContent='Appearance'}$('profileModalBody').innerHTML=html;$('profileModal').classList.add('show');const save=$('saveProfileBtn');if(save)save.onclick=async()=>{const n=$('editProfileName').value.trim();if(!n)return;const x=account()||a;x.name=n;write(STORE.account,x);setProfile(x);await syncOwnProfile({display_name:n});closeProfileModal()};const changePhoto=$('changeProfilePhotoBtn');if(changePhoto)changePhoto.onclick=()=>$('profilePhotoInput').click();const removePhoto=$('removeProfilePhotoBtn');if(removePhoto)removePhoto.onclick=async()=>{const x=account()||a;delete x.photo;write(STORE.account,x);setProfile(x);await syncOwnProfile({avatar_url:null});openProfileModal('account')};const test=$('testNotificationBtn');if(test)test.onclick=async()=>{const ok=await pinggoNotify('PINGGO','Notifikasi PINGGO aktif.');const st=$('notificationStatus');if(st)st.textContent=ok?'Test notification berhasil dikirim.':'Notifikasi belum tersedia/izin belum diberikan.'}};window.closeProfileModal=()=>$('profileModal').classList.remove('show');$('profileModalBody').onclick=async e=>{const t=e.target.closest('[data-pref]');if(t){const k=t.dataset.pref;const next=!prefs[k];if(k==='notifications'&&next){if(!('Notification' in window)){alert('Browser ini belum mendukung notifikasi web.');return}try{const p=await Notification.requestPermission();if(p!=='granted'){alert('Izin notifikasi belum diberikan.');return}}catch(_){alert('Izin notifikasi tidak dapat diminta.');return}}prefs[k]=next;write(STORE.prefs,prefs);t.classList.toggle('on',prefs[k]);refreshProfileSettingLabels();const patch=k==='privacy'?{private_profile:next}:k==='secretPrivate'?{secret_private_default:next}:{notifications_enabled:next};await syncOwnProfile(patch);if(k==='notifications'){if(next)ensurePushSubscription(true).catch(()=>{});else disablePushSubscription().catch(()=>{})}return}const th=e.target.closest('[data-theme]');if(th){prefs.appearance=th.dataset.theme;write(STORE.prefs,prefs);applyAppearance();await syncOwnProfile({appearance:prefs.appearance});openProfileModal('appearance')}};
 function applyAppearance(){document.documentElement.style.setProperty('--panel-bg',prefs.appearance==='White & Gray'?'linear-gradient(160deg,#fff 0%,#f1f2f4 100%)':'linear-gradient(160deg,rgba(255,255,255,.85) 0%,rgba(248,233,238,.9) 100%)');$('appearanceLabel').textContent=prefs.appearance}
@@ -2059,7 +2083,7 @@ function renderProfile(){setProfile(activeAccount()||account()||{name:'PINGGO Us
 const PINGGO_VAPID_PUBLIC='BLGFombhPIIRBgbKbssVYzNID9BZcWqqhL6gaE3Cwp3GaKS9f80kv1wzesl4xroOC2P9S1NPS1c2wgVhgK_Vtzw';
 let backendChatHistory={};
 let chatConversationByUser={};
-let chatPollTimer=null,presenceTimer=null,appSyncTimer=null,appSyncBusy=false,lastForegroundSyncAt=0;
+let chatPollTimer=null,presenceTimer=null,appSyncTimer=null,appSyncBusy=false;
 let realtimeClient=null,realtimeChannel=null,realtimeReady=false,realtimeChatRefreshTimer=null,realtimeFeelingRefreshTimer=null;
 function scheduleRealtimeChatRefresh(){
   if(realtimeChatRefreshTimer)clearTimeout(realtimeChatRefreshTimer);
@@ -2067,7 +2091,7 @@ function scheduleRealtimeChatRefresh(){
     realtimeChatRefreshTimer=null;if(document.hidden||!currentSession()?.loggedIn)return;
     await loadBackendChats();
     if(currentChatId&&chatConversationByUser[currentChatId])await loadConversationMessages(chatConversationByUser[currentChatId]);
-  },260);
+  },180);
 }
 function scheduleRealtimeFeelingRefresh(){
   if(realtimeFeelingRefreshTimer)clearTimeout(realtimeFeelingRefreshTimer);
@@ -2085,7 +2109,7 @@ function scheduleRealtimeFeelingRefresh(){
     }catch(e){
       checkFeelingUpdates().catch(()=>{});
     }
-  },320);
+  },180);
 }
 async function stopRealtimeSync(){
   realtimeReady=false;
@@ -2345,35 +2369,21 @@ async function syncLiveAppData(){
     if(uid){tasks.push(fetchOwnProfile(uid).then(p=>{if(p)applyRemoteProfile(p)}).catch(()=>{}))}
     await Promise.allSettled(tasks);
     if(currentChatId&&chatConversationByUser[currentChatId])await loadConversationMessages(chatConversationByUser[currentChatId]);
-    // Loader masing-masing sudah merender modulnya; hindari full render kedua pada setiap background sync.
-    renderProfile();
+    renderChats();if($('panelFriends')?.classList.contains('active'))renderFriends();if($('panelFeeling')?.classList.contains('active'))requestFeelingsRender();renderProfile();
   }finally{appSyncBusy=false}
-}
-function runForegroundSync(){
-  if(document.hidden||!currentSession()?.loggedIn)return;
-  const nowTs=Date.now();
-  // visibilitychange + focus biasanya datang berpasangan; jangan melakukan sync dua kali.
-  if(nowTs-lastForegroundSyncAt<6000)return;
-  lastForegroundSyncAt=nowTs;
-  touchPresence().catch(()=>{});
-  syncLiveAppData().catch(()=>{});
-  if(!realtimeReady)checkFeelingUpdates().catch(()=>{});
 }
 function startPresenceAndChatSync(){
   if(presenceTimer)clearInterval(presenceTimer);if(chatPollTimer)clearInterval(chatPollTimer);if(appSyncTimer)clearInterval(appSyncTimer);
-  lastForegroundSyncAt=Date.now();
   touchPresence().catch(()=>{});
   checkFeelingUpdates().catch(()=>{});
   startRealtimeSync().catch(()=>{});
-  // Presence tidak perlu 30 detik. 60 detik cukup dan status online masih memakai toleransi 90 detik.
-  presenceTimer=setInterval(()=>{if(!document.hidden){touchPresence().catch(()=>{});const ids=[...new Set([...friendsState.friends,...friendsState.requests,...friendsState.sent])];if(ids.length)loadProfilesByIds(ids).then(()=>{if($('panelFriends')?.classList.contains('active'))renderFriends();renderChats()}).catch(()=>{})}},60000);
-  // Fallback chat hanya berjalan saat realtime benar-benar tidak tersedia.
+  presenceTimer=setInterval(()=>{if(!document.hidden){touchPresence().catch(()=>{});const ids=[...new Set([...friendsState.friends,...friendsState.requests,...friendsState.sent])];if(ids.length)loadProfilesByIds(ids).then(()=>{renderFriends();renderChats()}).catch(()=>{})}},30000);
+  // Fallback ringan: hanya dipakai sebagai jaring pengaman jika realtime putus/tidak tersedia.
   chatPollTimer=setInterval(async()=>{if(document.hidden||!currentSession()?.loggedIn||realtimeReady)return;await loadBackendChats();if(currentChatId&&chatConversationByUser[currentChatId])await loadConversationMessages(chatConversationByUser[currentChatId])},60000);
-  // Full background sync diperlambat karena perubahan chat/Feeling utama sudah ditangani realtime.
-  appSyncTimer=setInterval(()=>{syncLiveAppData().catch(()=>{});if(!realtimeReady)checkFeelingUpdates().catch(()=>{})},60000);
+  appSyncTimer=setInterval(()=>{syncLiveAppData().catch(()=>{});if(!realtimeReady)checkFeelingUpdates().catch(()=>{})},30000);
 }
-document.addEventListener('visibilitychange',()=>{if(!document.hidden)runForegroundSync()});
-window.addEventListener('focus',runForegroundSync);
+document.addEventListener('visibilitychange',()=>{if(!document.hidden){touchPresence().catch(()=>{});syncLiveAppData().catch(()=>{});checkFeelingUpdates().catch(()=>{})}});
+window.addEventListener('focus',()=>{syncLiveAppData().catch(()=>{});checkFeelingUpdates().catch(()=>{})});
 window.addEventListener('beforeunload',()=>{if(currentSession()?.loggedIn)navigator.sendBeacon?.('')});
 /* ===== end backend patch ===== */
 
