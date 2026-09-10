@@ -988,6 +988,26 @@ html.pinggo-session-active .auth-screen{opacity:0!important;visibility:hidden!im
 .wallet-history{margin-top:12px}.history-row{display:flex;align-items:center;justify-content:space-between;padding:10px 2px;border-bottom:1px solid rgba(0,0,0,.06);font-size:12px}
 .secret-chat-card{width:220px;max-width:78%;overflow:hidden;border-radius:17px;background:#fff;box-shadow:0 4px 14px rgba(0,0,0,.07)}
 .secret-chat-thumb{height:105px;display:grid;place-items:center;background:linear-gradient(145deg,#eadde2,#c7c2c7);font-size:28px}.secret-chat-meta{padding:9px 11px;font-size:11px}.secret-chat-meta b{display:block;margin-bottom:4px}
+
+/* PINGGO desktop/tablet responsive layout — mobile remains unchanged */
+@media (min-width: 768px) {
+  html, body {
+    width: 100%;
+    height: 100%;
+    min-height: 100%;
+    background: var(--panel-bg);
+  }
+
+  .app-container {
+    width: 100vw;
+    max-width: none;
+    height: 100vh;
+    height: 100dvh;
+    margin: 0;
+    border-radius: 0;
+    box-shadow: none;
+  }
+}
 </style>
 
 
