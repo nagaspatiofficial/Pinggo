@@ -1645,8 +1645,15 @@ async function checkFeelingUpdates(){
 function feelingPerson(uid){if(uid===currentUserId()){const a=account()||{};return{id:uid,name:a.name||'Saya',avatar:(a.name||'S').slice(0,2).toUpperCase(),photo:a.photo||''}}return people[uid]||{id:uid,name:'PINGGO User',avatar:'P',photo:''}}
 let feelingsRenderPending=false;
 function feelingEditorActive(){
+  const list=$('chatList');
+  if(!list)return false;
   const el=document.activeElement;
-  return !!(el&&$('chatList')?.contains(el)&&(el.id==='feelingText'||el.matches?.('[data-feeling-input]')));
+  if(el&&list.contains(el)&&(el.id==='feelingText'||el.matches?.('[data-feeling-input]')))return true;
+  // iOS kadang memindahkan activeElement saat keyboard/focus berubah.
+  // Selama ada draft komentar/Feeling yang belum dikirim, jangan render ulang layar.
+  const commentDraft=[...list.querySelectorAll('[data-feeling-input]')].some(i=>(i.value||'').length>0);
+  const feelingDraft=($('feelingText')?.value||'').length>0;
+  return commentDraft||feelingDraft;
 }
 function requestFeelingsRender(){
   if(chatFilter!=='feelings')return;
@@ -2159,7 +2166,7 @@ async function syncLiveAppData(){
     if(uid){tasks.push(fetchOwnProfile(uid).then(p=>{if(p)applyRemoteProfile(p)}).catch(()=>{}))}
     await Promise.allSettled(tasks);
     if(currentChatId&&chatConversationByUser[currentChatId])await loadConversationMessages(chatConversationByUser[currentChatId]);
-    renderChats();if(document.querySelector('#panelFriends')?.classList.contains('active')){if(chatFilter==='feelings')renderFeelings();else renderFriends()}renderProfile();
+    renderChats();if(document.querySelector('#panelFriends')?.classList.contains('active')){if(chatFilter==='feelings')requestFeelingsRender();else renderFriends()}renderProfile();
   }finally{appSyncBusy=false}
 }
 function startPresenceAndChatSync(){
