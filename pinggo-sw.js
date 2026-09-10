@@ -1,4 +1,4 @@
-const PINGGO_SW_VERSION='2026-09-10-performance-v1';
+const PINGGO_SW_VERSION='2026-09-10-performance-v2';
 const PINGGO_CACHE='pinggo-static-'+PINGGO_SW_VERSION;
 
 self.addEventListener('install',event=>self.skipWaiting());
