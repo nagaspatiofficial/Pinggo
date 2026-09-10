@@ -1,16 +1,42 @@
-const PINGGO_SW_VERSION='2026-09-09-feeling-unread-dot-v5';
+const PINGGO_SW_VERSION='2026-09-10-performance-v1';
+const PINGGO_CACHE='pinggo-static-'+PINGGO_SW_VERSION;
+
 self.addEventListener('install',event=>self.skipWaiting());
 self.addEventListener('activate',event=>event.waitUntil((async()=>{
   const keys=await caches.keys();
-  await Promise.all(keys.map(k=>caches.delete(k)));
+  await Promise.all(keys.filter(k=>k.startsWith('pinggo-static-')&&k!==PINGGO_CACHE).map(k=>caches.delete(k)));
   await self.clients.claim();
 })()));
 
-// Jangan cache dokumen HTML PINGGO. Navigasi selalu mengambil versi terbaru dari server.
+// HTML tetap network-first agar update cepat, tetapi simpan salinan terakhir untuk fallback/offline.
+// Asset lokal memakai stale-while-revalidate supaya pembukaan berikutnya lebih ringan.
 self.addEventListener('fetch',event=>{
   const req=event.request;
+  if(req.method!=='GET')return;
+  const url=new URL(req.url);
+  if(url.origin!==self.location.origin)return;
+
   if(req.mode==='navigate'){
-    event.respondWith(fetch(req,{cache:'no-store'}).catch(()=>fetch(req)));
+    event.respondWith((async()=>{
+      const cache=await caches.open(PINGGO_CACHE);
+      try{
+        const fresh=await fetch(req);
+        if(fresh&&fresh.ok)cache.put(req,fresh.clone()).catch(()=>{});
+        return fresh;
+      }catch(_){
+        return (await cache.match(req)) || (await cache.match('./')) || Response.error();
+      }
+    })());
+    return;
+  }
+
+  if(/\.(?:png|webp|jpg|jpeg|gif|svg|ico|webmanifest)$/i.test(url.pathname)){
+    event.respondWith((async()=>{
+      const cache=await caches.open(PINGGO_CACHE);
+      const cached=await cache.match(req);
+      const network=fetch(req).then(res=>{if(res&&res.ok)cache.put(req,res.clone()).catch(()=>{});return res}).catch(()=>null);
+      return cached || await network || Response.error();
+    })());
   }
 });
 
