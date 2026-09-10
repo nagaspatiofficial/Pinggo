@@ -918,21 +918,23 @@ button, input, select, textarea {
 #navFeeling{position:relative}
 .feeling-tab-badge{
   position:absolute;
-  top:3px;
-  right:7px;
-  min-width:17px;
-  height:17px;
+  top:2px;
+  left:calc(50% + 7px);
+  min-width:18px;
+  height:18px;
   padding:0 4px;
-  border-radius:50%;
-  background:#e5484d;
-  border:2px solid rgba(255,255,255,.95);
+  border-radius:10px;
+  background:#2388ff !important;
+  color:#fff;
+  border:2px solid #fff;
   box-sizing:border-box;
   display:none;
   align-items:center;
   justify-content:center;
-  color:#fff;
   font-size:9px;
+  line-height:14px;
   font-weight:900;
+  z-index:5;
   pointer-events:none;
 }
 .feeling-tab-badge.show{display:flex}
