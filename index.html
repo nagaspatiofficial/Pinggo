@@ -938,6 +938,29 @@ button, input, select, textarea {
   pointer-events:none;
 }
 .feeling-tab-badge.show{display:flex}
+#navChats{position:relative}
+.chat-tab-badge{
+  position:absolute;
+  top:2px;
+  left:calc(50% + 7px);
+  min-width:18px;
+  height:18px;
+  padding:0 4px;
+  border-radius:10px;
+  background:#2388ff !important;
+  color:#fff;
+  border:2px solid #fff;
+  box-sizing:border-box;
+  display:none;
+  align-items:center;
+  justify-content:center;
+  font-size:9px;
+  line-height:14px;
+  font-weight:900;
+  z-index:5;
+  pointer-events:none;
+}
+.chat-tab-badge.show{display:flex}
 
 
     .pinggo-coin-icon{width:32px;height:32px;object-fit:contain;vertical-align:middle;display:inline-block;margin-right:8px}
@@ -1267,7 +1290,7 @@ html.pinggo-session-active .auth-screen{opacity:0!important;visibility:hidden!im
       <span class="nav-icon">💗</span>
       <span>Feeling</span>
     </button>
-    <button class="nav-item active" onclick="switchPanel('Chats', this)">
+    <button class="nav-item active" id="navChats" onclick="switchPanel('Chats', this)">
       <span class="nav-icon">💬</span>
       <span>Pesan</span>
     </button>
@@ -2088,9 +2111,9 @@ async function startRealtimeSync(){
     try{realtimeClient.realtime.setAuth(token)}catch(_){}
     realtimeChannel=realtimeClient.channel('pinggo-live-'+uid,{config:{broadcast:{self:false}}})
       .on('postgres_changes',{event:'*',schema:'public',table:'messages'},payload=>{
-        const cid=payload?.new?.conversation_id||payload?.old?.conversation_id;
-        const known=new Set(Object.values(chatConversationByUser||{}));
-        if(!cid||known.has(cid)||cid===chatConversationByUser[currentChatId])scheduleRealtimeChatRefresh();
+        if(payload?.eventType==='INSERT'&&payload?.new)applyRealtimeMessageToChatList(payload.new);
+        // Selalu sinkronkan daftar chat untuk event pesan. Jangan menunggu room dibuka.
+        scheduleRealtimeChatRefresh();
       })
       .on('postgres_changes',{event:'*',schema:'public',table:'conversation_members',filter:'user_id=eq.'+uid},()=>scheduleRealtimeChatRefresh())
       .on('postgres_changes',{event:'*',schema:'public',table:'conversations'},payload=>{
@@ -2168,11 +2191,53 @@ async function loadConversationMessages(conversationId){
     renderHistory();
   }catch(e){console.warn('Pesan gagal dimuat:',e)}
 }
+function ensureChatBadgeEl(){
+  const btn=$('navChats');
+  if(!btn)return null;
+  let badge=btn.querySelector('.chat-tab-badge');
+  if(!badge){
+    badge=document.createElement('span');
+    badge.className='chat-tab-badge';
+    badge.setAttribute('aria-label','Pesan baru');
+    btn.appendChild(badge);
+  }
+  return badge;
+}
+function updateChatUnreadBadge(){
+  const badge=ensureChatBadgeEl();
+  if(!badge)return;
+  const count=(chatsData||[]).reduce((n,c)=>n+(Number(c?.unread)||0),0);
+  badge.textContent=count>99?'99+':String(count||'');
+  badge.classList.toggle('show',count>0);
+}
+function realtimeMessagePreview(m){
+  if(!m)return 'Pesan';
+  if(m.media_type==='image')return '📷 Foto';
+  if(m.media_type==='video')return '🎥 Video';
+  if(m.media_type==='voice'||m.media_type==='audio'||String(m.media_type||'').startsWith('audio'))return '🎙 Voice message';
+  return m.body||'Pesan';
+}
+function applyRealtimeMessageToChatList(m){
+  if(!m?.conversation_id)return;
+  const uid=currentUserId();
+  const pair=Object.entries(chatConversationByUser||{}).find(([,cid])=>cid===m.conversation_id);
+  const otherId=pair?.[0];
+  if(!otherId)return;
+  const row=(chatsData||[]).find(c=>c.id===otherId||c.conversationId===m.conversation_id);
+  if(!row)return;
+  row.preview=realtimeMessagePreview(m);
+  row.time=fmtChatTime(m.created_at||new Date().toISOString());
+  row.lastAt=new Date(m.created_at||Date.now()).getTime();
+  if(m.sender_id!==uid && currentChatId!==otherId)row.unread=(Number(row.unread)||0)+1;
+  chatsData.sort((a,b)=>(b.lastAt||0)-(a.lastAt||0));
+  saveFastCache('chats',{chats:chatsData,chatConversationByUser:{...chatConversationByUser},profiles:cachedProfiles(chatsData.map(x=>x.id))});
+  renderChats();
+}
 function renderChats(filter=(typeof chatFilter!=='undefined'?chatFilter:'all'),query=''){
   const title=$('chatSectionTitle'),label=$('chatSectionLabel');
   if(title)title.textContent='Pesan';
   if(label)label.textContent=filter==='unread'?'Belum dibaca':'Semua Chat';
-  const box=$('chatList');box.innerHTML='';const q=String(query||'').toLowerCase();
+  const box=$('chatList');box.innerHTML='';updateChatUnreadBadge();const q=String(query||'').toLowerCase();
   const visible=chatsData.filter(c=>(filter==='all'||(filter==='unread'&&c.unread>0)||(filter==='group'&&c.group)||(filter==='favorite'&&c.favorite))&&(!q||(c.name+' '+c.preview).toLowerCase().includes(q)));
   if(!visible.length){box.innerHTML='<div class="empty-state">Belum ada percakapan.</div>';return}
   visible.forEach(c=>{
