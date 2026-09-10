@@ -817,7 +817,7 @@ button, input, select, textarea {
   cursor: pointer;
   border: 0;
   background: transparent;
-  width: 25%;
+  width: 20%;
   transition: color 0.15s ease;
 }
 
@@ -915,7 +915,7 @@ button, input, select, textarea {
 .feeling-action.gift{background:rgba(255,232,243,.92);color:var(--pinggo-pink-dark)}
 .feeling-action.delete{background:rgba(255,226,230,.9);color:#c53a50}
 .feeling-gift-total{margin-left:auto;font-size:10px;color:var(--text-muted);font-weight:700}
-#chatTabs [data-chat-filter="feelings"]{position:relative}
+#navFeeling{position:relative}
 .feeling-tab-badge{
   position:absolute;
   top:3px;
@@ -1151,11 +1151,18 @@ html.pinggo-session-active .auth-screen{opacity:0!important;visibility:hidden!im
       <div class="category-tabs" id="chatTabs">
         <button class="cat-tab active" type="button" data-chat-filter="all">Semua</button>
         <button class="cat-tab" type="button" data-chat-filter="unread">Belum dibaca</button>
-        <button class="cat-tab" type="button" data-chat-filter="feelings">Feeling</button>
       </div>
       <div class="section-label"><b id="chatSectionTitle">Pesan</b><small id="chatSectionLabel">Semua Chat</small></div>
       <div class="chat-list" id="chatList">
         <!-- Dynamic chat items rendered via JS -->
+      </div>
+    </div>
+
+    <!-- Feeling Panel -->
+    <div id="panelFeeling" class="panel">
+      <div class="section-label"><b id="feelingSectionTitle">Feeling</b><small id="feelingSectionLabel">Kamu &amp; Teman</small></div>
+      <div class="chat-list" id="feelingList">
+        <!-- Feeling feed rendered via existing JS -->
       </div>
     </div>
 
@@ -1248,6 +1255,10 @@ html.pinggo-session-active .auth-screen{opacity:0!important;visibility:hidden!im
 
   <!-- Bottom Navigation Bar -->
   <div class="bottom-nav">
+    <button class="nav-item" id="navFeeling" onclick="switchPanel('Feeling', this)">
+      <span class="nav-icon">💗</span>
+      <span>Feeling</span>
+    </button>
     <button class="nav-item active" onclick="switchPanel('Chats', this)">
       <span class="nav-icon">💬</span>
       <span>Pesan</span>
@@ -1556,7 +1567,7 @@ window.logout=function(){
   friendsState={friends:[],requests:[],sent:[],blocked:[]};friendRowsByUser={};Object.keys(people).forEach(k=>delete people[k]);persistFriends();
   $('authScreen').classList.remove('hide');switchAuthTab('login');if(a?.pinggoId)$('authUsername').value=normalizePinggoId(a.pinggoId)
 };
-window.switchPanel=function(name,btn){document.querySelectorAll('.panel').forEach(x=>x.classList.remove('active'));document.querySelectorAll('.nav-item').forEach(x=>x.classList.remove('active'));$('panel'+name).classList.add('active');btn.classList.add('active');if(name==='Profile'){renderProfile();loadWallet()}if(name==='Friends')renderFriends();if(name==='Drop'){loadBackendSecrets();renderSecret()}};
+window.switchPanel=function(name,btn){document.querySelectorAll('.panel').forEach(x=>x.classList.remove('active'));document.querySelectorAll('.nav-item').forEach(x=>x.classList.remove('active'));$('panel'+name).classList.add('active');btn.classList.add('active');if(name==='Feeling'){markFeelingsSeen();requestFeelingsRender();loadFeelings(false).then(()=>{markFeelingsSeen();requestFeelingsRender()}).catch(e=>console.warn('Feeling gagal dimuat:',e))}if(name==='Profile'){renderProfile();loadWallet()}if(name==='Friends')renderFriends();if(name==='Drop'){loadBackendSecrets();renderSecret()}};
 window.openGlobalSearch=function(){const nav=document.querySelector('.nav-item[onclick*="Chats"]');if(nav)switchPanel('Chats',nav);if(typeof setChatFilter==='function')setChatFilter('all');const input=document.querySelector('#panelChats .search-bar input');if(input){input.focus({preventScroll:true});try{input.setSelectionRange(input.value.length,input.value.length)}catch(_){}}};
 window.openCurrentChatProfile=function(){if(!currentChatId)return;const u=people[currentChatId];if(!u)return alert('Profil pengguna belum tersedia.');renderFriendProfile(currentChatId)};
 function legacy_renderChats(filter='all',query=''){const box=$('chatList');box.innerHTML='';const q=query.toLowerCase();chatsData.forEach(c=>{const okFilter=filter==='all'||(filter==='unread'&&c.unread>0)||(filter==='group'&&c.group)||(filter==='favorite'&&c.favorite);const okSearch=!q||(c.name+' '+c.preview).toLowerCase().includes(q);if(!okFilter||!okSearch)return;const el=document.createElement('div');el.className='chat-item';el.innerHTML=`<div class="avatar-container">${esc(c.avatar)}<div class="online-dot"></div></div><div class="chat-info"><div class="chat-top-row"><span class="chat-name">${esc(c.name)}</span><span class="chat-time">${esc(c.time)}</span></div><div class="chat-preview">${esc(c.preview)}</div></div>${c.unread?`<div class="unread-badge">${c.unread}</div>`:''}`;el.onclick=()=>openChatRoom(c.id);box.appendChild(el)})}
@@ -1623,7 +1634,7 @@ function setFeelingSeenAt(ts=Date.now()){
   try{localStorage.setItem(feelingSeenStorageKey(),String(ts))}catch(_){}
 }
 function ensureFeelingBadgeEl(){
-  const btn=document.querySelector('#chatTabs [data-chat-filter="feelings"]');
+  const btn=$('navFeeling');
   if(!btn)return null;
   let dot=btn.querySelector('.feeling-tab-badge');
   if(!dot){
@@ -1647,7 +1658,7 @@ function latestFriendFeelingTime(rows=feelingsData){
   },0);
 }
 function refreshFeelingUnreadBadge(rows=feelingsData){
-  if(chatFilter==='feelings'){setFeelingUnreadBadge(false);return}
+  if($('panelFeeling')?.classList.contains('active')){setFeelingUnreadBadge(false);return}
   const latest=latestFriendFeelingTime(rows);
   if(!latest){setFeelingUnreadBadge(false);return}
   let seen=getFeelingSeenAt();
@@ -1667,7 +1678,7 @@ function markFeelingsSeen(){
   setFeelingUnreadBadge(false);
 }
 async function checkFeelingUpdates(){
-  if(document.hidden||!currentSession()?.loggedIn||chatFilter==='feelings')return;
+  if(document.hidden||!currentSession()?.loggedIn||$('panelFeeling')?.classList.contains('active'))return;
   try{
     const uid=currentUserId(); if(!uid)return;
     const rows=await supabaseRequest('/rest/v1/feelings?user_id=neq.'+encodeURIComponent(uid)+'&select=id,user_id,created_at&order=created_at.desc&limit=1');
@@ -1685,7 +1696,7 @@ async function checkFeelingUpdates(){
 function feelingPerson(uid){if(uid===currentUserId()){const a=account()||{};return{id:uid,name:a.name||'Saya',avatar:(a.name||'S').slice(0,2).toUpperCase(),photo:a.photo||''}}return people[uid]||{id:uid,name:'PINGGO User',avatar:'P',photo:''}}
 let feelingsRenderPending=false;
 function feelingEditorActive(){
-  const list=$('chatList');
+  const list=$('feelingList');
   if(!list)return false;
   const el=document.activeElement;
   if(el&&list.contains(el)&&(el.id==='feelingText'||el.matches?.('[data-feeling-input]')))return true;
@@ -1696,7 +1707,7 @@ function feelingEditorActive(){
   return commentDraft||feelingDraft;
 }
 function requestFeelingsRender(){
-  if(chatFilter!=='feelings')return;
+  if(!$('panelFeeling')?.classList.contains('active'))return;
   if(feelingEditorActive()){feelingsRenderPending=true;return;}
   feelingsRenderPending=false;
   renderFeelings();
@@ -1739,17 +1750,17 @@ async function loadFeelings(force=false){
       requestFeelingsRender();
     }catch(e){
       console.warn('Feeling backend gagal:',e);
-      if(chatFilter==='feelings'&&!feelingsLoaded)$('chatList').innerHTML='<div class="friend-search-empty">Feeling belum dapat dimuat.</div>';
+      if($('panelFeeling')?.classList.contains('active')&&!feelingsLoaded)$('feelingList').innerHTML='<div class="friend-search-empty">Feeling belum dapat dimuat.</div>';
     }finally{feelingsLoading=null}
   })();
   return feelingsLoading;
 }
 function preloadFeelings(){if(currentSession()?.loggedIn&&!feelingsLoaded&&!feelingsLoading)loadFeelings().catch(()=>{})}
 function renderFeelings(){
-  const title=$('chatSectionTitle'),label=$('chatSectionLabel');
+  const title=$('feelingSectionTitle'),label=$('feelingSectionLabel');
   if(title)title.textContent='Feeling';
   if(label)label.textContent='Kamu & Teman';
-  $('chatList').innerHTML='<div class="feeling-compose"><textarea id="feelingText" maxlength="500" placeholder="Apa yang kamu rasakan sekarang?"></textarea><div class="feeling-compose-row"><small>Hanya kamu & teman</small><button type="button" class="btn-primary" id="postFeelingBtn">Update</button></div></div><div id="feelingsFeed"></div>';
+  $('feelingList').innerHTML='<div class="feeling-compose"><textarea id="feelingText" maxlength="500" placeholder="Apa yang kamu rasakan sekarang?"></textarea><div class="feeling-compose-row"><small>Hanya kamu & teman</small><button type="button" class="btn-primary" id="postFeelingBtn">Update</button></div></div><div id="feelingsFeed"></div>';
   $('postFeelingBtn').onclick=postFeeling;
   const feed=$('feelingsFeed');if(!feelingsData.length){feed.innerHTML='<div class="friend-search-empty">Belum ada Feeling dari kamu atau temanmu.</div>';return}
   feelingsData.forEach(x=>{
@@ -1789,7 +1800,7 @@ async function postFeeling(){
     const row=Array.isArray(data)?data[0]:data;
     if(row?.id){
       feelingsData=[{...row,comments:[],giftTotal:0},...feelingsData.filter(x=>x.id!==row.id)];
-      if(chatFilter==='feelings')renderFeelings();
+      if($('panelFeeling')?.classList.contains('active'))renderFeelings();
     }
     // Sinkronkan ulang di background; tidak menahan tombol Update.
     loadFeelings().catch(e=>console.warn('Refresh Feeling gagal:',e));
@@ -2146,7 +2157,6 @@ async function loadConversationMessages(conversationId){
   }catch(e){console.warn('Pesan gagal dimuat:',e)}
 }
 function renderChats(filter=(typeof chatFilter!=='undefined'?chatFilter:'all'),query=''){
-  if(filter==='feelings'){renderFeelings();return}
   const title=$('chatSectionTitle'),label=$('chatSectionLabel');
   if(title)title.textContent='Pesan';
   if(label)label.textContent=filter==='unread'?'Belum dibaca':'Semua Chat';
@@ -2261,12 +2271,12 @@ async function syncLiveAppData(){
   try{
     const uid=currentUserId();
     const tasks=[loadBackendFriends(),loadWallet()];
-    if(chatFilter==='feelings')tasks.push(loadFeelings(false));
+    if($('panelFeeling')?.classList.contains('active'))tasks.push(loadFeelings(false));
     if(document.querySelector('#panelDrop')?.classList.contains('active'))tasks.push(loadBackendSecrets());
     if(uid){tasks.push(fetchOwnProfile(uid).then(p=>{if(p)applyRemoteProfile(p)}).catch(()=>{}))}
     await Promise.allSettled(tasks);
     if(currentChatId&&chatConversationByUser[currentChatId])await loadConversationMessages(chatConversationByUser[currentChatId]);
-    renderChats();if(document.querySelector('#panelFriends')?.classList.contains('active')){if(chatFilter==='feelings')requestFeelingsRender();else renderFriends()}renderProfile();
+    renderChats();if($('panelFriends')?.classList.contains('active'))renderFriends();if($('panelFeeling')?.classList.contains('active'))requestFeelingsRender();renderProfile();
   }finally{appSyncBusy=false}
 }
 function startPresenceAndChatSync(){
@@ -2286,17 +2296,10 @@ window.addEventListener('beforeunload',()=>{if(currentSession()?.loggedIn)naviga
 
 let chatFilter='all';
 function setChatFilter(filter){
-  chatFilter=filter;
-  document.querySelectorAll('#chatTabs [data-chat-filter]').forEach(x=>x.classList.toggle('active',x.dataset.chatFilter===filter));
+  chatFilter=(filter==='unread')?'unread':'all';
+  document.querySelectorAll('#chatTabs [data-chat-filter]').forEach(x=>x.classList.toggle('active',x.dataset.chatFilter===chatFilter));
   const input=document.querySelector('#panelChats .search-bar input');
-  if(filter==='feelings'){
-    if(input){input.value='';input.placeholder='Cari pesan atau PINGGO ID...'}
-    markFeelingsSeen();
-    renderFeelings();
-    loadFeelings(false).then(()=>markFeelingsSeen()).catch(e=>console.warn('Feeling gagal dimuat:',e));
-  }else{
-    renderChats(filter,input?.value||'');
-  }
+  renderChats(chatFilter,input?.value||'');
 }
 document.querySelectorAll('#chatTabs [data-chat-filter]').forEach(b=>{b.onclick=()=>setChatFilter(b.dataset.chatFilter)});
 document.querySelector('#panelChats .search-bar input').addEventListener('input',e=>renderChats(chatFilter,e.target.value));
