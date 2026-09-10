@@ -1884,14 +1884,13 @@ $('friendTabs').onclick=e=>{const b=e.target.closest('[data-friend-view]');if(b)
 $('chatList').addEventListener('focusout',()=>{
   setTimeout(()=>{if(feelingsRenderPending&&!feelingEditorActive())requestFeelingsRender()},120);
 });
-$('chatList').addEventListener('keydown',e=>{
+$('feelingList').addEventListener('keydown',e=>{
   const input=e.target.closest?.('[data-feeling-input]');
   if(!input||e.key!=='Enter'||e.shiftKey)return;
   e.preventDefault();
   postFeelingComment(input.dataset.feelingInput);
 });
-$('chatList').addEventListener('click',e=>{
-  if(chatFilter!=='feelings')return;
+$('feelingList').addEventListener('click',e=>{
   const action=e.target.closest('button');if(!action)return;
   if(action.dataset.feelingComment)return postFeelingComment(action.dataset.feelingComment);
   if(action.dataset.feelingCommentsToggle)return toggleFeelingComments(action.dataset.feelingCommentsToggle);
