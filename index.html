@@ -1643,6 +1643,17 @@ async function checkFeelingUpdates(){
   }catch(e){console.warn('Cek update Feeling gagal:',e)}
 }
 function feelingPerson(uid){if(uid===currentUserId()){const a=account()||{};return{id:uid,name:a.name||'Saya',avatar:(a.name||'S').slice(0,2).toUpperCase(),photo:a.photo||''}}return people[uid]||{id:uid,name:'PINGGO User',avatar:'P',photo:''}}
+let feelingsRenderPending=false;
+function feelingEditorActive(){
+  const el=document.activeElement;
+  return !!(el&&$('chatList')?.contains(el)&&(el.id==='feelingText'||el.matches?.('[data-feeling-input]')));
+}
+function requestFeelingsRender(){
+  if(chatFilter!=='feelings')return;
+  if(feelingEditorActive()){feelingsRenderPending=true;return;}
+  feelingsRenderPending=false;
+  renderFeelings();
+}
 async function loadFeelings(force=false){
   if(feelingsLoading&&!force)return feelingsLoading;
   feelingsLoading=(async()=>{
@@ -1651,10 +1662,10 @@ async function loadFeelings(force=false){
       feelingsData=(rows||[]).map(x=>({...x,comments:[],giftTotal:0}));
       feelingsLoaded=true;
       refreshFeelingUnreadBadge(feelingsData);
-      if(chatFilter==='feelings')renderFeelings();
+      requestFeelingsRender();
 
       const userIds=[...new Set((rows||[]).map(x=>x.user_id))];
-      if(userIds.length)loadProfilesByIds(userIds).then(()=>{if(chatFilter==='feelings')renderFeelings()}).catch(()=>{});
+      if(userIds.length)loadProfilesByIds(userIds).then(()=>{requestFeelingsRender()}).catch(()=>{});
 
       const fids=(rows||[]).map(x=>x.id);
       if(!fids.length)return;
@@ -1671,7 +1682,7 @@ async function loadFeelings(force=false){
       }));
       const commentUserIds=[...new Set(comments.map(x=>x.user_id))];
       if(commentUserIds.length)loadProfilesByIds(commentUserIds).catch(()=>{});
-      if(chatFilter==='feelings')renderFeelings();
+      requestFeelingsRender();
     }catch(e){
       console.warn('Feeling backend gagal:',e);
       if(chatFilter==='feelings'&&!feelingsLoaded)$('chatList').innerHTML='<div class="friend-search-empty">Feeling belum dapat dimuat.</div>';
@@ -1736,7 +1747,7 @@ async function postFeeling(){
     const b=$('postFeelingBtn');if(b){b.disabled=false;b.textContent='Update'}
   }
 }
-async function postFeelingComment(id){const el=document.querySelector('[data-feeling-input="'+id+'"]'),body=(el?.value||'').trim();if(!body)return;try{await supabaseRequest('/rest/v1/feeling_comments',{method:'POST',headers:{'Content-Type':'application/json','Prefer':'return=minimal'},body:JSON.stringify({feeling_id:id,user_id:currentUserId(),body})});await loadFeelings()}catch(e){alert(e.message)}}
+async function postFeelingComment(id){const el=document.querySelector('[data-feeling-input="'+id+'"]'),body=(el?.value||'').trim();if(!body)return;try{el.disabled=true;await supabaseRequest('/rest/v1/feeling_comments',{method:'POST',headers:{'Content-Type':'application/json','Prefer':'return=minimal'},body:JSON.stringify({feeling_id:id,user_id:currentUserId(),body})});el.value='';el.disabled=false;el.blur();feelingsRenderPending=false;await loadFeelings(true)}catch(e){if(el)el.disabled=false;alert(e.message)}}
 function toggleFeelingComment(id){
   const form=document.querySelector('[data-feeling-form="'+id+'"]');if(!form)return;
   form.classList.toggle('open');
@@ -1805,6 +1816,15 @@ function renderFriendProfile(id){
 }
 window.closeFriendProfile=()=>$('friendProfileModal').classList.remove('show');
 $('friendTabs').onclick=e=>{const b=e.target.closest('[data-friend-view]');if(b)setFriendView(b.dataset.friendView)};
+$('chatList').addEventListener('focusout',()=>{
+  setTimeout(()=>{if(feelingsRenderPending&&!feelingEditorActive())requestFeelingsRender()},120);
+});
+$('chatList').addEventListener('keydown',e=>{
+  const input=e.target.closest?.('[data-feeling-input]');
+  if(!input||e.key!=='Enter'||e.shiftKey)return;
+  e.preventDefault();
+  postFeelingComment(input.dataset.feelingInput);
+});
 $('chatList').addEventListener('click',e=>{
   if(chatFilter!=='feelings')return;
   const action=e.target.closest('button');if(!action)return;
