@@ -1084,6 +1084,7 @@ html.pinggo-session-active .auth-screen{opacity:0!important;visibility:hidden!im
 </style>
 
 <script type="text/javascript" src="https://app.midtrans.com/snap/snap.js" data-client-key="Mid-client-YjuGsn7fJB6oXDLR"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
 
@@ -1527,6 +1528,7 @@ window.logout=function(){
     if(chatPollTimer){clearInterval(chatPollTimer);chatPollTimer=null}
     if(presenceTimer){clearInterval(presenceTimer);presenceTimer=null}
     if(appSyncTimer){clearInterval(appSyncTimer);appSyncTimer=null}
+    stopRealtimeSync().catch(()=>{});
   }catch(_){}
   currentChatId=null;chatConversationByUser={};backendChatHistory={};chatsData=[];
   feelingsData=[];feelingsLoaded=false;feelingsLoading=null;
@@ -2011,6 +2013,57 @@ const PINGGO_VAPID_PUBLIC='BLGFombhPIIRBgbKbssVYzNID9BZcWqqhL6gaE3Cwp3GaKS9f80kv
 let backendChatHistory={};
 let chatConversationByUser={};
 let chatPollTimer=null,presenceTimer=null,appSyncTimer=null,appSyncBusy=false;
+let realtimeClient=null,realtimeChannel=null,realtimeReady=false,realtimeChatRefreshTimer=null,realtimeFeelingRefreshTimer=null;
+function scheduleRealtimeChatRefresh(){
+  if(realtimeChatRefreshTimer)clearTimeout(realtimeChatRefreshTimer);
+  realtimeChatRefreshTimer=setTimeout(async()=>{
+    realtimeChatRefreshTimer=null;if(document.hidden||!currentSession()?.loggedIn)return;
+    await loadBackendChats();
+    if(currentChatId&&chatConversationByUser[currentChatId])await loadConversationMessages(chatConversationByUser[currentChatId]);
+  },180);
+}
+function scheduleRealtimeFeelingRefresh(){
+  if(realtimeFeelingRefreshTimer)clearTimeout(realtimeFeelingRefreshTimer);
+  realtimeFeelingRefreshTimer=setTimeout(()=>{
+    realtimeFeelingRefreshTimer=null;if(document.hidden||!currentSession()?.loggedIn)return;
+    loadFeelings(true).catch(()=>{});
+  },180);
+}
+async function stopRealtimeSync(){
+  realtimeReady=false;
+  if(realtimeChatRefreshTimer){clearTimeout(realtimeChatRefreshTimer);realtimeChatRefreshTimer=null}
+  if(realtimeFeelingRefreshTimer){clearTimeout(realtimeFeelingRefreshTimer);realtimeFeelingRefreshTimer=null}
+  try{if(realtimeChannel&&realtimeClient)await realtimeClient.removeChannel(realtimeChannel)}catch(_){}
+  realtimeChannel=null;realtimeClient=null;
+}
+async function startRealtimeSync(){
+  await stopRealtimeSync();
+  const token=currentSession()?.accessToken,uid=currentUserId();
+  if(!token||!uid||!window.supabase?.createClient)return false;
+  try{
+    realtimeClient=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{persistSession:false,autoRefreshToken:false,detectSessionInUrl:false},realtime:{params:{eventsPerSecond:10}}});
+    try{realtimeClient.realtime.setAuth(token)}catch(_){}
+    realtimeChannel=realtimeClient.channel('pinggo-live-'+uid,{config:{broadcast:{self:false}}})
+      .on('postgres_changes',{event:'*',schema:'public',table:'messages'},payload=>{
+        const cid=payload?.new?.conversation_id||payload?.old?.conversation_id;
+        const known=new Set(Object.values(chatConversationByUser||{}));
+        if(!cid||known.has(cid)||cid===chatConversationByUser[currentChatId])scheduleRealtimeChatRefresh();
+      })
+      .on('postgres_changes',{event:'*',schema:'public',table:'conversation_members',filter:'user_id=eq.'+uid},()=>scheduleRealtimeChatRefresh())
+      .on('postgres_changes',{event:'*',schema:'public',table:'conversations'},payload=>{
+        const cid=payload?.new?.id||payload?.old?.id;
+        if(cid&&Object.values(chatConversationByUser||{}).includes(cid))scheduleRealtimeChatRefresh();
+      })
+      .on('postgres_changes',{event:'*',schema:'public',table:'feelings'},()=>scheduleRealtimeFeelingRefresh())
+      .on('postgres_changes',{event:'*',schema:'public',table:'feeling_comments'},()=>scheduleRealtimeFeelingRefresh())
+      .on('postgres_changes',{event:'*',schema:'public',table:'feeling_gifts'},()=>scheduleRealtimeFeelingRefresh())
+      .subscribe(status=>{
+        realtimeReady=status==='SUBSCRIBED';
+        if(status==='CHANNEL_ERROR'||status==='TIMED_OUT'||status==='CLOSED')realtimeReady=false;
+      });
+    return true;
+  }catch(e){console.warn('Realtime gagal aktif:',e);realtimeReady=false;return false}
+}
 const chatMediaUrlCache=new Map();
 function fmtChatTime(v){if(!v)return'';const d=new Date(v);const today=new Date();return d.toDateString()===today.toDateString()?d.toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit'}):d.toLocaleDateString('id-ID',{day:'2-digit',month:'short'})}
 function postgrestIn(ids){return '('+ids.map(String).join(',')+')'}
@@ -2200,9 +2253,11 @@ function startPresenceAndChatSync(){
   if(presenceTimer)clearInterval(presenceTimer);if(chatPollTimer)clearInterval(chatPollTimer);if(appSyncTimer)clearInterval(appSyncTimer);
   touchPresence().catch(()=>{});
   checkFeelingUpdates().catch(()=>{});
+  startRealtimeSync().catch(()=>{});
   presenceTimer=setInterval(()=>{if(!document.hidden){touchPresence().catch(()=>{});const ids=[...new Set([...friendsState.friends,...friendsState.requests,...friendsState.sent])];if(ids.length)loadProfilesByIds(ids).then(()=>{renderFriends();renderChats()}).catch(()=>{})}},30000);
-  chatPollTimer=setInterval(async()=>{if(document.hidden||!currentSession()?.loggedIn)return;await loadBackendChats();if(currentChatId&&chatConversationByUser[currentChatId])await loadConversationMessages(chatConversationByUser[currentChatId])},8000);
-  appSyncTimer=setInterval(()=>{syncLiveAppData().catch(()=>{});checkFeelingUpdates().catch(()=>{})},20000);
+  // Fallback ringan: hanya dipakai sebagai jaring pengaman jika realtime putus/tidak tersedia.
+  chatPollTimer=setInterval(async()=>{if(document.hidden||!currentSession()?.loggedIn||realtimeReady)return;await loadBackendChats();if(currentChatId&&chatConversationByUser[currentChatId])await loadConversationMessages(chatConversationByUser[currentChatId])},60000);
+  appSyncTimer=setInterval(()=>{syncLiveAppData().catch(()=>{});if(!realtimeReady)checkFeelingUpdates().catch(()=>{})},30000);
 }
 document.addEventListener('visibilitychange',()=>{if(!document.hidden){touchPresence().catch(()=>{});syncLiveAppData().catch(()=>{});checkFeelingUpdates().catch(()=>{})}});
 window.addEventListener('focus',()=>{syncLiveAppData().catch(()=>{});checkFeelingUpdates().catch(()=>{})});
