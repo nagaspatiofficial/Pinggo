@@ -941,6 +941,21 @@ button, input, select, textarea {
 .feeling-action.gift{background:rgba(255,232,243,.92);color:var(--pinggo-pink-dark)}
 .feeling-action.delete{background:rgba(255,226,230,.9);color:#c53a50}
 .feeling-gift-total{margin-left:auto;font-size:10px;color:var(--text-muted);font-weight:700}
+
+/* PINGGO COMPANION — isolated Feeling module */
+.pinggo-companion-card{
+  position:relative;overflow:hidden;background:linear-gradient(135deg,rgba(255,255,255,.93),rgba(255,235,244,.95));
+  border:1px solid rgba(233,79,145,.16);border-radius:18px;padding:12px 13px;margin:0 0 9px;
+  box-shadow:0 6px 18px rgba(89,58,74,.06)
+}
+.pinggo-companion-card::after{content:"";position:absolute;width:95px;height:95px;border-radius:50%;right:-35px;top:-45px;background:rgba(233,79,145,.08);pointer-events:none}
+.pinggo-companion-head{display:flex;align-items:center;gap:9px;margin-bottom:7px}
+.pinggo-companion-avatar{width:34px;height:34px;border-radius:12px;display:grid;place-items:center;flex:0 0 34px;background:linear-gradient(135deg,var(--pinggo-pink),var(--pinggo-pink-dark));color:#fff;font-size:15px;font-weight:900;box-shadow:0 5px 12px rgba(233,79,145,.22)}
+.pinggo-companion-meta{min-width:0;flex:1}.pinggo-companion-name{font-size:12px;font-weight:900;color:var(--pinggo-gray-dark)}
+.pinggo-companion-badge{display:inline-flex;margin-left:5px;padding:2px 6px;border-radius:999px;background:#fbe3ed;color:var(--pinggo-pink-dark);font-size:8px;font-weight:900;vertical-align:1px}
+.pinggo-companion-time{font-size:9px;color:var(--text-muted);margin-top:2px}
+.pinggo-companion-text{position:relative;z-index:1;font-size:13px;line-height:1.42;color:var(--text-main);white-space:pre-wrap;word-break:break-word}
+
 #navFeeling{position:relative}
 .feeling-tab-badge{
   position:absolute;
@@ -1830,6 +1845,64 @@ function openFeelingFromNotification(n){
   else loadFeelings(false).then(()=>{requestFeelingsRender();setTimeout(reveal,80)}).catch(()=>{});
 }
 
+
+/* PINGGO COMPANION — isolated Feeling module
+   Default interval 60 menit. Tersedia 30 / 60 / 120 / 180 menit.
+   Tidak membuat post backend; hanya card Companion per-user di Feeling.
+*/
+const PINGGO_COMPANION_MESSAGES={"morning":["Selamat pagi 👋 Semoga hari ini ada kabar bagus buatmu.","Bangun. Rezeki nggak bisa di-scroll terus 😂","Pagi-pagi jangan langsung cari masalah ya.","Jangan lupa sarapan. Mantan nggak mengandung karbohidrat.","Hari baru. Masalah lama jangan dibawa semua 😌","Morning! Senyum dulu, urusan nanti.","Semoga kopi hari ini kuat dan dramanya lemah ☕","Bangun tidur cek PINGGO? Hmm… aku terharu 😌","Pagi ini jangan lupa bilang sesuatu yang baik ke dirimu sendiri.","Kalau masih ngantuk, cuci muka. Kalau masih kangen, itu beda masalah 😂","Semoga pagi ini dompetmu sehat dan pikiranmu tenang.","Mulai pelan-pelan aja. Nggak harus langsung sempurna.","Sudah minum air? Air putih ya, bukan air mata.","Pagi! Hari ini jangan kebanyakan overthinking.","Siapa orang pertama yang kamu pikirkan pas bangun tadi? 👀","Selamat pagi. Jangan stalking mantan sebelum sarapan 😂","Hari ini mungkin biasa aja, tapi siapa tahu ada kejutan.","Bangun, mandi, makan, lalu pura-pura tahu mau ngapain 😭","Pagi ini aku cuma mau bilang: semangat ya.","Kalau semalam berat, pagi ini kita mulai ulang."],"day":["Udah makan belum? Jangan cinta doang yang dimakan.","Siang gini enaknya cari yang dingin-dingin 😌","Jangan lupa makan ya. Aku nggak bisa nyuapin soalnya.","Kerja boleh serius. Mukanya jangan ikut tegang.","Lagi sibuk atau pura-pura sibuk? 👀","Minum dulu. Jangan nunggu haus baru ingat badan.","Kalau capek, berhenti sebentar. Dunia nggak kabur kok.","Makan siang dulu. Drama bisa lanjut nanti 😂","Jam segini biasanya saldo mulai kepikiran.","Semoga hari ini ada uang masuk yang nggak disangka-sangka.","Jangan boros. Besok biasanya nyesel.","Keranjang belanja online kamu aman? 👀","Produktif boleh, lupa makan jangan.","Kalau kerjaan banyak, kerjain satu-satu. Jangan dipelototin semua.","Hari ini sudah senyum belum? Kalau belum, coba sekarang.","Kalau ada yang bikin kesel, jangan langsung diblok. Minum dulu 😂","Siang! Jangan terlalu sibuk sampai lupa hidup.","Gajian masih lama? Aku ikut prihatin 😭","Hari ini jangan bikin masalah. Besok aja.","Kalau kaya nanti jangan lupa sama PINGGO."],"evening":["Sore 👋 Gimana hari kamu sejauh ini?","Hari ini sudah ada yang bikin kamu senyum?","Kalau capek, nggak apa-apa istirahat sebentar.","Sore begini biasanya mulai kepikiran mau makan apa.","Pulang kerja jangan bawa semua masalah ikut pulang.","Hari ini produktif nggak? Jawab dalam hati aja 😂","Kalau belum ada kabar baik, hari belum selesai.","Sore ini jangan lupa cari udara sebentar.","Ada cerita yang pengin kamu keluarin hari ini?","Kalau hari ini berat, minimal makan yang enak.","Jam pulang sudah dekat atau masih pura-pura sibuk? 👀","Semoga sore ini lebih tenang dari pagimu.","Kalau seseorang bikin kamu tersenyum hari ini, jangan lupa bilang makasih.","Kamu sudah melakukan yang kamu bisa hari ini. Lumayan.","Sore-sore begini paling bahaya kalau mulai buka keranjang belanja 😂","Jangan bandingkan harimu dengan feed orang lain.","Kalau rencana hari ini berantakan, besok masih ada.","Sore ini mood kamu berapa dari 10?","Kalau mood 2, semoga habis buka PINGGO jadi 3. Lumayan 😂","Sebelum malam datang, kasih dirimu sedikit waktu santai."],"night":["Jam segini masih online… nunggu chat siapa? 👀","Tidur woi. Besok masih ada kehidupan 😭","Jangan begadang cuma gara-gara nunggu dia balas.","Kalau dia tidur, kamu juga tidur.","Kalau dia online tapi nggak balas… aku nggak mau ikut campur 👀","Jangan bikin keputusan penting jam segini 😂","Tengah malam bukan waktu terbaik buat chat mantan.","Taruh HP. Merem. Coba tidur.","Besok bangun, semoga masalah hari ini terasa lebih kecil.","Selamat malam. Jangan mimpiin orang yang salah 😏","Malam-malam begini pikiran suka bikin cerita sendiri.","Kalau mau bilang kangen, bilang aja. Tapi pikir dulu orangnya siapa 😂","Jangan stalking sampai jam tidur lewat.","Ada yang diam-diam kamu tunggu chat-nya? 👀","Kalau dia belum balas, mungkin tidur. Mungkin ya.","Malam ini tenang aja. Nggak semua harus dipikirkan sekarang.","Istirahat itu bukan malas.","Besok masih bisa lanjut. Sekarang waktunya pelan-pelan.","Kalau capek hati, jangan ditambah capek mata karena layar.","Good night. PINGGO juga pura-pura tidur 😌"],"random":["Kamu jangan selingkuh ya. Nanti pasanganmu tahu, aku yang dimarah 😭","Jangan stalking mantan terus. Kasihan jarimu 😂","Katanya cuma teman. Kok senyumnya beda? 😏","Kalau dia nggak chat, mungkin lagi sibuk. Mungkin lho ya 😂","Aku nggak kepo kok. Cuma pengen tahu semuanya 👀","Kalau dia bikin kamu senyum, pertahankan. Kalau bikin emosi… suruh download PINGGO.","Kok buka PINGGO lagi? Kangen aku ya? 😌","Hari ini kamu kelihatan keren. Iya, aku tahu aku nggak bisa lihat kamu 😂","Kalau capek, istirahat. Jangan malah stalking.","Jangan bohong. Aku memang nggak tahu, tapi tetap jangan 😂","Hari ini sudah bilang sayang ke pasangan belum?","Kalau belum punya pasangan, pesan sebelumnya abaikan. Jangan sedih 😭","Single itu bukan masalah. Yang masalah kalau ngaku single padahal nggak 😏","Jangan terlalu baik sama mantan. Nanti kambuh.","Ada mantan yang masih kamu kepoin? Ngaku.","Tenang, rahasiamu aman. Aku juga nggak tahu rahasiamu 😂","Kalau dia bilang “terserah”, hati-hati. Itu belum tentu terserah.","Kalau pasangan bilang “aku nggak marah”, persiapkan diri.","PINGGO mendeteksi kamu butuh liburan. Sayangnya PINGGO nggak punya uang 😭","Jangan lupa senyum. Gratis kok.","Duit memang bukan segalanya. Tapi coba nggak punya duit 😭","Kalau belum kaya, ya kita berjuang bareng 😂","Ada Feeling yang mau kamu keluarin hari ini?","Cerita aja. Siapa tahu ada teman yang ngerti.","Jangan dipendam semua. Kamu bukan gudang.","Ada seseorang yang bikin kamu kesel hari ini?","Jangan sebut nama. Aku takut ikut terseret 😭","Ada kabar baik hari ini?","Kadang pesan sederhana “apa kabar?” berarti banyak.","Ada teman lama yang tiba-tiba kamu ingat?","Chat aja. Gengsi nggak bisa diajak nongkrong.","Tapi kalau mantan… pikir dua kali 😂","Weekend nanti ada rencana atau rebahan profesional?","Keluar boleh. Pulangnya jangan lupa.","Kalau teman ngajak nongkrong, cek saldo dulu.","Kalau saldo aman, gas.","Kalau saldo nggak aman… bilang aja lagi healing di rumah 😂","Hari ini siapa yang paling bikin kamu senyum?","Kalau jawabannya aku, kita ada masalah 😭","Jangan gampang baper. Tapi kalau udah terlanjur, ya gimana lagi.","Ada yang diam-diam kamu suka? 👀","Tenang. Aku nggak akan kasih tahu dia.","Tapi kalau dia juga pakai PINGGO… beda cerita 😂","Cinta itu indah. Screenshot chat kadang lebih berguna.","Jangan hapus chat penting. Nanti butuh bukti 😭","Kalau mau bilang kangen, bilang aja.","Hidup terlalu pendek buat ngetik lalu hapus berkali-kali.","Tapi kalau mau kirim “aku masih sayang” ke mantan… hapus aja 😂","Hari ini kamu sudah bikin seseorang bahagia belum?","Kalau belum, mulai dari dirimu sendiri.","Jangan lupa: kamu juga pantas diperlakukan dengan baik.","Orang yang tepat nggak bikin kamu terus menerka-nerka.","Tapi PINGGO boleh bikin kamu penasaran 😏","Aku cuma mampir buat bilang: semangat ya.","Oke, lanjut aktivitasmu. Aku nggak ganggu lagi.","Eh bentar… jangan lupa makan!","Jangan terlalu serius. Nanti cepat tua 😂","Kalau lagi bad mood, jangan checkout barang mahal dulu.","Ada yang bikin jantungmu deg-degan, atau cuma kopi? 👀","Jangan bilang “cuma teman” kalau tiap notif dia kamu langsung buka.","Kalau dia bikin bingung terus, mungkin petunjuknya memang kurang jelas 😂","Jangan balas chat pas emosi. Ketik dulu, baca lagi, baru menyesal.","Kalau lagi kangen, coba tahan lima menit. Kalau masih kangen ya… lanjut.","PINGGO cuma lewat. Lanjutkan aktivitasmu 😂","Kalau hari ini belum ada yang bilang kamu keren, yaudah aku aja: kamu keren 😎","Jangan takut mulai lagi. Yang penting jangan mulai drama yang sama.","Kalau semua orang lagi ngeselin, mungkin waktunya makan.","Simpan sedikit energi buat dirimu sendiri.","Nggak semua pesan harus dibalas cepat. Kecuali dari aku 😌","Kamu boleh istirahat tanpa merasa bersalah.","Kalau hidup lagi rumit, jangan tambah rumit dengan mantan.","Hari ini jangan terlalu banyak mikir yang belum tentu kejadian.","Kamu nggak harus punya jawaban untuk semuanya hari ini.","Kalau mau nangis, nangis. Tapi habis itu minum.","Jangan lupa cek kabar orang rumah.","Kalau ada yang bikin kamu nyaman, jaga baik-baik.","Kalau ada yang bikin kamu terus ragu, ya… pikirkan lagi.","Jangan berharap dia peka. Kadang manusia memang perlu dikasih tahu 😂","Hari ini kasih satu pujian ke seseorang. Siapa tahu dia butuh.","Kalau kamu lagi senang, nikmati. Jangan buru-buru cari masalah.","Aku nggak bisa baca pikiranmu. Untungnya.","Kalau bisa baca pikiranmu, mungkin aku logout sendiri 😭","Jangan terlalu lama diam kalau sebenarnya ingin bicara.","Ada yang mau kamu bilang tapi masih kamu tahan?","Boleh kok jadi sedikit nakal. Sedikit ya 😏","Jangan bikin keputusan gara-gara satu chat yang belum dibalas.","Kalau dia bilang “nanti”, jangan lupa tanya nanti itu kapan 😂","Kadang yang kamu butuhkan cuma makan, tidur, lalu lihat lagi besok.","Hari ini jangan lupa menikmati hal kecil.","Kalau hidup kasih lemon, cari es batu.","Kalau seseorang bikin kamu merasa aman, itu mahal.","Jangan kejar orang yang jelas-jelas lari. Capek.","Yang tulus nggak selalu paling berisik.","Satu hal baik hari ini sudah cukup untuk disyukuri.","Kalau kamu gagal hari ini, itu bukan akhir cerita.","Kamu boleh berubah pikiran.","Jangan paksa semuanya berjalan sesuai rencana.","Hari ini coba jangan ngomong kasar… minimal sampai siang 😂","Ada seseorang yang pengin kamu peluk sekarang?","Kalau iya, semoga bukan mantan orang 😭","Jangan ganggu pasangan orang. PINGGO nggak mau ikut sidang keluarga 😂","Kalau mau flirting, pastikan statusnya jelas dulu 😏","Kalau dia punya pasangan, mundur cantik/ganteng ya.","Hati boleh nakal, tindakan tetap pakai rem 😂","Cemburu boleh sedikit. Interogasi tiga jam jangan.","Kalau kamu salah, bilang maaf. Nggak bikin harga saham turun kok.","Kalau dia salah, dengarkan dulu sebelum bikin film sendiri di kepala.","Jangan baca chat lama kalau niatnya mau move on.","Kalau hari ini terasa sepi, coba sapa teman duluan.","Kamu nggak selalu harus menunggu orang lain mulai.","Jangan terlalu sibuk mencari yang baru sampai lupa menghargai yang ada.","Kalau lagi bahagia, simpan sedikit momen buat diri sendiri.","Aku ada di sini. Ya… di layar sih 😂","PINGGO bilang: jangan lupa jadi manusia hari ini.","Kalau kamu baca ini sambil rebahan, posisi lehermu benerin dulu 😂","Stop scrolling sebentar. Lihat sekitar.","Kalau ada camilan, aku iri.","Jangan terlalu percaya ramalan. Tapi kalau bilang kamu bakal kaya, boleh dipercaya 😌","Hari ini kemungkinan besar kamu akan… membuka PINGGO. Ramalanku benar.","Semoga hari ini ada orang yang bikin kamu merasa dihargai.","Dan kalau belum ada, jangan lupa hargai dirimu sendiri.","Kamu nggak harus terlihat kuat terus.","Yang penting jangan menyerah cuma karena hari ini jelek.","Besok bisa beda.","Kalau mau cerita, Feeling masih ada kok 👀","Aku mampir lagi nanti. Jangan kangen dulu."]};
+const PINGGO_COMPANION_DEFAULT_INTERVAL=60;
+const PINGGO_COMPANION_ALLOWED_INTERVALS=[30,60,120,180];
+let pinggoCompanionTimer=null;
+function pinggoCompanionIntervalMinutes(){
+  const raw=Number(localStorage.getItem('pinggo_companion_interval_minutes')||PINGGO_COMPANION_DEFAULT_INTERVAL);
+  return PINGGO_COMPANION_ALLOWED_INTERVALS.includes(raw)?raw:PINGGO_COMPANION_DEFAULT_INTERVAL;
+}
+window.setPinggoCompanionInterval=function(minutes){
+  minutes=Number(minutes);if(!PINGGO_COMPANION_ALLOWED_INTERVALS.includes(minutes))return false;
+  localStorage.setItem('pinggo_companion_interval_minutes',String(minutes));
+  const uid=currentUserId();if(uid){const s=pinggoCompanionReadState(uid)||{};s.nextAt=Date.now()+minutes*60000;pinggoCompanionWriteState(uid,s);}
+  schedulePinggoCompanion();return true;
+};
+function pinggoCompanionKey(uid=currentUserId()){return 'pinggo_companion_v1:'+(uid||'guest')}
+function pinggoCompanionReadState(uid=currentUserId()){if(!uid)return null;try{return JSON.parse(localStorage.getItem(pinggoCompanionKey(uid))||'null')}catch(_){return null}}
+function pinggoCompanionWriteState(uid,state){try{localStorage.setItem(pinggoCompanionKey(uid),JSON.stringify(state))}catch(_){}}
+function pinggoCompanionPool(){
+  const h=new Date().getHours();let key='random';
+  if(h>=5&&h<10)key='morning';else if(h>=10&&h<16)key='day';else if(h>=16&&h<19)key='evening';else key='night';
+  const timed=PINGGO_COMPANION_MESSAGES[key]||[];
+  return Math.random()<.55&&timed.length?timed:PINGGO_COMPANION_MESSAGES.random;
+}
+function pinggoCompanionPick(recent=[]){
+  const pool=pinggoCompanionPool(),blocked=new Set((recent||[]).slice(-35));
+  let choices=pool.filter(x=>!blocked.has(x));if(!choices.length)choices=pool.slice();
+  return choices[Math.floor(Math.random()*choices.length)]||'Hai 👋 Semoga harimu menyenangkan.';
+}
+function ensurePinggoCompanionState(force=false){
+  const uid=currentUserId();if(!uid)return null;
+  const now=Date.now(),interval=pinggoCompanionIntervalMinutes();let s=pinggoCompanionReadState(uid)||{};
+  if(force||!s.message||!s.createdAt||!s.nextAt||now>=Number(s.nextAt)){
+    const recent=Array.isArray(s.recent)?s.recent:[],message=pinggoCompanionPick(recent);
+    s={message,createdAt:now,nextAt:now+interval*60000,recent:[...recent,message].slice(-50)};
+    pinggoCompanionWriteState(uid,s);
+  }
+  return s;
+}
+function pinggoCompanionTimeLabel(ts){try{return new Date(Number(ts)||Date.now()).toLocaleString('id-ID',{hour:'2-digit',minute:'2-digit'})}catch(_){return ''}}
+function renderPinggoCompanion(){
+  const slot=$('pinggoCompanionSlot');if(!slot)return;const s=ensurePinggoCompanionState(false);
+  if(!s){slot.innerHTML='';return}
+  slot.innerHTML='<div class="pinggo-companion-card"><div class="pinggo-companion-head"><div class="pinggo-companion-avatar">P</div><div class="pinggo-companion-meta"><div class="pinggo-companion-name">PINGGO <span class="pinggo-companion-badge">COMPANION</span></div><div class="pinggo-companion-time">'+esc(pinggoCompanionTimeLabel(s.createdAt))+'</div></div></div><div class="pinggo-companion-text">'+esc(s.message)+'</div></div>';
+}
+function schedulePinggoCompanion(){
+  if(pinggoCompanionTimer){clearTimeout(pinggoCompanionTimer);pinggoCompanionTimer=null}
+  const uid=currentUserId();if(!uid){pinggoCompanionTimer=setTimeout(schedulePinggoCompanion,30000);return}
+  const s=ensurePinggoCompanionState(false);
+  const wait=Math.max(15000,Math.min(2147480000,(Number(s?.nextAt)||Date.now()+60000)-Date.now()));
+  pinggoCompanionTimer=setTimeout(()=>{ensurePinggoCompanionState(true);if($('panelFeeling')?.classList.contains('active'))renderPinggoCompanion();schedulePinggoCompanion();},wait);
+}
+schedulePinggoCompanion();
+
 function feelingPerson(uid){if(uid===currentUserId()){const a=account()||{};return{id:uid,name:a.name||'Saya',avatar:(a.name||'S').slice(0,2).toUpperCase(),photo:a.photo||''}}return people[uid]||{id:uid,name:'PINGGO User',avatar:'P',photo:''}}
 let feelingsRenderPending=false;
 function feelingEditorActive(){
@@ -1898,8 +1971,9 @@ function renderFeelings(){
   const title=$('feelingSectionTitle'),label=$('feelingSectionLabel');
   if(title)title.textContent='Feeling';
   if(label)label.textContent='Kamu & Teman';
-  $('feelingList').innerHTML='<div class="feeling-compose"><textarea id="feelingText" maxlength="500" placeholder="Apa yang kamu rasakan sekarang?"></textarea><div class="feeling-compose-row"><small>Hanya kamu & teman</small><button type="button" class="btn-primary" id="postFeelingBtn">Update</button></div></div><div id="feelingsFeed"></div>';
+  $('feelingList').innerHTML='<div class="feeling-compose"><textarea id="feelingText" maxlength="500" placeholder="Apa yang kamu rasakan sekarang?"></textarea><div class="feeling-compose-row"><small>Hanya kamu & teman</small><button type="button" class="btn-primary" id="postFeelingBtn">Update</button></div></div><div id="pinggoCompanionSlot"></div><div id="feelingsFeed"></div>';
   $('postFeelingBtn').onclick=postFeeling;
+  renderPinggoCompanion();
   const feed=$('feelingsFeed');if(!feelingsData.length){feed.innerHTML='<div class="friend-search-empty">Belum ada Feeling dari kamu atau temanmu.</div>';return}
   feelingsData.forEach(x=>{
     const p=feelingPerson(x.user_id),own=x.user_id===currentUserId();
