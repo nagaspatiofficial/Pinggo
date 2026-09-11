@@ -239,6 +239,32 @@ button, input, select, textarea {
   box-shadow: 0 4px 12px rgba(0,0,0,0.04);
 }
 
+
+/* Feeling comment notifications */
+.notice-btn{position:relative}
+.notice-top-badge{
+  position:absolute;top:-5px;right:-5px;min-width:18px;height:18px;padding:0 4px;
+  border-radius:10px;background:#2388ff;color:#fff;border:2px solid #fff;
+  display:none;align-items:center;justify-content:center;font-size:9px;font-weight:900;line-height:14px;
+}
+.notice-top-badge.show{display:flex}
+.feeling-notice-sheet{max-height:72vh;overflow:auto}
+.feeling-notice-list{display:flex;flex-direction:column;gap:7px;margin-top:8px}
+.feeling-notice-item{
+  width:100%;border:0;border-radius:15px;padding:11px 12px;text-align:left;
+  background:#f3f1f4;color:var(--text-main);display:flex;gap:10px;align-items:center;cursor:pointer;
+}
+.feeling-notice-item.unread{background:#eef6ff;box-shadow:inset 3px 0 0 #2388ff}
+.feeling-notice-avatar{
+  width:38px;height:38px;flex:0 0 38px;border-radius:13px;overflow:hidden;
+  background:linear-gradient(135deg,#f7b9ca,#aaa6ac);display:grid;place-items:center;
+  color:#fff;font-size:12px;font-weight:900;
+}
+.feeling-notice-avatar img{width:100%;height:100%;object-fit:cover}
+.feeling-notice-text{min-width:0;flex:1}
+.feeling-notice-text b{display:block;font-size:12px;margin-bottom:3px}
+.feeling-notice-text small{display:block;font-size:10px;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
 /* Panels */
 .main-content {
   flex: 1;
@@ -1165,8 +1191,19 @@ html.pinggo-session-active .auth-screen{opacity:0!important;visibility:hidden!im
   <div class="topbar">
     <div class="brand">PING<span>GO</span></div>
     <div class="top-actions">
-      <button class="icon-btn" type="button" onclick="openGlobalSearch()" aria-label="Cari chat">⌕</button>
+      <button class="icon-btn notice-btn" id="feelingNoticeBtn" type="button" onclick="openFeelingNotifications()" aria-label="Notifikasi komentar Feeling">🔔<span class="notice-top-badge" id="feelingNoticeBadge"></span></button>
       <button class="icon-btn" onclick="openPostModal()">＋</button>
+    </div>
+  </div>
+
+  <!-- Feeling Comment Notifications -->
+  <div id="feelingNoticeModal" class="modal-overlay modal-center" onclick="if(event.target===this)closeFeelingNotifications()">
+    <div class="modal-sheet feeling-notice-sheet">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;">
+        <div class="modal-title" style="margin:0;">Notifikasi</div>
+        <button class="icon-btn" type="button" onclick="closeFeelingNotifications()" aria-label="Tutup">×</button>
+      </div>
+      <div id="feelingNoticeList" class="feeling-notice-list"></div>
     </div>
   </div>
 
@@ -1729,6 +1766,70 @@ async function checkFeelingUpdates(){
     setFeelingUnreadBadge(unread);
   }catch(e){console.warn('Cek update Feeling gagal:',e)}
 }
+
+const FEELING_COMMENT_READ_KEY='pinggo_feeling_comment_read_v1';
+function feelingCommentReadKey(){return FEELING_COMMENT_READ_KEY+':'+(currentUserId()||'guest')}
+function getReadFeelingCommentIds(){
+  try{const v=JSON.parse(localStorage.getItem(feelingCommentReadKey())||'[]');return new Set(Array.isArray(v)?v:[])}catch(_){return new Set()}
+}
+function setReadFeelingCommentIds(set){
+  try{localStorage.setItem(feelingCommentReadKey(),JSON.stringify([...set].slice(-1000)))}catch(_){}
+}
+function myFeelingCommentNotifications(){
+  const uid=currentUserId();if(!uid)return [];
+  const out=[];
+  (feelingsData||[]).forEach(f=>{
+    if(!f||f.user_id!==uid)return;
+    (f.comments||[]).forEach(c=>{
+      if(!c||c.user_id===uid)return;
+      out.push({id:String(c.id),feelingId:f.id,userId:c.user_id,body:c.body||'',createdAt:c.created_at||''});
+    });
+  });
+  return out.sort((a,b)=>(Date.parse(b.createdAt)||0)-(Date.parse(a.createdAt)||0));
+}
+function refreshFeelingCommentNotifications(){
+  const all=myFeelingCommentNotifications(),read=getReadFeelingCommentIds();
+  const unread=all.filter(n=>!read.has(n.id)).length;
+  const badge=$('feelingNoticeBadge');
+  if(badge){badge.textContent=unread>99?'99+':String(unread||'');badge.classList.toggle('show',unread>0)}
+  if($('feelingNoticeModal')?.classList.contains('show'))renderFeelingNotifications();
+}
+function renderFeelingNotifications(){
+  const box=$('feelingNoticeList');if(!box)return;
+  const all=myFeelingCommentNotifications(),read=getReadFeelingCommentIds();
+  if(!all.length){box.innerHTML='<div class="friend-search-empty">Belum ada komentar pada Feeling kamu.</div>';return}
+  box.innerHTML='';
+  all.forEach(n=>{
+    const p=feelingPerson(n.userId),btn=document.createElement('button');
+    btn.type='button';btn.className='feeling-notice-item'+(read.has(n.id)?'':' unread');
+    const av=p.photo?'<img src="'+esc(p.photo)+'" alt="">':esc((p.avatar||'P').slice(0,2));
+    btn.innerHTML='<span class="feeling-notice-avatar">'+av+'</span><span class="feeling-notice-text"><b>1 komentar dari '+esc(p.name||'PINGGO User')+'</b><small>'+esc(n.body||'Mengomentari Feeling kamu')+'</small></span>';
+    btn.onclick=()=>openFeelingFromNotification(n);
+    box.appendChild(btn);
+  });
+}
+window.openFeelingNotifications=function(){
+  renderFeelingNotifications();
+  $('feelingNoticeModal')?.classList.add('show');
+};
+window.closeFeelingNotifications=function(){$('feelingNoticeModal')?.classList.remove('show')};
+function openFeelingFromNotification(n){
+  const read=getReadFeelingCommentIds();read.add(String(n.id));setReadFeelingCommentIds(read);
+  refreshFeelingCommentNotifications();closeFeelingNotifications();
+  const nav=$('navFeeling');
+  if(nav)switchPanel('Feeling',nav);
+  const reveal=()=>{
+    const card=document.querySelector('[data-feeling-card="'+CSS.escape(String(n.feelingId))+'"]');
+    if(!card)return;
+    const list=card.querySelector('[data-feeling-comments="'+CSS.escape(String(n.feelingId))+'"]');
+    if(list)list.classList.add('open');
+    card.scrollIntoView({behavior:'smooth',block:'center'});
+    card.animate([{boxShadow:'0 0 0 0 rgba(35,136,255,.45)'},{boxShadow:'0 0 0 5px rgba(35,136,255,.18)'},{boxShadow:'0 0 0 0 rgba(35,136,255,0)'}],{duration:1200});
+  };
+  if(feelingsLoaded){requestFeelingsRender();setTimeout(reveal,80)}
+  else loadFeelings(false).then(()=>{requestFeelingsRender();setTimeout(reveal,80)}).catch(()=>{});
+}
+
 function feelingPerson(uid){if(uid===currentUserId()){const a=account()||{};return{id:uid,name:a.name||'Saya',avatar:(a.name||'S').slice(0,2).toUpperCase(),photo:a.photo||''}}return people[uid]||{id:uid,name:'PINGGO User',avatar:'P',photo:''}}
 let feelingsRenderPending=false;
 function feelingEditorActive(){
@@ -1780,8 +1881,9 @@ async function loadFeelings(force=false){
         comments:comments.filter(c=>c.feeling_id===x.id),
         giftTotal:gifts.filter(g=>g.feeling_id===x.id).reduce((n,g)=>n+(Number(g.amount)||0),0)
       }));
+      refreshFeelingCommentNotifications();
       const commentUserIds=[...new Set(comments.map(x=>x.user_id))];
-      if(commentUserIds.length)loadProfilesByIds(commentUserIds).then(()=>{saveFeelingsCache();requestFeelingsRender()}).catch(()=>{});
+      if(commentUserIds.length)loadProfilesByIds(commentUserIds).then(()=>{saveFeelingsCache();requestFeelingsRender();refreshFeelingCommentNotifications()}).catch(()=>{});
       saveFeelingsCache();
       requestFeelingsRender();
     }catch(e){
@@ -1801,7 +1903,7 @@ function renderFeelings(){
   const feed=$('feelingsFeed');if(!feelingsData.length){feed.innerHTML='<div class="friend-search-empty">Belum ada Feeling dari kamu atau temanmu.</div>';return}
   feelingsData.forEach(x=>{
     const p=feelingPerson(x.user_id),own=x.user_id===currentUserId();
-    const card=document.createElement('div');card.className='feeling-card';
+    const card=document.createElement('div');card.className='feeling-card';card.dataset.feelingCard=x.id;
     const cs=(x.comments||[]).map(c=>{const cp=feelingPerson(c.user_id);return '<div class="feeling-comment"><b>'+esc(cp.name)+'</b> '+esc(c.body)+'</div>'}).join('');
     const cc=(x.comments||[]).length;
     card.innerHTML='<div class="feeling-head">'+friendAvatarHTML(p)+'<div><div class="feeling-name">'+esc(p.name)+'</div><div class="feeling-time">'+new Date(x.created_at).toLocaleString('id-ID',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'})+'</div></div></div><div class="feeling-body">'+esc(x.body)+'</div><div class="feeling-comments"><div class="feeling-comment-list" data-feeling-comments="'+x.id+'">'+cs+'</div><div class="feeling-actions"><button class="feeling-action" data-feeling-comments-toggle="'+x.id+'">💬 Komentar'+(cc?' '+cc:'')+'</button><button class="feeling-action" data-feeling-comment-toggle="'+x.id+'">✍️ Tulis</button><button class="feeling-action gift" data-feeling-gift="'+x.id+'">🎁 Hadiah</button>'+(x.giftTotal?'<span class="feeling-gift-total">🎁 '+formatRupiah(x.giftTotal)+'</span>':'')+'</div><div class="feeling-comment-form" data-feeling-form="'+x.id+'"><input maxlength="300" data-feeling-input="'+x.id+'" placeholder="Tulis komentar..."><button data-feeling-comment="'+x.id+'">Kirim</button></div></div>';
