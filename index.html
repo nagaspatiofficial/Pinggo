@@ -944,17 +944,55 @@ button, input, select, textarea {
 
 /* PINGGO COMPANION — isolated Feeling module */
 .pinggo-companion-card{
-  position:relative;overflow:hidden;background:linear-gradient(135deg,rgba(255,255,255,.93),rgba(255,235,244,.95));
-  border:1px solid rgba(233,79,145,.16);border-radius:18px;padding:12px 13px;margin:0 0 9px;
-  box-shadow:0 6px 18px rgba(89,58,74,.06)
+  position:relative;
+  overflow:hidden;
+  background:linear-gradient(135deg,#fff4f8 0%,#fbe8f3 52%,#f1e6ff 100%);
+  border:1.5px solid rgba(225,93,157,.32);
+  border-radius:18px;
+  padding:12px 13px;
+  margin:0 0 9px;
+  box-shadow:0 7px 20px rgba(149,91,126,.10)
 }
-.pinggo-companion-card::after{content:"";position:absolute;width:95px;height:95px;border-radius:50%;right:-35px;top:-45px;background:rgba(233,79,145,.08);pointer-events:none}
-.pinggo-companion-head{display:flex;align-items:center;gap:9px;margin-bottom:7px}
-.pinggo-companion-avatar{width:34px;height:34px;border-radius:12px;display:grid;place-items:center;flex:0 0 34px;background:linear-gradient(135deg,var(--pinggo-pink),var(--pinggo-pink-dark));color:#fff;font-size:15px;font-weight:900;box-shadow:0 5px 12px rgba(233,79,145,.22)}
-.pinggo-companion-meta{min-width:0;flex:1}.pinggo-companion-name{font-size:12px;font-weight:900;color:var(--pinggo-gray-dark)}
-.pinggo-companion-badge{display:inline-flex;margin-left:5px;padding:2px 6px;border-radius:999px;background:#fbe3ed;color:var(--pinggo-pink-dark);font-size:8px;font-weight:900;vertical-align:1px}
-.pinggo-companion-time{font-size:9px;color:var(--text-muted);margin-top:2px}
-.pinggo-companion-text{position:relative;z-index:1;font-size:13px;line-height:1.42;color:var(--text-main);white-space:pre-wrap;word-break:break-word}
+.pinggo-companion-card::before{
+  content:"";
+  position:absolute;
+  width:120px;height:120px;border-radius:50%;
+  right:-50px;top:-58px;
+  background:radial-gradient(circle,rgba(255,255,255,.72),rgba(233,79,145,.08) 70%);
+  pointer-events:none
+}
+.pinggo-companion-card::after{
+  content:"✦";
+  position:absolute;
+  right:18px;top:13px;
+  color:rgba(233,79,145,.30);
+  font-size:14px;
+  pointer-events:none
+}
+.pinggo-companion-head{display:flex;align-items:center;gap:10px;margin-bottom:7px;position:relative;z-index:1}
+.pinggo-companion-avatar{
+  width:46px;height:46px;border-radius:15px;overflow:hidden;flex:0 0 46px;
+  background:linear-gradient(135deg,#f7b3d0,#d7b8ff);
+  border:2px solid rgba(255,255,255,.92);
+  box-shadow:0 5px 14px rgba(190,83,137,.18)
+}
+.pinggo-companion-avatar img{width:100%;height:100%;object-fit:cover;display:block}
+.pinggo-companion-meta{min-width:0;flex:1}
+.pinggo-companion-name{
+  font-size:13px;font-weight:950;letter-spacing:.25px;color:#3f3540
+}
+.pinggo-companion-badge{
+  display:inline-flex;align-items:center;margin-left:6px;padding:3px 7px;border-radius:999px;
+  background:linear-gradient(135deg,#f8aac8,#e94f91);
+  color:#fff;font-size:8px;font-weight:950;letter-spacing:.35px;vertical-align:1px;
+  box-shadow:0 3px 9px rgba(233,79,145,.18)
+}
+.pinggo-companion-time{font-size:9px;color:#8e7b88;margin-top:3px}
+.pinggo-companion-text{
+  position:relative;z-index:1;font-size:13px;line-height:1.46;
+  color:#342c33;font-weight:650;white-space:pre-wrap;word-break:break-word;
+  padding-left:1px
+}
 
 #navFeeling{position:relative}
 .feeling-tab-badge{
@@ -1892,7 +1930,7 @@ function pinggoCompanionTimeLabel(ts){try{return new Date(Number(ts)||Date.now()
 function renderPinggoCompanion(){
   const slot=$('pinggoCompanionSlot');if(!slot)return;const s=ensurePinggoCompanionState(false);
   if(!s){slot.innerHTML='';return}
-  slot.innerHTML='<div class="pinggo-companion-card"><div class="pinggo-companion-head"><div class="pinggo-companion-avatar">P</div><div class="pinggo-companion-meta"><div class="pinggo-companion-name">PINGGO <span class="pinggo-companion-badge">COMPANION</span></div><div class="pinggo-companion-time">'+esc(pinggoCompanionTimeLabel(s.createdAt))+'</div></div></div><div class="pinggo-companion-text">'+esc(s.message)+'</div></div>';
+  slot.innerHTML='<div class="pinggo-companion-card"><div class="pinggo-companion-head"><div class="pinggo-companion-avatar"><img src="./pinggo-companion-avatar.png" alt="PINGGO Companion"></div><div class="pinggo-companion-meta"><div class="pinggo-companion-name">PINGGO <span class="pinggo-companion-badge">COMPANION</span></div><div class="pinggo-companion-time">'+esc(pinggoCompanionTimeLabel(s.createdAt))+'</div></div></div><div class="pinggo-companion-text">'+esc(s.message)+'</div></div>';
 }
 function schedulePinggoCompanion(){
   if(pinggoCompanionTimer){clearTimeout(pinggoCompanionTimer);pinggoCompanionTimer=null}
