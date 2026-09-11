@@ -1410,7 +1410,7 @@ const COIN_IMAGES={heart:'./pinggo-coin-heart.webp',rose:'./pinggo-coin-rose.web
 const STORE={account:'pinggo_local_account',session:'pinggo_session_v2',chat:'pinggo_fast_chat_v2',friends:'pinggo_fast_friends_v2',secret:'pinggo_fast_secret_v2',prefs:'pinggo_fast_prefs_v2',coins:'pinggo_coin_balance_v1'};
 const read=(k,d)=>{try{const x=JSON.parse(localStorage.getItem(k));return x??d}catch{return d}};
 const write=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch{}};
-let authMode='login',pendingPinggoId='',currentChatId=null,selectedSecretFile=null,selectedSecretUrl='',selectedPrice=0,currentFriendView='friends',currentSecretView='received';
+let authMode='login',pendingPinggoId='',currentChatId=null,selectedSecretFile=null,selectedSecretUrl='',selectedPrice=0,secretCreateMode='feed',secretCreateChatUserId=null,currentFriendView='friends',currentSecretView='received';
 let coinBalance=Math.max(0,Number(read(STORE.coins,0))||0);
 let prefs=Object.assign({privacy:false,secretPrivate:false,notifications:true,appearance:'Pink & Gray'},read(STORE.prefs,{}));
 let walletHistory=read('pinggo_coin_history_v1',[]);
@@ -2178,11 +2178,28 @@ async function loadWallet(){
     if($('creatorBalance'))$('creatorBalance').innerHTML=`<img class="pinggo-coin-icon" src="${COIN_IMAGES.diamond}" alt="PINGGO Coin">${formatCoin(creatorBalance)}`;if($('creatorLifetime'))$('creatorLifetime').textContent='Total diperoleh '+formatCoin(creatorLifetime)+' Coin';
   }catch(e){console.warn('Wallet backend:',e)}
 }
+function parseChatSecretBody(body){
+  try{
+    const x=JSON.parse(body||'');
+    return x&&x.pinggoSecret===1&&x.secretDropId?x:null;
+  }catch(_){return null}
+}
+async function myChatSecretIds(){
+  const uid=currentUserId();if(!uid)return new Set();
+  try{
+    const rows=await supabaseRequest('/rest/v1/messages?sender_id=eq.'+encodeURIComponent(uid)+'&media_type=eq.secret&deleted_at=is.null&select=body&limit=1000');
+    return new Set((rows||[]).map(r=>parseChatSecretBody(r.body)?.secretDropId).filter(Boolean));
+  }catch(_){return new Set()}
+}
 async function loadBackendSecrets(){
   const uid=currentUserId();if(!uid)return;
   try{
-    const drops=await supabaseRequest('/rest/v1/secret_drops?sender_id=eq.'+encodeURIComponent(uid)+'&status=eq.active&select=id,sender_id,media_path,media_type,price_gems,status,caption,created_at&order=created_at.desc');
-    backendSecrets={received:[],unlocked:[],sent:(drops||[]).map(d=>({id:d.id,senderId:d.sender_id,caption:d.caption||'Secret PINGGO',price:Number(d.price_gems)||0,type:(d.media_type||'image').startsWith('video')?'video':'image',mediaPath:d.media_path,url:'',unlocked:true,date:d.created_at?new Date(d.created_at).toLocaleString('id-ID',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}):'',author:'Saya'}))};
+    const [drops,chatIds]=await Promise.all([
+      supabaseRequest('/rest/v1/secret_drops?sender_id=eq.'+encodeURIComponent(uid)+'&status=eq.active&select=id,sender_id,media_path,media_type,price_gems,status,caption,created_at&order=created_at.desc'),
+      myChatSecretIds()
+    ]);
+    const visible=(drops||[]).filter(d=>!chatIds.has(d.id));
+    backendSecrets={received:[],unlocked:[],sent:visible.map(d=>({id:d.id,senderId:d.sender_id,caption:d.caption||'Secret PINGGO',price:Number(d.price_gems)||0,type:(d.media_type||'image').startsWith('video')?'video':'image',mediaPath:d.media_path,url:'',unlocked:true,date:d.created_at?new Date(d.created_at).toLocaleString('id-ID',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}):'',author:'Saya'}))};
     secretState=backendSecrets;renderSecret();
   }catch(e){console.warn('Secret milik saya gagal:',e);backendSecrets={received:[],sent:[],unlocked:[]};secretState=backendSecrets;$('secretFeed').innerHTML='<div class="empty-state">Secret PINGGO belum dapat dimuat.</div>'}
 }
@@ -2203,7 +2220,24 @@ async function openFriendSecretDrop(friendId){
 }
 $('secretFeed').onclick=async e=>{const b=e.target.closest('[data-open-secret]');if(!b)return;const x=(backendSecrets.sent||[]).find(z=>z.id===b.dataset.openSecret);if(!x)return;try{const url=await getSecretUrl(x);if(url)openMedia(x.type,url)}catch(err){alert(err.message)}};
 $('friendProfileBody').addEventListener('click',async e=>{const back=e.target.closest('[data-secret-back]');if(back){renderFriendProfile(back.dataset.secretBack);return}const b=e.target.closest('[data-friend-secret]');if(!b)return;const x=(window.__friendSecretItems||[]).find(z=>z.id===b.dataset.friendSecret);if(!x)return;try{if(x.price>0&&!x.unlocked){if(!confirm('Buka konten ini dengan '+formatCoin(x.price)+' PINGGO Coin?'))return;await rpc('purchase_secret',{p_secret_drop_id:x.id});await loadWallet();await openFriendSecretDrop(b.dataset.friendOwner);return}const url=await getSecretUrl(x);if(url)openMedia(x.type,url)}catch(err){alert(err.message)}});
-window.openSecretCreate=function(){selectedSecretFile=null;selectedSecretUrl='';selectedPrice=0;$('secretPreview').textContent='Belum ada media dipilih';$('secretFile').value='';$('postCaption').value='';$('postPrice').value='';document.querySelectorAll('#priceGrid [data-price]').forEach(x=>x.classList.toggle('active',Number(x.dataset.price)===0));$('postModal').classList.add('show')};window.openPostModal=window.openSecretCreate;window.closePostModal=()=>$('postModal').classList.remove('show');$('pickSecretFile').onclick=()=>$('secretFile').click();$('secretFile').onchange=()=>{selectedSecretFile=$('secretFile').files?.[0]||null;if(!selectedSecretFile)return;if(selectedSecretUrl)URL.revokeObjectURL(selectedSecretUrl);selectedSecretUrl=URL.createObjectURL(selectedSecretFile);$('secretPreview').innerHTML='';const m=document.createElement(selectedSecretFile.type.startsWith('video/')?'video':'img');m.src=selectedSecretUrl;if(m.tagName==='VIDEO'){m.muted=true;m.playsInline=true}$('secretPreview').append(m)};$('priceGrid').onclick=e=>{const b=e.target.closest('[data-price]');if(!b)return;document.querySelectorAll('#priceGrid [data-price]').forEach(x=>x.classList.remove('active'));b.classList.add('active');selectedPrice=Number(b.dataset.price||0);$('postPrice').value=''};$('postPrice').oninput=()=>{const raw=Math.max(0,Math.floor(Number($('postPrice').value)||0));selectedPrice=raw;document.querySelectorAll('#priceGrid [data-price]').forEach(x=>x.classList.remove('active'))};
+window.openSecretCreate=function(mode='feed',chatUserId=null){
+  secretCreateMode=mode==='chat'?'chat':'feed';
+  secretCreateChatUserId=secretCreateMode==='chat'?(chatUserId||currentChatId):null;
+  selectedSecretFile=null;selectedSecretUrl='';selectedPrice=0;
+  $('secretPreview').textContent='Belum ada media dipilih';$('secretFile').value='';$('postCaption').value='';$('postPrice').value='';
+  document.querySelectorAll('#priceGrid [data-price]').forEach(x=>x.classList.toggle('active',Number(x.dataset.price)===0));
+  const title=$('postModal')?.querySelector('.modal-title');
+  if(title)title.textContent=secretCreateMode==='chat'?'Kirim Secret Drop':'Post Secret Drop';
+  const publish=$('publishSecretBtn');
+  if(publish)publish.textContent=secretCreateMode==='chat'?'Kirim':'Publikasikan';
+  $('postModal').classList.add('show')
+};
+window.openPostModal=()=>window.openSecretCreate('feed',null);
+window.closePostModal=()=>{
+  $('postModal').classList.remove('show');
+  secretCreateMode='feed';
+  secretCreateChatUserId=null;
+};$('pickSecretFile').onclick=()=>$('secretFile').click();$('secretFile').onchange=()=>{selectedSecretFile=$('secretFile').files?.[0]||null;if(!selectedSecretFile)return;if(selectedSecretUrl)URL.revokeObjectURL(selectedSecretUrl);selectedSecretUrl=URL.createObjectURL(selectedSecretFile);$('secretPreview').innerHTML='';const m=document.createElement(selectedSecretFile.type.startsWith('video/')?'video':'img');m.src=selectedSecretUrl;if(m.tagName==='VIDEO'){m.muted=true;m.playsInline=true}$('secretPreview').append(m)};$('priceGrid').onclick=e=>{const b=e.target.closest('[data-price]');if(!b)return;document.querySelectorAll('#priceGrid [data-price]').forEach(x=>x.classList.remove('active'));b.classList.add('active');selectedPrice=Number(b.dataset.price||0);$('postPrice').value=''};$('postPrice').oninput=()=>{const raw=Math.max(0,Math.floor(Number($('postPrice').value)||0));selectedPrice=raw;document.querySelectorAll('#priceGrid [data-price]').forEach(x=>x.classList.remove('active'))};
 async function deleteSecretFromMyView(id){
   const x=(backendSecrets.sent||[]).find(z=>z.id===id);if(!x)return;
   if(!confirm('Hapus konten ini dari daftar?'))return;
@@ -2214,8 +2248,90 @@ async function deleteSecretFromMyView(id){
 }
 $('secretFeed').addEventListener('click',e=>{const d=e.target.closest('[data-delete-secret]');if(d){e.preventDefault();e.stopPropagation();deleteSecretFromMyView(d.dataset.deleteSecret)}});
 
-$('publishSecretBtn').onclick=async()=>{if(!selectedSecretFile)return alert('Pilih foto atau video terlebih dahulu.');if(!currentUserId())return alert('Silakan login kembali.');const btn=$('publishSecretBtn');btn.disabled=true;btn.textContent='Mengupload...';try{const id=crypto.randomUUID();const ext=(selectedSecretFile.name.split('.').pop()||((selectedSecretFile.type||'').includes('video')?'mp4':'jpg')).replace(/[^a-zA-Z0-9]/g,'').toLowerCase();const path=currentUserId()+'/'+id+'.'+ext;await storageUpload('secret-media',path,selectedSecretFile);await supabaseRequest('/rest/v1/secret_drops',{method:'POST',headers:{'Content-Type':'application/json','Prefer':'return=minimal'},body:JSON.stringify({id,sender_id:currentUserId(),media_path:path,media_type:(selectedSecretFile.type||'').startsWith('video/')?'video':'image',price_gems:selectedPrice,caption:$('postCaption').value.trim()||'Secret PINGGO',is_private:!!prefs.secretPrivate,status:'active'})});closePostModal();await loadBackendSecrets();alert('Secret PINGGO berhasil diposting.')}catch(e){alert(e.message)}finally{btn.disabled=false;btn.textContent='Post'}};
-$('secretAttach').onclick=()=>{$('attachMenu').classList.remove('show');openSecretCreate()};
+$('publishSecretBtn').onclick=async()=>{
+  if(!selectedSecretFile)return alert('Pilih foto atau video terlebih dahulu.');
+  if(!currentUserId())return alert('Silakan login kembali.');
+  const btn=$('publishSecretBtn');
+  const isChat=secretCreateMode==='chat';
+  const targetUser=isChat?(secretCreateChatUserId||currentChatId):null;
+  if(isChat&&!targetUser)return alert('Percakapan tidak ditemukan.');
+  btn.disabled=true;btn.textContent=isChat?'Mengirim...':'Mengupload...';
+  try{
+    const id=crypto.randomUUID();
+    const ext=(selectedSecretFile.name.split('.').pop()||((selectedSecretFile.type||'').includes('video')?'mp4':'jpg')).replace(/[^a-zA-Z0-9]/g,'').toLowerCase();
+    const mediaKind=(selectedSecretFile.type||'').startsWith('video/')?'video':'image';
+    const path=currentUserId()+'/'+id+'.'+ext;
+    await storageUpload('secret-media',path,selectedSecretFile);
+
+    await supabaseRequest('/rest/v1/secret_drops',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','Prefer':'return=minimal'},
+      body:JSON.stringify({
+        id,
+        sender_id:currentUserId(),
+        media_path:path,
+        media_type:mediaKind,
+        price_gems:selectedPrice,
+        caption:$('postCaption').value.trim()||'Secret PINGGO',
+        is_private:isChat?true:!!prefs.secretPrivate,
+        status:'active'
+      })
+    });
+
+    if(isChat){
+      const cid=await ensureConversationForUser(targetUser);
+      try{
+        await supabaseRequest('/rest/v1/secret_drop_recipients',{
+          method:'POST',
+          headers:{'Content-Type':'application/json','Prefer':'resolution=ignore-duplicates,return=minimal'},
+          body:JSON.stringify({
+            secret_drop_id:id,
+            recipient_id:targetUser,
+            unlocked_at:selectedPrice===0?new Date().toISOString():null
+          })
+        });
+      }catch(e){
+        console.warn('Recipient Secret Drop chat belum tersimpan:',e);
+      }
+
+      const payload={
+        pinggoSecret:1,
+        secretDropId:id,
+        caption:$('postCaption').value.trim()||'Secret PINGGO',
+        price:Number(selectedPrice)||0,
+        type:mediaKind
+      };
+      await supabaseRequest('/rest/v1/messages',{
+        method:'POST',
+        headers:{'Content-Type':'application/json','Prefer':'return=minimal'},
+        body:JSON.stringify({
+          id:crypto.randomUUID(),
+          conversation_id:cid,
+          sender_id:currentUserId(),
+          body:JSON.stringify(payload),
+          media_type:'secret'
+        })
+      });
+
+      closePostModal();
+      await loadConversationMessages(cid);
+      await loadBackendChats();
+      sendPushTo(targetUser,'PINGGO • '+(account()?.name||'Secret Drop'),'🔒 Mengirim Secret Drop');
+    }else{
+      closePostModal();
+      await loadBackendSecrets();
+      alert('Secret PINGGO berhasil diposting.');
+    }
+  }catch(e){alert(e.message)}
+  finally{
+    btn.disabled=false;
+    btn.textContent=secretCreateMode==='chat'?'Kirim':'Publikasikan';
+  }
+};
+$('secretAttach').onclick=()=>{
+  $('attachMenu').classList.remove('show');
+  openSecretCreate('chat',currentChatId);
+};
 function formatCoin(v){return Math.max(0,Math.floor(Number(v)||0)).toLocaleString('id-ID')}
 function updateCoin(){$('gemBalance').innerHTML=`<img class="pinggo-coin-icon" src="${COIN_IMAGES.diamond}" alt="PINGGO Coin">${formatCoin(coinBalance)}`}
 function coinMeta(){return {type:'pinggo',unit:1000,name:'PINGGO Coin',img:COIN_IMAGES.diamond}}
@@ -2365,7 +2481,7 @@ async function loadBackendChats(){
       const last=cm[0];
       if(!last)continue;
       const unread=cm.filter(m=>m.sender_id!==uid&&!m.read_at).length;
-      const preview=last.media_type==='image'?'📷 Foto':last.media_type==='video'?'🎥 Video':(last.media_type==='voice'||String(last.media_type||'').startsWith('audio'))?'🎙 Voice message':(last.body||'Pesan');
+      const preview=last.media_type==='image'?'📷 Foto':last.media_type==='video'?'🎥 Video':last.media_type==='secret'?'🔒 Secret Drop':(last.media_type==='voice'||String(last.media_type||'').startsWith('audio'))?'🎙 Voice message':(last.body||'Pesan');
       rows.push({id:other||c.id,conversationId:c.id,name:p?.name||c.title||'PINGGO Chat',preview,time:fmtChatTime(last.created_at),unread,avatar:p?.avatar||'P',photo:p?.photo||'',group:c.kind!=='direct',favorite:false,online:!!p?.online,lastAt:new Date(last.created_at||0).getTime()});
     }
     chatsData=rows.sort((a,b)=>b.lastAt-a.lastAt);
@@ -2389,8 +2505,8 @@ async function loadConversationMessages(conversationId){
     const rows=await supabaseRequest('/rest/v1/messages?conversation_id=eq.'+encodeURIComponent(conversationId)+'&deleted_at=is.null'+after+'&select=id,conversation_id,sender_id,body,media_path,media_type,created_at,read_at&order=created_at.asc&limit=250');
     const uid=currentUserId();const mapped=[];
     for(const m of (rows||[])){
-      let kind='text',url='';if(m.media_type){kind=m.media_type==='audio'?'voice':m.media_type;if(kind==='voice'||kind==='image'||kind==='video'){try{url=await resolveChatMedia(m.media_path)}catch(_){url=''}}}
-      mapped.push({id:m.id,side:m.sender_id===uid?'out':'in',kind,text:m.body||'',url,time:fmtChatTime(m.created_at)+(m.sender_id===uid?(m.read_at?' ✓✓':' ✓'):'')});
+      let kind='text',url='',secret=null;if(m.media_type){kind=m.media_type==='audio'?'voice':m.media_type;if(kind==='voice'||kind==='image'||kind==='video'){try{url=await resolveChatMedia(m.media_path)}catch(_){url=''}}if(kind==='secret')secret=parseChatSecretBody(m.body)}
+      mapped.push({id:m.id,side:m.sender_id===uid?'out':'in',kind,text:kind==='secret'?'':(m.body||''),url,secret,time:fmtChatTime(m.created_at)+(m.sender_id===uid?(m.read_at?' ✓✓':' ✓'):'')});
     }
     backendChatHistory[conversationId]=mapped;
     await rpc('mark_conversation_read',{p_conversation:conversationId}).catch(()=>{});
@@ -2432,6 +2548,7 @@ function realtimeMessagePreview(m){
   if(!m)return 'Pesan';
   if(m.media_type==='image')return '📷 Foto';
   if(m.media_type==='video')return '🎥 Video';
+  if(m.media_type==='secret')return '🔒 Secret Drop';
   if(m.media_type==='voice'||m.media_type==='audio'||String(m.media_type||'').startsWith('audio'))return '🎙 Voice message';
   return m.body||'Pesan';
 }
@@ -2515,10 +2632,30 @@ async function deleteChatMessage(messageId){
     await loadBackendChats();
   }catch(e){alert('Pesan gagal dihapus: '+e.message)}
 }
+async function openChatSecretMessage(m){
+  const s=m?.secret;if(!s?.secretDropId)return alert('Secret Drop tidak valid.');
+  try{
+    const rows=await supabaseRequest('/rest/v1/secret_drops?id=eq.'+encodeURIComponent(s.secretDropId)+'&status=eq.active&select=id,sender_id,media_path,media_type,price_gems,caption&limit=1');
+    const d=rows?.[0];if(!d)return alert('Secret Drop sudah tidak tersedia.');
+    const mine=d.sender_id===currentUserId();
+    const price=Number(d.price_gems)||0;
+    if(!mine&&price>0){
+      const rec=await supabaseRequest('/rest/v1/secret_drop_recipients?secret_drop_id=eq.'+encodeURIComponent(d.id)+'&recipient_id=eq.'+encodeURIComponent(currentUserId())+'&select=unlocked_at&limit=1').catch(()=>[]);
+      const unlocked=!!rec?.[0]?.unlocked_at;
+      if(!unlocked){
+        if(!confirm('Buka Secret Drop ini dengan '+formatCoin(price)+' PINGGO Coin?'))return;
+        await rpc('purchase_secret',{p_secret_drop_id:d.id});
+        await loadWallet().catch(()=>{});
+      }
+    }
+    const url=await signedStorageUrl('secret-media',d.media_path,900);
+    if(url)openMedia((d.media_type||'image').startsWith('video')?'video':'image',url);
+  }catch(e){alert(e.message||'Secret Drop tidak dapat dibuka.')}
+}
 function renderHistory(){
   if(!currentChatId)return;const cid=chatConversationByUser[currentChatId];const box=$('chatMessages');box.innerHTML='<div class="date-divider">Hari ini</div>';
   const arr=backendChatHistory[cid]||[];if(!arr.length){box.innerHTML+='<div class="empty-state">Belum ada pesan. Mulai percakapan.</div>';return}
-  arr.forEach(m=>{const row=document.createElement('div');row.className='msg-row '+(m.side==='out'?'outgoing':'incoming');row.dataset.messageId=m.id||'';if(m.kind==='image'||m.kind==='video'){const card=document.createElement('div');card.className='media-message';if(m.url){const media=document.createElement(m.kind==='image'?'img':'video');media.src=m.url;if(m.kind==='video'){media.controls=true;media.playsInline=true}media.onclick=()=>openMedia(m.kind,m.url);card.append(media)}const cap=document.createElement('div');cap.className='media-caption';cap.textContent=(m.kind==='image'?'📷 Foto':'🎥 Video')+' • '+m.time;card.append(cap);row.append(card);bindDeleteGesture(card,m)}else if(m.kind==='voice'){const b=document.createElement('div');b.className='msg-bubble voice-message';if(m.url){const a=document.createElement('audio');a.controls=true;a.src=m.url;b.append(a)}const t=document.createElement('span');t.className='msg-time';t.textContent=m.time;b.append(t);row.append(b);bindDeleteGesture(b,m)}else{const b=document.createElement('div');b.className='msg-bubble';b.innerHTML=esc(m.text||'')+` <span class="msg-time">${esc(m.time||'')}</span>`;row.append(b);bindDeleteGesture(b,m)}box.append(row)});requestAnimationFrame(()=>box.scrollTop=box.scrollHeight)
+  arr.forEach(m=>{const row=document.createElement('div');row.className='msg-row '+(m.side==='out'?'outgoing':'incoming');row.dataset.messageId=m.id||'';if(m.kind==='image'||m.kind==='video'){const card=document.createElement('div');card.className='media-message';if(m.url){const media=document.createElement(m.kind==='image'?'img':'video');media.src=m.url;if(m.kind==='video'){media.controls=true;media.playsInline=true}media.onclick=()=>openMedia(m.kind,m.url);card.append(media)}const cap=document.createElement('div');cap.className='media-caption';cap.textContent=(m.kind==='image'?'📷 Foto':'🎥 Video')+' • '+m.time;card.append(cap);row.append(card);bindDeleteGesture(card,m)}else if(m.kind==='voice'){const b=document.createElement('div');b.className='msg-bubble voice-message';if(m.url){const a=document.createElement('audio');a.controls=true;a.src=m.url;b.append(a)}const t=document.createElement('span');t.className='msg-time';t.textContent=m.time;b.append(t);row.append(b);bindDeleteGesture(b,m)}else if(m.kind==='secret'){const s=m.secret||{};const card=document.createElement('div');card.className='secret-chat-card';card.innerHTML=`<div class="secret-chat-thumb">🔒</div><div class="secret-chat-meta"><b>${esc(s.caption||'Secret Drop')}</b><div style="color:var(--pinggo-pink-dark);font-weight:850;margin:3px 0">${Number(s.price||0)>0?formatCoin(s.price)+' PINGGO Coin':'FREE'}</div><small>${esc(m.time||'')}</small><button type="button" class="btn-unlock" style="margin-top:7px">Buka</button></div>`;card.querySelector('button').onclick=()=>openChatSecretMessage(m);row.append(card);bindDeleteGesture(card,m)}else{const b=document.createElement('div');b.className='msg-bubble';b.innerHTML=esc(m.text||'')+` <span class="msg-time">${esc(m.time||'')}</span>`;row.append(b);bindDeleteGesture(b,m)}box.append(row)});requestAnimationFrame(()=>box.scrollTop=box.scrollHeight)
 }
 async function openChatRoom(id){
   try{if(!$('chatRoom').classList.contains('open')&&!history.state?.pinggoChat)history.pushState({pinggoChat:true},'',location.href);currentChatId=id;const p=people[id]||{name:id,avatar:'P',online:false};$('roomName').textContent=p.name;const roomAvatar=$('roomAvatar');if(p.photo)roomAvatar.innerHTML=`<img class="friend-avatar-img" src="${esc(p.photo)}" alt="${esc(p.name)}">`;else roomAvatar.textContent=p.avatar;const st=document.querySelector('#chatRoom .room-user-info small');if(st){st.textContent=p.online?'Online':(p.lastSeen||'Offline');st.style.color=p.online?'var(--green-online)':'var(--text-muted)'};$('chatRoom').classList.add('open');await ensureConversationForUser(id);await loadConversationMessages(chatConversationByUser[id]);await loadBackendChats();$('msgInput').focus({preventScroll:true})}catch(e){alert(e.message)}
