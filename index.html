@@ -12,9 +12,10 @@ if('serviceWorker' in navigator){
       const reg=await navigator.serviceWorker.register('./pinggo-sw.js',{updateViaCache:'none'});
     }catch(_){ }
   });
+  let pinggoSwReloading=false;
   navigator.serviceWorker.addEventListener('controllerchange',()=>{
-    if(sessionStorage.getItem('pinggo_sw_reloaded')==='1')return;
-    sessionStorage.setItem('pinggo_sw_reloaded','1');
+    if(pinggoSwReloading)return;
+    pinggoSwReloading=true;
     location.reload();
   });
   window.addEventListener('pageshow',e=>{if(e.persisted)location.reload()});
@@ -1418,8 +1419,6 @@ const people={};
 let friendRowsByUser={};
 const defaultChat={};
 let chatStore={};
-const getHistory=id=>[];
-const setHistory=(id,h)=>{};
 let chatsData=[];
 let friendsState=Object.assign({friends:[],requests:[],sent:[],blocked:[]},read(STORE.friends,{}));
 friendsState.friends=Array.isArray(friendsState.friends)?friendsState.friends:[];friendsState.requests=Array.isArray(friendsState.requests)?friendsState.requests:[];friendsState.sent=Array.isArray(friendsState.sent)?friendsState.sent:[];friendsState.blocked=Array.isArray(friendsState.blocked)?friendsState.blocked:[];
@@ -1691,14 +1690,11 @@ window.logout=function(){
 window.switchPanel=function(name,btn){document.querySelectorAll('.panel').forEach(x=>x.classList.remove('active'));document.querySelectorAll('.nav-item').forEach(x=>x.classList.remove('active'));$('panel'+name).classList.add('active');btn.classList.add('active');if(name==='Feeling'){markFeelingsSeen();requestFeelingsRender();loadFeelings(false).then(()=>markFeelingsSeen()).catch(e=>console.warn('Feeling gagal dimuat:',e))}if(name==='Profile'){renderProfile();loadWallet()}if(name==='Friends')renderFriends();if(name==='Drop'){loadBackendSecrets();renderSecret()}};
 window.openGlobalSearch=function(){const nav=document.querySelector('.nav-item[onclick*="Chats"]');if(nav)switchPanel('Chats',nav);if(typeof setChatFilter==='function')setChatFilter('all');const input=document.querySelector('#panelChats .search-bar input');if(input){input.focus({preventScroll:true});try{input.setSelectionRange(input.value.length,input.value.length)}catch(_){}}};
 window.openCurrentChatProfile=function(){if(!currentChatId)return;const u=people[currentChatId];if(!u)return alert('Profil pengguna belum tersedia.');renderFriendProfile(currentChatId)};
-window.closeChatRoom=function(fromHistory=false){$('attachMenu').classList.remove('show');$('chatRoom').classList.remove('open');currentChatId=null;if(!fromHistory&&history.state?.pinggoChat){history.back()}};
-function pushChat(item,preview){if(!currentChatId)return false;const h=getHistory(currentChatId);h.push(item);setHistory(currentChatId,h);const c=chatsData.find(x=>x.id===currentChatId);if(c){c.preview=preview;c.time=now()}renderHistory();renderChats();return true}
-$('sendBtn').onclick=sendText;$('msgInput').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();sendText()}});$('attachBtn').onclick=()=>$('attachMenu').classList.toggle('show');
-$('chatPhotoFile').onchange=()=>{addMedia($('chatPhotoFile').files?.[0],'image');$('chatPhotoFile').value=''};$('chatVideoFile').onchange=()=>{addMedia($('chatVideoFile').files?.[0],'video');$('chatVideoFile').value=''};
+$('msgInput').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();sendText()}});$('attachBtn').onclick=()=>$('attachMenu').classList.toggle('show');
 function openMedia(kind,url){const box=$('mediaViewerContent');box.innerHTML='';const m=document.createElement(kind==='image'?'img':'video');m.src=url;if(kind==='video'){m.controls=true;m.autoplay=true;m.playsInline=true}box.append(m);$('mediaViewer').classList.add('show')}$('closeMediaViewer').onclick=()=>{$('mediaViewer').classList.remove('show');$('mediaViewerContent').innerHTML=''};
 let recorder=null,voiceStream=null,voiceChunks=[],voiceUrl='',voiceSecs=0,voiceTick=null;
 function resetVoice(){if(voiceStream){voiceStream.getTracks().forEach(t=>t.stop());voiceStream=null}clearInterval(voiceTick);voiceTick=null;recorder=null;voiceChunks=[];voiceSecs=0;$('voiceTimer').textContent='00:00';$('voiceStatus').textContent='Siap merekam';$('voiceIcon').classList.remove('recording');$('voiceStart').style.display='block';$('voiceStop').style.display='none';$('voiceSend').style.display='none';$('voicePreview').style.display='none'}
-$('voiceAttach').onclick=()=>{$('attachMenu').classList.remove('show');resetVoice();$('voiceModal').classList.add('show')};$('voiceCancel').onclick=()=>{resetVoice();$('voiceModal').classList.remove('show')};$('voiceStart').onclick=async()=>{try{voiceStream=await navigator.mediaDevices.getUserMedia({audio:true});recorder=new MediaRecorder(voiceStream);voiceChunks=[];recorder.ondataavailable=e=>{if(e.data.size)voiceChunks.push(e.data)};recorder.onstop=()=>{const blob=new Blob(voiceChunks,{type:recorder.mimeType||'audio/webm'});voiceUrl=URL.createObjectURL(blob);$('voicePreview').src=voiceUrl;$('voicePreview').style.display='block';$('voiceSend').style.display='block';$('voiceStatus').textContent='Rekaman siap dikirim';if(voiceStream){voiceStream.getTracks().forEach(t=>t.stop());voiceStream=null}};recorder.start();voiceSecs=0;$('voiceIcon').classList.add('recording');$('voiceStart').style.display='none';$('voiceStop').style.display='block';$('voiceStatus').textContent='Sedang merekam...';voiceTick=setInterval(()=>{voiceSecs++;$('voiceTimer').textContent=String(Math.floor(voiceSecs/60)).padStart(2,'0')+':'+String(voiceSecs%60).padStart(2,'0')},1000)}catch{alert('Izin mikrofon diperlukan untuk Voice Message.')}};$('voiceStop').onclick=()=>{clearInterval(voiceTick);if(recorder?.state==='recording')recorder.stop();$('voiceIcon').classList.remove('recording');$('voiceStop').style.display='none'};$('voiceSend').onclick=()=>{if(!voiceUrl)return;const keep=voiceUrl;voiceUrl='';pushChat({side:'out',kind:'voice',url:keep,time:now()+' ✓'},'🎙 Voice message');resetVoice();$('voiceModal').classList.remove('show')};
+$('voiceAttach').onclick=()=>{$('attachMenu').classList.remove('show');resetVoice();$('voiceModal').classList.add('show')};$('voiceCancel').onclick=()=>{resetVoice();$('voiceModal').classList.remove('show')};$('voiceStart').onclick=async()=>{try{voiceStream=await navigator.mediaDevices.getUserMedia({audio:true});recorder=new MediaRecorder(voiceStream);voiceChunks=[];recorder.ondataavailable=e=>{if(e.data.size)voiceChunks.push(e.data)};recorder.onstop=()=>{const blob=new Blob(voiceChunks,{type:recorder.mimeType||'audio/webm'});voiceUrl=URL.createObjectURL(blob);$('voicePreview').src=voiceUrl;$('voicePreview').style.display='block';$('voiceSend').style.display='block';$('voiceStatus').textContent='Rekaman siap dikirim';if(voiceStream){voiceStream.getTracks().forEach(t=>t.stop());voiceStream=null}};recorder.start();voiceSecs=0;$('voiceIcon').classList.add('recording');$('voiceStart').style.display='none';$('voiceStop').style.display='block';$('voiceStatus').textContent='Sedang merekam...';voiceTick=setInterval(()=>{voiceSecs++;$('voiceTimer').textContent=String(Math.floor(voiceSecs/60)).padStart(2,'0')+':'+String(voiceSecs%60).padStart(2,'0')},1000)}catch{alert('Izin mikrofon diperlukan untuk Voice Message.')}};$('voiceStop').onclick=()=>{clearInterval(voiceTick);if(recorder?.state==='recording')recorder.stop();$('voiceIcon').classList.remove('recording');$('voiceStop').style.display='none'};
 function friendAvatarHTML(u,big=false){
   const cls=big?'friend-profile-big':'avatar-container';
   if(u.photo)return `<div class="${cls}"><img class="${big?'':'friend-avatar-img'}" src="${esc(u.photo)}" alt="${esc(u.name)}">${!big&&u.online?'<div class="online-dot"></div>':''}</div>`;
@@ -2737,7 +2733,6 @@ function startPresenceAndChatSync(){
 }
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)runForegroundSync()});
 window.addEventListener('focus',runForegroundSync);
-window.addEventListener('beforeunload',()=>{if(currentSession()?.loggedIn)navigator.sendBeacon?.('')});
 /* ===== end backend patch ===== */
 
 let chatFilter='all';
