@@ -197,6 +197,15 @@ button, input, select, textarea {
   box-shadow: none;
 }
 
+/* PINGGO install button — isolated PWA helper */
+.install-pinggo-btn{
+  width:100%;border:1px solid rgba(233,79,145,.22);border-radius:16px;padding:12px;
+  margin-top:10px;background:#fff;color:var(--pinggo-pink-dark);font-size:13px;font-weight:800;cursor:pointer;
+}
+.install-pinggo-btn:active{transform:scale(.98)}
+.install-guide{display:none;margin-top:10px;padding:11px 12px;border-radius:14px;background:#f7f6f8;color:var(--text-muted);font-size:11px;line-height:1.45;text-align:left}
+.install-guide.show{display:block}
+
 /* App Header */
 .topbar {
   height: 60px;
@@ -1238,6 +1247,8 @@ html.pinggo-session-active .auth-screen{opacity:0!important;visibility:hidden!im
         <div style="font-size:11px;color:var(--text-muted);margin-top:5px;">Simpan ID ini. Gunakan bersama kata sandi untuk masuk.</div>
       </div>
       <button id="authMainBtn" class="btn-primary" onclick="handleAuth()">Masuk</button>
+      <button id="installPinggoBtn" class="install-pinggo-btn" type="button" onclick="installPinggo()">⬇ INSTAL PINGGO</button>
+      <div id="installGuide" class="install-guide"></div>
     </div>
   </div>
 
@@ -2767,5 +2778,50 @@ renderChats();renderFriends();renderSecret();renderProfile();
 
 
 
+<script id="pinggo-install-helper">
+let pinggoInstallPrompt=null;
+window.addEventListener('beforeinstallprompt',function(e){
+  e.preventDefault();
+  pinggoInstallPrompt=e;
+});
+window.addEventListener('appinstalled',function(){
+  pinggoInstallPrompt=null;
+  const b=document.getElementById('installPinggoBtn');
+  const g=document.getElementById('installGuide');
+  if(b)b.style.display='none';
+  if(g)g.classList.remove('show');
+});
+function pinggoStandalone(){
+  return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone===true;
+}
+async function installPinggo(){
+  const b=document.getElementById('installPinggoBtn');
+  const g=document.getElementById('installGuide');
+  if(pinggoStandalone()){
+    if(g){g.textContent='PINGGO sudah terpasang di layar utama.';g.classList.add('show');}
+    return;
+  }
+  if(pinggoInstallPrompt){
+    pinggoInstallPrompt.prompt();
+    try{await pinggoInstallPrompt.userChoice;}catch(_){}
+    pinggoInstallPrompt=null;
+    return;
+  }
+  const ua=navigator.userAgent||'';
+  const isiOS=/iPad|iPhone|iPod/.test(ua) || (navigator.platform==='MacIntel' && navigator.maxTouchPoints>1);
+  if(g){
+    g.innerHTML=isiOS
+      ? '<b>Instal di iPhone:</b> tekan tombol <b>Share ⬆️</b> di Safari → pilih <b>Add to Home Screen</b> → <b>Add</b>.'
+      : '<b>Instal PINGGO:</b> buka menu browser lalu pilih <b>Install app</b> atau <b>Add to Home screen</b>.';
+    g.classList.add('show');
+  }
+}
+(function(){
+  if(pinggoStandalone()){
+    const b=document.getElementById('installPinggoBtn');
+    if(b)b.style.display='none';
+  }
+})();
+</script>
 </body>
 </html>
