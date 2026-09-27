@@ -1526,38 +1526,36 @@ async function invokeEdge(name,payload={}){
   const url=SUPABASE_URL+'/functions/v1/'+encodeURIComponent(name);
   const token=currentSession()?.accessToken;
   if(!token)throw new Error('Sesi login berakhir. Silakan login kembali.');
-  const controller=new AbortController();
-  const timeout=setTimeout(()=>controller.abort(),15000);
-  try{
-    const res=await fetch(url,{
-      method:'POST',
-      mode:'cors',
-      cache:'no-store',
-      credentials:'omit',
-      headers:{
-        'apikey':SUPABASE_KEY,
-        'Authorization':'Bearer '+token,
-        'Content-Type':'application/json',
-        'Accept':'application/json'
-      },
-      body:JSON.stringify(payload),
-      signal:controller.signal
-    });
-    const raw=await res.text();
-    let data=null;
-    try{data=raw?JSON.parse(raw):null}catch(_){data=raw}
-    if(!res.ok)throw new Error(readableError(data,'Server error '+res.status));
-    if(data&&typeof data==='object'&&data.error)throw new Error(readableError(data.error));
-    return data;
-  }catch(e){
-    if(e?.name==='AbortError')throw new Error('Server pembayaran terlalu lama merespons. Coba lagi.');
-    if(String(e?.message||'').toLowerCase().includes('load failed')||e instanceof TypeError){
-      throw new Error('Koneksi ke server pembayaran gagal. Periksa internet lalu coba lagi.');
-    }
-    throw e;
-  }finally{
-    clearTimeout(timeout);
-  }
+
+  // Gunakan XMLHttpRequest khusus Edge Function. Pada Safari/iOS PWA,
+  // fetch() dapat berhenti di "Load failed" sebelum request mencapai Supabase.
+  return await new Promise((resolve,reject)=>{
+    const xhr=new XMLHttpRequest();
+    xhr.open('POST',url,true);
+    xhr.timeout=20000;
+    xhr.setRequestHeader('apikey',SUPABASE_KEY);
+    xhr.setRequestHeader('Authorization','Bearer '+token);
+    xhr.setRequestHeader('Content-Type','application/json');
+    xhr.setRequestHeader('Accept','application/json');
+    xhr.onload=()=>{
+      let data=null;
+      const raw=xhr.responseText||'';
+      try{data=raw?JSON.parse(raw):null}catch(_){data=raw}
+      if(xhr.status<200||xhr.status>=300){
+        reject(new Error(readableError(data,'Server error '+xhr.status)));
+        return;
+      }
+      if(data&&typeof data==='object'&&data.error){
+        reject(new Error(readableError(data.error)));
+        return;
+      }
+      resolve(data);
+    };
+    xhr.onerror=()=>reject(new Error('Koneksi ke server pembayaran gagal. Coba tutup dan buka kembali PINGGO.'));
+    xhr.ontimeout=()=>reject(new Error('Server pembayaran terlalu lama merespons. Coba lagi.'));
+    xhr.onabort=()=>reject(new Error('Permintaan pembayaran dibatalkan.'));
+    try{xhr.send(JSON.stringify(payload))}catch(e){reject(e)}
+  });
 }
 async function storageUpload(bucket,path,file,upsert=false){
   const res=await fetch(SUPABASE_URL+'/storage/v1/object/'+encodeURIComponent(bucket)+'/'+path.split('/').map(encodeURIComponent).join('/'),{method:'POST',headers:authHeaders({'Content-Type':file.type||'application/octet-stream','x-upsert':upsert?'true':'false'}),body:file});
