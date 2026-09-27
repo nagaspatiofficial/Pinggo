@@ -1523,17 +1523,41 @@ function readableError(value,fallback='Terjadi kesalahan.') {
   return String(value)||fallback;
 }
 async function invokeEdge(name,payload={}){
-  const res=await fetch(SUPABASE_URL+'/functions/v1/'+encodeURIComponent(name),{
-    method:'POST',
-    headers:authHeaders({'Content-Type':'application/json'}),
-    body:JSON.stringify(payload)
-  });
-  const raw=await res.text();
-  let data=null;
-  try{data=raw?JSON.parse(raw):null}catch(_){data=raw}
-  if(!res.ok)throw new Error(readableError(data,'Server error '+res.status));
-  if(data&&typeof data==='object'&&data.error)throw new Error(readableError(data.error));
-  return data;
+  const url=SUPABASE_URL+'/functions/v1/'+encodeURIComponent(name);
+  const token=currentSession()?.accessToken;
+  if(!token)throw new Error('Sesi login berakhir. Silakan login kembali.');
+  const controller=new AbortController();
+  const timeout=setTimeout(()=>controller.abort(),15000);
+  try{
+    const res=await fetch(url,{
+      method:'POST',
+      mode:'cors',
+      cache:'no-store',
+      credentials:'omit',
+      headers:{
+        'apikey':SUPABASE_KEY,
+        'Authorization':'Bearer '+token,
+        'Content-Type':'application/json',
+        'Accept':'application/json'
+      },
+      body:JSON.stringify(payload),
+      signal:controller.signal
+    });
+    const raw=await res.text();
+    let data=null;
+    try{data=raw?JSON.parse(raw):null}catch(_){data=raw}
+    if(!res.ok)throw new Error(readableError(data,'Server error '+res.status));
+    if(data&&typeof data==='object'&&data.error)throw new Error(readableError(data.error));
+    return data;
+  }catch(e){
+    if(e?.name==='AbortError')throw new Error('Server pembayaran terlalu lama merespons. Coba lagi.');
+    if(String(e?.message||'').toLowerCase().includes('load failed')||e instanceof TypeError){
+      throw new Error('Koneksi ke server pembayaran gagal. Periksa internet lalu coba lagi.');
+    }
+    throw e;
+  }finally{
+    clearTimeout(timeout);
+  }
 }
 async function storageUpload(bucket,path,file,upsert=false){
   const res=await fetch(SUPABASE_URL+'/storage/v1/object/'+encodeURIComponent(bucket)+'/'+path.split('/').map(encodeURIComponent).join('/'),{method:'POST',headers:authHeaders({'Content-Type':file.type||'application/octet-stream','x-upsert':upsert?'true':'false'}),body:file});
