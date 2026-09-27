@@ -1235,7 +1235,7 @@ html.pinggo-session-active .auth-screen{opacity:0!important;visibility:hidden!im
 
 </style>
 
-<script type="text/javascript" src="https://app.midtrans.com/snap/snap.js" data-client-key="Mid-client-YjuGsn7fJB6oXDLR"></script>
+<script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
@@ -2384,10 +2384,65 @@ function formatCoin(v){return Math.max(0,Math.floor(Number(v)||0)).toLocaleStrin
 function updateCoin(){$('gemBalance').innerHTML=`<img class="pinggo-coin-icon" src="${COIN_IMAGES.diamond}" alt="PINGGO Coin">${formatCoin(coinBalance)}`}
 function coinMeta(){return {type:'pinggo',unit:1000,name:'PINGGO Coin',img:COIN_IMAGES.diamond}}
 async function loadPaymentConfig(){try{const r=await supabaseRequest('/rest/v1/payment_config?id=eq.1&select=*');paymentConfig=r?.[0]||null;if(paymentConfig?.qris_path){try{paymentConfig.qris_url=await signedStorageUrl('payment-assets',paymentConfig.qris_path,900)}catch(_){paymentConfig.qris_url=''}}return paymentConfig}catch(_){return null}}
-function renderTopupMarket(){const p=coinMeta(),q=Math.max(1,Number(selectedTopup.qty)||1),total=p.unit*q;selectedTopup={...p,qty:q};$('walletPackages').innerHTML=`<div class="wallet-note">Pilih jumlah PINGGO Coin. Pembayaran diproses aman melalui Midtrans dan saldo coin masuk otomatis setelah pembayaran berhasil.</div><div class="market-coin-grid"><div class="market-coin active" style="cursor:default"><img class="market-pinggo-coin-img" src="${p.img}" alt="PINGGO Coin"><b>PINGGO Coin</b></div></div><label class="field-label">Jumlah Coin</label><div class="qty-grid">${[10,25,50,100].map(n=>`<button class="qty-chip ${q===n?'active':''}" data-qty="${n}" type="button">${n}</button>`).join('')}</div><input id="customCoinQty" class="auth-input" type="number" min="1" max="100000" value="${q}" placeholder="Jumlah lain"><div class="total-box"><span>${formatCoin(q)} PINGGO Coin</span><strong>${formatRupiah(total)}</strong></div><button class="btn-primary" type="button" id="goPayTopup">Lanjut Bayar</button><div id="topupPayArea"></div>`}
-async function refreshMidtransTopup(){for(let i=0;i<5;i++){try{await Promise.all([loadWallet(),renderTopupHistory()]);if(i<4)await new Promise(r=>setTimeout(r,1800))}catch(_){break}}}
+function renderTopupMarket(){
+  const p=coinMeta(),q=Math.max(1,Number(selectedTopup.qty)||1),total=p.unit*q;
+  selectedTopup={...p,qty:q};
+  $('walletPackages').innerHTML=`<div class="wallet-note">Pilih jumlah PINGGO Coin. QRIS dibuat khusus untuk transaksi ini melalui Xendit. Setelah pembayaran terkonfirmasi, saldo coin masuk otomatis.</div><div class="market-coin-grid"><div class="market-coin active" style="cursor:default"><img class="market-pinggo-coin-img" src="${p.img}" alt="PINGGO Coin"><b>PINGGO Coin</b></div></div><label class="field-label">Jumlah Coin</label><div class="qty-grid">${[10,20,50,100].map(n=>`<button class="qty-chip ${q===n?'active':''}" data-qty="${n}" type="button">${n}</button>`).join('')}</div><input id="customCoinQty" class="auth-input" type="number" min="1" max="100000" value="${q}" placeholder="Jumlah lain"><div class="total-box"><span>${formatCoin(q)} PINGGO Coin</span><strong>${formatRupiah(total)}</strong></div><button class="btn-primary" type="button" id="goPayTopup">Buat QRIS</button><div id="topupPayArea"></div>`
+}
+let xenditPollTimer=null;
+function stopXenditPoll(){if(xenditPollTimer){clearTimeout(xenditPollTimer);xenditPollTimer=null}}
+async function refreshXenditTopup(){try{await Promise.all([loadWallet(),renderTopupHistory()])}catch(_){}}
+function renderQrisPayment(pay){
+  const area=$('topupPayArea');
+  if(!area)return;
+  area.innerHTML=`<div class="pay-box"><b>QRIS • Xendit</b><div style="margin-top:5px">Scan QR ini untuk membayar.</div><div id="xenditQrisBox" style="background:#fff;border-radius:16px;padding:14px;margin:12px auto;width:max-content;max-width:100%;"></div><div style="text-align:center"><b>${formatRupiah(pay.total_amount)}</b><div style="margin-top:4px">${formatCoin(pay.quantity)} PINGGO Coin</div><small style="display:block;margin-top:6px;color:var(--text-muted)">Order: ${esc(pay.order_id||'')}</small><div id="xenditPayStatus" style="margin-top:9px;font-size:12px;font-weight:800;color:var(--pinggo-pink-dark)">Menunggu pembayaran...</div><button type="button" id="checkXenditNow" class="btn-secondary" style="margin-top:10px">Cek Pembayaran</button></div></div>`;
+  const box=$('xenditQrisBox');
+  if(window.QRCode&&box){
+    new QRCode(box,{text:String(pay.qr_string||''),width:210,height:210,correctLevel:QRCode.CorrectLevel.M});
+  }else if(box){
+    box.innerHTML='<div style="font-size:11px;max-width:220px;word-break:break-all">QR library gagal dimuat. Refresh aplikasi lalu coba lagi.</div>';
+  }
+  const check=()=>checkXenditPayment(pay.order_id,true);
+  const btn=$('checkXenditNow'); if(btn)btn.onclick=check;
+  stopXenditPoll();
+  let tries=0;
+  const poll=async()=>{
+    tries++;
+    const done=await checkXenditPayment(pay.order_id,false);
+    if(!done && tries<90)xenditPollTimer=setTimeout(poll,2000);
+  };
+  xenditPollTimer=setTimeout(poll,2000);
+}
+async function checkXenditPayment(orderId,manual=false){
+  const statusEl=$('xenditPayStatus');
+  try{
+    const r=await invokeEdge('pinggo-xendit-status',{order_id:orderId});
+    const st=String(r?.status||'').toUpperCase();
+    if(r?.approved||st==='SUCCEEDED'){
+      if(statusEl){statusEl.textContent='✓ Pembayaran berhasil • Coin sudah masuk';statusEl.style.color='#17834f'}
+      stopXenditPoll();
+      await refreshXenditTopup();
+      if(manual)alert('Pembayaran berhasil. PINGGO Coin sudah masuk ke saldo.');
+      return true;
+    }
+    if(['FAILED','EXPIRED','CANCELED','CANCELLED'].includes(st)){
+      if(statusEl){statusEl.textContent='Pembayaran '+st;statusEl.style.color='#b33b52'}
+      stopXenditPoll();
+      await renderTopupHistory();
+      if(manual)alert('Pembayaran '+st.toLowerCase()+'.');
+      return true;
+    }
+    if(statusEl)statusEl.textContent='Menunggu pembayaran...';
+    if(manual)alert('Pembayaran belum terkonfirmasi.');
+    return false;
+  }catch(e){
+    if(manual)alert(e.message||'Gagal memeriksa pembayaran.');
+    return false;
+  }
+}
 async function renderTopupHistory(){try{const rows=await supabaseRequest('/rest/v1/topup_requests?user_id=eq.'+encodeURIComponent(currentUserId())+'&select=*&order=created_at.desc&limit=8');$('walletHistory').innerHTML='<div class="section-label"><b>Riwayat Top Up</b><small>Saldo '+formatCoin(coinBalance)+' Coin</small></div>'+((rows||[]).length?(rows||[]).map(r=>`<div class="tx-mini"><span><img class="pinggo-coin-icon small" src="${COIN_IMAGES.diamond}" alt="PINGGO Coin">${formatCoin(r.quantity)} PINGGO Coin<br><small>${new Date(r.created_at).toLocaleString('id-ID')}</small></span><span style="text-align:right"><b>${formatRupiah(r.total_amount)}</b><br><span class="status-pill status-${r.status}">${r.status==='pending'?'MENUNGGU':r.status==='approved'?'BERHASIL':r.status==='rejected'?'DITOLAK':'GAGAL'}</span></span></div>`).join(''):'<div class="empty-state">Belum ada top up.</div>')}catch(e){$('walletHistory').innerHTML='<div class="empty-state">Riwayat gagal dimuat.</div>'}}
-window.openWalletModal=async function(){selectedTopup=Object.assign(coinMeta(),{qty:10});selectedProofFile=null;renderTopupMarket();await Promise.all([loadWallet(),loadPaymentConfig(),renderTopupHistory()]);$('walletModal').classList.add('show')};window.closeWalletModal=()=>$('walletModal').classList.remove('show');
+window.openWalletModal=async function(){selectedTopup=Object.assign(coinMeta(),{qty:20});selectedProofFile=null;renderTopupMarket();await Promise.all([loadWallet(),renderTopupHistory()]);$('walletModal').classList.add('show')};
+window.closeWalletModal=()=>{stopXenditPoll();$('walletModal').classList.remove('show')};
 $('walletPackages').onclick=async e=>{
   const q=e.target.closest('[data-qty]');
   if(q){selectedTopup.qty=Number(q.dataset.qty);renderTopupMarket();return}
@@ -2395,23 +2450,17 @@ $('walletPackages').onclick=async e=>{
     const btn=e.target,inp=$('customCoinQty');
     selectedTopup.qty=Math.max(1,Math.min(100000,Number(inp?.value)||selectedTopup.qty||1));
     if(!currentSession()?.accessToken)return alert('Silakan login kembali.');
-    btn.disabled=true;btn.textContent='Membuka Midtrans...';
-    $('topupPayArea').innerHTML='<div class="pay-box"><b>Midtrans</b><div style="margin-top:6px">Menyiapkan pilihan pembayaran...</div></div>';
+    btn.disabled=true;btn.textContent='Membuat QRIS...';
+    $('topupPayArea').innerHTML='<div class="pay-box"><b>QRIS • Xendit</b><div style="margin-top:6px">Menyiapkan QR pembayaran...</div></div>';
     try{
-      const pay=await invokeEdge('pinggo-midtrans-create',{coin_type:'pinggo',quantity:selectedTopup.qty});
-      if(!pay?.snap_token)throw new Error('Token pembayaran Midtrans tidak tersedia.');
-      if(!window.snap||typeof window.snap.pay!=='function')throw new Error('Midtrans belum berhasil dimuat. Coba refresh halaman.');
-      $('topupPayArea').innerHTML=`<div class="pay-box"><b>Midtrans</b><div style="margin-top:6px">Pilih metode pembayaran pada jendela Midtrans.</div><div style="margin-top:8px"><b>Total: ${formatRupiah(pay.total_amount)}</b></div><small>Order: ${esc(pay.order_id||'')}</small></div>`;
-      window.snap.pay(pay.snap_token,{
-        onSuccess:async function(){alert('Pembayaran berhasil. Coin akan masuk otomatis setelah konfirmasi Midtrans.');await refreshMidtransTopup()},
-        onPending:async function(){alert('Pembayaran dibuat. Selesaikan pembayaran sesuai instruksi Midtrans.');await renderTopupHistory()},
-        onError:async function(){alert('Pembayaran gagal atau ditolak Midtrans.');await renderTopupHistory()},
-        onClose:async function(){await renderTopupHistory()}
-      });
+      const pay=await invokeEdge('pinggo-xendit-create',{quantity:selectedTopup.qty});
+      if(!pay?.qr_string)throw new Error('QRIS tidak tersedia dari Xendit.');
+      renderQrisPayment(pay);
+      await renderTopupHistory();
     }catch(err){
-      $('topupPayArea').innerHTML=`<div class="pay-box"><b>Pembayaran belum bisa dibuka</b><div style="margin-top:6px">${esc(err.message||'Terjadi kesalahan.')}</div></div>`;
-      alert(err.message||'Gagal membuka Midtrans.');
-    }finally{btn.disabled=false;btn.textContent='Lanjut Bayar'}
+      $('topupPayArea').innerHTML=`<div class="pay-box"><b>QRIS belum bisa dibuat</b><div style="margin-top:6px">${esc(err.message||'Terjadi kesalahan.')}</div></div>`;
+      alert(err.message||'Gagal membuat QRIS.');
+    }finally{btn.disabled=false;btn.textContent='Buat QRIS'}
     return;
   }
 };
