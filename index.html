@@ -1055,6 +1055,25 @@ button, input, select, textarea {
     .pinggo-coin-icon{width:26px;height:26px;object-fit:contain;vertical-align:middle;display:inline-block;margin-right:8px}
     .pinggo-coin-icon.small{width:18px;height:18px;margin-right:5px}
     .market-pinggo-coin-img{width:48px;height:48px;object-fit:contain;display:block;margin:4px auto 10px}
+
+/* Story in the Feeling tab */
+.story-strip{display:flex;gap:13px;overflow-x:auto;padding:3px 3px 17px;scrollbar-width:none;overscroll-behavior-x:contain}
+.story-strip::-webkit-scrollbar{display:none}
+.story-person{border:0;background:none;min-width:66px;width:66px;padding:0;text-align:center;color:var(--text-main);font:inherit;cursor:pointer}
+.story-ring{position:relative;width:62px;height:62px;margin:auto;border:3px solid var(--pinggo-pink);border-radius:50%;padding:3px;background:#fff;display:grid;place-items:center}
+.story-ring.seen{border-color:#c7c4c8}.story-ring.empty{border-color:#e3c7d3}
+.story-ring img{width:100%;height:100%;object-fit:cover;border-radius:50%}
+.story-ring .story-initial{width:100%;height:100%;border-radius:50%;display:grid;place-items:center;background:linear-gradient(135deg,#f6aac9,#d96a9a);color:#fff;font-weight:900;font-size:21px}
+.story-ring .story-add{position:absolute;right:-3px;bottom:-3px;width:22px;height:22px;border:2px solid #fff;border-radius:50%;background:var(--pinggo-pink);color:#fff;font-size:17px;line-height:18px}
+.story-person small{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:5px;font-size:11px}
+.create-menu{display:grid;gap:8px}.create-menu button{width:100%;border:1px solid rgba(233,79,145,.2);border-radius:15px;padding:14px;text-align:left;background:#fff;font:inherit;font-weight:800;color:#403840}.create-menu small{display:block;margin-top:3px;color:var(--text-muted);font-weight:400;font-size:11px}
+.story-preview{height:160px;border-radius:16px;background:#f4edf1;display:grid;place-items:center;overflow:hidden;margin:10px 0;color:var(--text-muted);font-size:12px}.story-preview img,.story-preview video{width:100%;height:100%;object-fit:contain}
+.story-viewer{position:fixed;z-index:1500;inset:0;background:#171016;color:#fff;display:none;flex-direction:column;padding:env(safe-area-inset-top) 10px env(safe-area-inset-bottom)}
+.story-viewer.show{display:flex}.story-progress{display:flex;gap:4px;margin:10px 4px 8px}.story-progress span{height:3px;flex:1;border-radius:3px;background:#666}.story-progress span.done{background:#fff}
+.story-view-head{display:flex;align-items:center;gap:9px;padding:0 6px 8px;font-size:13px}.story-view-head b{flex:1}.story-view-head button{border:0;background:none;color:#fff;font-size:24px;padding:0 7px}
+.story-display{flex:1;min-height:0;display:grid;place-items:center;position:relative}.story-display img,.story-display video{max-width:100%;max-height:100%;object-fit:contain}.story-display video{width:100%}
+.story-caption{padding:12px 16px;text-align:center;word-break:break-word;font-size:14px}.story-next{border:0;background:#fff2;color:#fff;border-radius:12px;margin:4px auto 12px;padding:9px 25px;font-weight:800}
+
 </style>
 <script>
 /* Prevent login-screen flash on refresh when a local PINGGO session is active. */
@@ -1269,7 +1288,7 @@ html.pinggo-session-active .auth-screen{opacity:0!important;visibility:hidden!im
     <div class="brand">PING<span>GO</span></div>
     <div class="top-actions">
       <button class="icon-btn notice-btn" id="feelingNoticeBtn" type="button" onclick="openFeelingNotifications()" aria-label="Notifikasi komentar Feeling">🔔<span class="notice-top-badge" id="feelingNoticeBadge"></span></button>
-      <button class="icon-btn" onclick="openPostModal()">＋</button>
+      <button class="icon-btn" type="button" onclick="openCreateMenu()" aria-label="Buat Story atau Secret Drop">＋</button>
     </div>
   </div>
 
@@ -1311,6 +1330,7 @@ html.pinggo-session-active .auth-screen{opacity:0!important;visibility:hidden!im
     <!-- Feeling Panel -->
     <div id="panelFeeling" class="panel">
       <div class="section-label"><b id="feelingSectionTitle">Feeling</b><small id="feelingSectionLabel">Kamu &amp; Teman</small></div>
+      <div class="story-strip" id="storyStrip" aria-label="Story teman"></div>
       <div class="chat-list" id="feelingList">
         <!-- Feeling feed rendered via existing JS -->
       </div>
@@ -1375,6 +1395,32 @@ html.pinggo-session-active .auth-screen{opacity:0!important;visibility:hidden!im
       <input id="chatPhotoFile" type="file" accept="image/*" hidden>
       <input id="chatVideoFile" type="file" accept="video/*" hidden>
     </div>
+  </div>
+
+
+  <div id="createMenuModal" class="modal-overlay modal-center" onclick="if(event.target===this)closeCreateMenu()">
+    <div class="modal-sheet"><div class="modal-title">Buat konten</div><div class="create-menu">
+      <button type="button" onclick="closeCreateMenu();openStoryCreate()">◉ Story<small>Foto atau video untuk teman, tampil 24 jam</small></button>
+      <button type="button" onclick="closeCreateMenu();openSecretCreate()">🔒 Secret Drop<small>Konten FREE atau berbayar dengan PINGGO Coin</small></button>
+    </div><button class="btn-secondary" type="button" style="width:100%;margin-top:12px" onclick="closeCreateMenu()">Batal</button></div>
+  </div>
+  <div id="storyCreateModal" class="modal-overlay modal-center" onclick="if(event.target===this)closeStoryCreate()">
+    <div class="modal-sheet"><div class="modal-title">Buat Story</div>
+      <p style="font-size:12px;color:var(--text-muted)">Terlihat oleh teman selama 24 jam.</p>
+      <input id="storyFile" type="file" accept="image/*,video/*" hidden>
+      <button class="btn-secondary" type="button" style="width:100%" onclick="document.getElementById('storyFile').click()">Pilih Foto / Video</button>
+      <div id="storyPreview" class="story-preview">Belum ada media dipilih</div>
+      <input id="storyCaption" class="auth-input" maxlength="200" placeholder="Tulis keterangan (opsional)">
+      <button id="storyPublish" type="button" class="btn-primary">Bagikan Story</button>
+      <button type="button" class="btn-secondary" style="width:100%;margin-top:9px" onclick="closeStoryCreate()">Batal</button>
+    </div>
+  </div>
+  <div id="storyViewer" class="story-viewer" role="dialog" aria-label="Lihat Story">
+    <div id="storyProgress" class="story-progress"></div>
+    <div class="story-view-head"><b id="storyAuthor"></b><span id="storyTime"></span><button type="button" onclick="closeStoryViewer()" aria-label="Tutup Story">×</button></div>
+    <div id="storyDisplay" class="story-display"></div><div id="storyViewCaption" class="story-caption"></div>
+    <button id="storyDelete" class="story-next" type="button" hidden>Hapus Story</button>
+    <button class="story-next" type="button" onclick="nextStory()">Berikutnya ›</button>
   </div>
 
   <!-- Secret Drop Create Modal -->
@@ -1761,7 +1807,7 @@ window.logout=function(){
   friendsState={friends:[],requests:[],sent:[],blocked:[]};friendRowsByUser={};Object.keys(people).forEach(k=>delete people[k]);persistFriends();
   $('authScreen').classList.remove('hide');switchAuthTab('login');if(a?.pinggoId)$('authUsername').value=normalizePinggoId(a.pinggoId)
 };
-window.switchPanel=function(name,btn){document.querySelectorAll('.panel').forEach(x=>x.classList.remove('active'));document.querySelectorAll('.nav-item').forEach(x=>x.classList.remove('active'));$('panel'+name).classList.add('active');btn.classList.add('active');if(name==='Feeling'){markFeelingsSeen();requestFeelingsRender();loadFeelings(false).then(()=>markFeelingsSeen()).catch(e=>console.warn('Feeling gagal dimuat:',e))}if(name==='Profile'){renderProfile();loadWallet()}if(name==='Friends')renderFriends();if(name==='Drop'){loadBackendSecrets();renderSecret()}};
+window.switchPanel=function(name,btn){document.querySelectorAll('.panel').forEach(x=>x.classList.remove('active'));document.querySelectorAll('.nav-item').forEach(x=>x.classList.remove('active'));$('panel'+name).classList.add('active');btn.classList.add('active');if(name==='Feeling'){loadStories();markFeelingsSeen();requestFeelingsRender();loadFeelings(false).then(()=>markFeelingsSeen()).catch(e=>console.warn('Feeling gagal dimuat:',e))}if(name==='Profile'){renderProfile();loadWallet()}if(name==='Friends')renderFriends();if(name==='Drop'){loadBackendSecrets();renderSecret()}};
 window.openGlobalSearch=function(){const nav=document.querySelector('.nav-item[onclick*="Chats"]');if(nav)switchPanel('Chats',nav);if(typeof setChatFilter==='function')setChatFilter('all');const input=document.querySelector('#panelChats .search-bar input');if(input){input.focus({preventScroll:true});try{input.setSelectionRange(input.value.length,input.value.length)}catch(_){}}};
 window.openCurrentChatProfile=function(){if(!currentChatId)return;const u=people[currentChatId];if(!u)return alert('Profil pengguna belum tersedia.');renderFriendProfile(currentChatId)};
 $('msgInput').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();sendText()}});$('attachBtn').onclick=()=>$('attachMenu').classList.toggle('show');
@@ -2075,6 +2121,81 @@ async function loadFeelings(force=false){
   return feelingsLoading;
 }
 function preloadFeelings(){if(currentSession()?.loggedIn&&!feelingsLoaded&&!feelingsLoading)loadFeelings().catch(()=>{})}
+
+// Stories are separate from Secret Drops. The database policy limits reads to accepted friends.
+let storyRows=[],storyFile=null,storyPreviewUrl='',storyGroup=[],storyIndex=0,storyTimer=null,storyLoading=false;
+window.openCreateMenu=()=>{$('createMenuModal').classList.add('show')};
+window.closeCreateMenu=()=>{$('createMenuModal').classList.remove('show')};
+window.openStoryCreate=()=>{storyFile=null;$('storyFile').value='';$('storyCaption').value='';$('storyPreview').textContent='Belum ada media dipilih';$('storyCreateModal').classList.add('show')};
+window.closeStoryCreate=()=>{$('storyCreateModal').classList.remove('show');if(storyPreviewUrl){URL.revokeObjectURL(storyPreviewUrl);storyPreviewUrl=''}};
+$('storyFile').onchange=()=>{
+  storyFile=$('storyFile').files?.[0]||null;if(!storyFile)return;
+  if(!/^image\/(jpeg|png|webp|gif)$|^video\/(mp4|webm|quicktime)$/.test(storyFile.type)||storyFile.size>30*1024*1024){storyFile=null;$('storyFile').value='';return alert('Gunakan gambar JPG/PNG/WebP/GIF atau video MP4/WebM/MOV, maksimal 30 MB.')}
+  if(storyPreviewUrl)URL.revokeObjectURL(storyPreviewUrl);
+  storyPreviewUrl=URL.createObjectURL(storyFile);const box=$('storyPreview');box.replaceChildren();const m=document.createElement(storyFile.type.startsWith('video/')?'video':'img');m.src=storyPreviewUrl;if(m.tagName==='VIDEO'){m.controls=true;m.playsInline=true}box.append(m);
+};
+function storySeenKey(uid){return userCacheKey('story_seen_'+uid)}
+function renderStoryStrip(){
+  const strip=$('storyStrip');if(!strip)return;strip.replaceChildren();
+  const own=currentUserId(),groups=new Map();
+  storyRows.filter(x=>Date.parse(x.expires_at)>Date.now()).forEach(x=>{if(!groups.has(x.user_id))groups.set(x.user_id,[]);groups.get(x.user_id).push(x)});
+  const ids=[own,...[...groups.keys()].filter(id=>id!==own)];
+  ids.forEach(id=>{
+    if(!id)return;const rows=groups.get(id)||[],p=feelingPerson(id),b=document.createElement('button');b.type='button';b.className='story-person';
+    const seen=Number(read(storySeenKey(id),0))||0,unseen=rows.some(x=>Date.parse(x.created_at)>seen);
+    const ring=document.createElement('span');ring.className='story-ring '+(!rows.length?'empty':unseen?'':'seen');
+    if(p.photo){const img=document.createElement('img');img.src=p.photo;img.alt='';ring.append(img)}else{const a=document.createElement('span');a.className='story-initial';a.textContent=(p.name||'?').slice(0,1).toUpperCase();ring.append(a)}
+    if(id===own){const plus=document.createElement('span');plus.className='story-add';plus.textContent='+';ring.append(plus)}
+    const label=document.createElement('small');label.textContent=id===own?'Story Kamu':p.name;b.append(ring,label);
+    b.onclick=()=>rows.length?openStoryGroup(id):openStoryCreate();strip.append(b);
+  });
+}
+async function loadStories(){
+  if(storyLoading||!currentSession()?.loggedIn)return;storyLoading=true;
+  try{
+    const rows=await supabaseRequest('/rest/v1/stories?select=id,user_id,media_path,media_type,caption,created_at,expires_at&expires_at=gt.'+encodeURIComponent(new Date().toISOString())+'&order=created_at.asc&limit=150');
+    storyRows=rows||[];renderStoryStrip();
+    const ids=[...new Set(storyRows.map(x=>x.user_id))].filter(x=>x!==currentUserId());
+    if(ids.length)loadProfilesByIds(ids).then(renderStoryStrip).catch(()=>{});
+  }catch(e){console.warn('Story belum dapat dimuat:',e);renderStoryStrip()}
+  finally{storyLoading=false}
+}
+$('storyPublish').onclick=async()=>{
+  if(!storyFile)return alert('Pilih foto atau video terlebih dahulu.');
+  const uid=currentUserId();if(!uid)return alert('Silakan masuk kembali.');
+  const file=storyFile,btn=$('storyPublish');btn.disabled=true;btn.textContent='Mengunggah...';
+  let path='';
+  try{
+    const id=crypto.randomUUID(),ext=({ 'image/jpeg':'jpg','image/png':'png','image/webp':'webp','image/gif':'gif','video/mp4':'mp4','video/webm':'webm','video/quicktime':'mov'})[file.type];
+    path=uid+'/'+id+'.'+ext;await storageUpload('story-media',path,file);
+    await supabaseRequest('/rest/v1/stories',{method:'POST',headers:{'Content-Type':'application/json','Prefer':'return=minimal'},body:JSON.stringify({id,user_id:uid,media_path:path,media_type:file.type.startsWith('video/')?'video':'image',caption:$('storyCaption').value.trim()})});
+    closeStoryCreate();await loadStories();
+  }catch(e){alert('Story gagal dibagikan: '+e.message)}
+  finally{btn.disabled=false;btn.textContent='Bagikan Story'}
+};
+window.openStoryGroup=function(uid){storyGroup=storyRows.filter(x=>x.user_id===uid&&Date.parse(x.expires_at)>Date.now());storyIndex=0;if(!storyGroup.length)return;showStory()};
+async function showStory(){
+  clearTimeout(storyTimer);const x=storyGroup[storyIndex];if(!x)return closeStoryViewer();
+  $('storyViewer').classList.add('show');$('storyProgress').innerHTML=storyGroup.map((_,i)=>'<span class="'+(i<=storyIndex?'done':'')+'"></span>').join('');
+  $('storyAuthor').textContent=feelingPerson(x.user_id).name;$('storyTime').textContent=new Date(x.created_at).toLocaleString('id-ID',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});
+  $('storyViewCaption').textContent=x.caption||'';$('storyDisplay').textContent='Memuat Story...';$('storyDelete').hidden=x.user_id!==currentUserId();
+  const seen=Date.parse(x.created_at)||0;write(storySeenKey(x.user_id),Math.max(Number(read(storySeenKey(x.user_id),0))||0,seen));renderStoryStrip();
+  try{
+    const url=await signedStorageUrl('story-media',x.media_path,300);
+    if(!$('storyViewer').classList.contains('show')||storyGroup[storyIndex]?.id!==x.id)return;
+    const m=document.createElement(x.media_type==='video'?'video':'img');m.src=url;
+    if(m.tagName==='VIDEO'){m.controls=true;m.playsInline=true;m.autoplay=true;m.onended=()=>nextStory()}
+    $('storyDisplay').replaceChildren(m);if(x.media_type!=='video')storyTimer=setTimeout(()=>nextStory(),7000);
+  }catch(e){$('storyDisplay').textContent='Story tidak dapat dibuka. '+e.message}
+}
+window.nextStory=()=>{if(storyIndex+1<storyGroup.length){storyIndex++;showStory()}else closeStoryViewer()};
+window.closeStoryViewer=()=>{clearTimeout(storyTimer);$('storyViewer').classList.remove('show');$('storyDisplay').replaceChildren();storyGroup=[]};
+$('storyDelete').onclick=async()=>{
+  const x=storyGroup[storyIndex];if(!x||x.user_id!==currentUserId()||!confirm('Hapus Story ini?'))return;
+  try{await supabaseRequest('/rest/v1/stories?id=eq.'+encodeURIComponent(x.id),{method:'DELETE',headers:{'Prefer':'return=minimal'}});storyRows=storyRows.filter(s=>s.id!==x.id);closeStoryViewer();renderStoryStrip()}
+  catch(e){alert('Story gagal dihapus: '+e.message)}
+};
+
 function renderFeelings(){
   const title=$('feelingSectionTitle'),label=$('feelingSectionLabel');
   if(title)title.textContent='Feeling';
@@ -2822,7 +2943,7 @@ async function syncLiveAppData(){
   try{
     const uid=currentUserId();
     const tasks=[loadBackendFriends(),loadWallet()];
-    if($('panelFeeling')?.classList.contains('active'))tasks.push(loadFeelings(false));
+    if($('panelFeeling')?.classList.contains('active'))tasks.push(loadFeelings(false),loadStories());
     if(document.querySelector('#panelDrop')?.classList.contains('active'))tasks.push(loadBackendSecrets());
     if(uid){tasks.push(fetchOwnProfile(uid).then(p=>{if(p)applyRemoteProfile(p)}).catch(()=>{}))}
     await Promise.allSettled(tasks);
