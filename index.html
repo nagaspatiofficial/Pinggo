@@ -2136,6 +2136,25 @@ function preloadFeelings(){if(currentSession()?.loggedIn&&!feelingsLoaded&&!feel
 
 // Stories are separate from Secret Drops. The database policy limits reads to accepted friends.
 let storyRows=[],storyFile=null,storyPreviewUrl='',storyGroup=[],storyIndex=0,storyTimer=null,storyLoading=false,storyEnhanced=false,storyFileGeneration=0;
+const storyUrlCache=new Map(),storyUrlPending=new Map(),storyVideoPreviews=new Map();
+function storyMediaUrl(x){
+  const key=currentUserId()+':'+x.id,existing=storyUrlCache.get(key);
+  if(existing&&existing.expires>Date.now())return Promise.resolve(existing.url);
+  if(storyUrlPending.has(key))return storyUrlPending.get(key);
+  const pending=signedStorageUrl('story-media',x.media_path,300).then(url=>{
+    storyUrlCache.set(key,{url,expires:Date.now()+240000});return url;
+  }).finally(()=>storyUrlPending.delete(key));
+  storyUrlPending.set(key,pending);return pending;
+}
+function prepareStoryVideo(x){
+  if(x.media_type!=='video'||storyVideoPreviews.has(x.id))return;
+  storyMediaUrl(x).then(url=>{
+    if(!storyRows.some(row=>row.id===x.id&&Date.parse(row.expires_at)>Date.now())||storyVideoPreviews.has(x.id))return;
+    const video=document.createElement('video');video.preload='metadata';video.playsInline=true;video.src=url;video.load();
+    storyVideoPreviews.set(x.id,video);
+    if(storyVideoPreviews.size>2){const oldest=[...storyVideoPreviews.keys()].find(id=>storyVideoPreviews.get(id)!==$('storyDisplay').querySelector('video'));if(oldest){const old=storyVideoPreviews.get(oldest);old.pause();old.removeAttribute('src');old.load();storyVideoPreviews.delete(oldest)}}
+  }).catch(()=>{});
+}
 window.openCreateMenu=()=>{$('createMenuModal').classList.add('show')};
 window.closeCreateMenu=()=>{$('createMenuModal').classList.remove('show')};
 window.openStoryCreate=()=>{storyFileGeneration++;storyFile=null;storyEnhanced=false;['storyFile','storyCameraPhoto','storyCameraVideo'].forEach(id=>$(id).value='');$('storyCaption').value='';$('storyPreview').textContent='Belum ada media dipilih';$('storyCreateModal').classList.add('show')};
@@ -2194,6 +2213,11 @@ async function loadStories(){
   try{
     const rows=await supabaseRequest('/rest/v1/stories?select=id,user_id,media_path,media_type,caption,created_at,expires_at,enhanced&expires_at=gt.'+encodeURIComponent(new Date().toISOString())+'&order=created_at.asc&limit=150');
     storyRows=rows||[];renderStoryStrip();
+    const activeIds=new Set(storyRows.map(x=>x.id));
+    for(const key of storyUrlCache.keys())if(!activeIds.has(key.split(':').pop()))storyUrlCache.delete(key);
+    for(const [id,video] of storyVideoPreviews)if(!activeIds.has(id)){video.pause();video.removeAttribute('src');video.load();storyVideoPreviews.delete(id)}
+    const firstByAuthor=new Map();for(const x of storyRows)if(!firstByAuthor.has(x.user_id))firstByAuthor.set(x.user_id,x);
+    [...firstByAuthor.values()].slice(0,4).forEach(x=>x.media_type==='video'?prepareStoryVideo(x):storyMediaUrl(x).catch(()=>{}));
     const ids=[...new Set(storyRows.map(x=>x.user_id))].filter(x=>x!==currentUserId());
     if(ids.length)loadProfilesByIds(ids).then(renderStoryStrip).catch(()=>{});
   }catch(e){console.warn('Story belum dapat dimuat:',e);renderStoryStrip()}
@@ -2214,21 +2238,22 @@ $('storyPublish').onclick=async()=>{
 };
 window.openStoryGroup=function(uid){storyGroup=storyRows.filter(x=>x.user_id===uid&&Date.parse(x.expires_at)>Date.now());storyIndex=0;if(!storyGroup.length)return;showStory()};
 async function showStory(){
-  clearTimeout(storyTimer);const x=storyGroup[storyIndex];if(!x)return closeStoryViewer();
+  clearTimeout(storyTimer);$('storyDisplay').querySelector('video')?.pause();const x=storyGroup[storyIndex];if(!x)return closeStoryViewer();
   $('storyViewer').classList.add('show');$('storyProgress').innerHTML=storyGroup.map((_,i)=>'<span class="'+(i<=storyIndex?'done':'')+'"></span>').join('');
   $('storyAuthor').textContent=feelingPerson(x.user_id).name;$('storyTime').textContent=new Date(x.created_at).toLocaleString('id-ID',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});
   $('storyViewCaption').textContent=x.caption||'';$('storyDisplay').textContent='Memuat Story...';$('storyDelete').hidden=x.user_id!==currentUserId();
   const seen=Date.parse(x.created_at)||0;write(storySeenKey(x.user_id),Math.max(Number(read(storySeenKey(x.user_id),0))||0,seen));renderStoryStrip();
   try{
-    const url=await signedStorageUrl('story-media',x.media_path,300);
+    const url=await storyMediaUrl(x);
     if(!$('storyViewer').classList.contains('show')||storyGroup[storyIndex]?.id!==x.id)return;
-    const m=document.createElement(x.media_type==='video'?'video':'img');m.src=url;
-    if(m.tagName==='VIDEO'){m.controls=true;m.playsInline=true;m.autoplay=true;m.onended=()=>nextStory();if(x.enhanced)m.classList.add('story-enhanced-video')}
+    const m=storyVideoPreviews.get(x.id)||document.createElement(x.media_type==='video'?'video':'img');if(m.src!==url)m.src=url;
+    if(m.tagName==='VIDEO'){m.controls=true;m.preload='auto';m.playsInline=true;m.autoplay=true;m.onended=()=>nextStory();if(x.enhanced)m.classList.add('story-enhanced-video');if(m.readyState>0)try{m.currentTime=0}catch(_){}}
     $('storyDisplay').replaceChildren(m);if(x.media_type!=='video')storyTimer=setTimeout(()=>nextStory(),7000);
+    const next=storyGroup[storyIndex+1];if(next)(next.media_type==='video'?prepareStoryVideo(next):storyMediaUrl(next).catch(()=>{}));
   }catch(e){$('storyDisplay').textContent='Story tidak dapat dibuka. '+e.message}
 }
 window.nextStory=()=>{if(storyIndex+1<storyGroup.length){storyIndex++;showStory()}else closeStoryViewer()};
-window.closeStoryViewer=()=>{clearTimeout(storyTimer);$('storyViewer').classList.remove('show');$('storyDisplay').replaceChildren();storyGroup=[]};
+window.closeStoryViewer=()=>{clearTimeout(storyTimer);$('storyDisplay').querySelector('video')?.pause();$('storyViewer').classList.remove('show');$('storyDisplay').replaceChildren();storyGroup=[]};
 $('storyDelete').onclick=async()=>{
   const x=storyGroup[storyIndex];if(!x||x.user_id!==currentUserId()||!confirm('Hapus Story ini?'))return;
   try{await supabaseRequest('/rest/v1/stories?id=eq.'+encodeURIComponent(x.id),{method:'DELETE',headers:{'Prefer':'return=minimal'}});storyRows=storyRows.filter(s=>s.id!==x.id);closeStoryViewer();renderStoryStrip()}
@@ -2978,14 +3003,21 @@ async function saveProfilePhoto(file){
 async function touchPresence(){if(!currentUserId()||!currentSession()?.accessToken)return;await syncOwnProfile({last_seen_at:new Date().toISOString()})}
 async function syncLiveAppData(){
   if(appSyncBusy||document.hidden||!currentSession()?.loggedIn)return;
+  // Jangan memulai beberapa permintaan jaringan saat video Story sedang diputar.
+  const playingStory=$('storyViewer')?.classList.contains('show')&&$('storyDisplay')?.querySelector('video')?.paused===false;
+  if(playingStory)return;
   appSyncBusy=true;
   try{
     const uid=currentUserId();
     const tasks=[loadBackendFriends(),loadWallet()];
-    if($('panelFeeling')?.classList.contains('active'))tasks.push(loadFeelings(false),loadStories());
+    if($('panelFeeling')?.classList.contains('active')){
+      tasks.push(loadStories());
+      if(!realtimeReady)tasks.push(loadFeelings(false));
+    }
     if(document.querySelector('#panelDrop')?.classList.contains('active'))tasks.push(loadBackendSecrets());
     if(uid){tasks.push(fetchOwnProfile(uid).then(p=>{if(p)applyRemoteProfile(p)}).catch(()=>{}))}
     await Promise.allSettled(tasks);
+    renderChats();
     if(currentChatId&&chatConversationByUser[currentChatId])await loadConversationMessages(chatConversationByUser[currentChatId]);
     // Loader masing-masing sudah merender modulnya; hindari full render kedua pada setiap background sync.
     renderProfile();
@@ -3008,7 +3040,7 @@ function startPresenceAndChatSync(){
   checkFeelingUpdates().catch(()=>{});
   startRealtimeSync().catch(()=>{});
   // Presence tidak perlu 30 detik. 60 detik cukup dan status online masih memakai toleransi 90 detik.
-  presenceTimer=setInterval(()=>{if(!document.hidden){touchPresence().catch(()=>{});const ids=[...new Set([...friendsState.friends,...friendsState.requests,...friendsState.sent])];if(ids.length)loadProfilesByIds(ids).then(()=>{if($('panelFriends')?.classList.contains('active'))renderFriends();renderChats()}).catch(()=>{})}},60000);
+  presenceTimer=setInterval(()=>{if(!document.hidden)touchPresence().catch(()=>{})},60000);
   // Fallback chat hanya berjalan saat realtime benar-benar tidak tersedia.
   chatPollTimer=setInterval(async()=>{if(document.hidden||!currentSession()?.loggedIn||realtimeReady)return;await loadBackendChats();if(currentChatId&&chatConversationByUser[currentChatId])await loadConversationMessages(chatConversationByUser[currentChatId])},60000);
   // Full background sync diperlambat karena perubahan chat/Feeling utama sudah ditangani realtime.
