@@ -1571,7 +1571,10 @@ function readableError(value,fallback='Terjadi kesalahan.') {
 async function invokeEdge(name,payload={}){
   const url=SUPABASE_URL+'/functions/v1/'+encodeURIComponent(name);
   const token=currentSession()?.accessToken;
-  if(!token)throw new Error('Sesi login berakhir. Silakan login kembali.');
+  // Pendaftaran harus dapat berjalan sebelum pengguna memiliki sesi login.
+  // Fungsi pinggo-register di Supabase memang dikonfigurasi tanpa verifikasi JWT.
+  const needsSession=name!=='pinggo-register';
+  if(needsSession&&!token)throw new Error('Sesi login berakhir. Silakan login kembali.');
 
   // Gunakan XMLHttpRequest khusus Edge Function. Pada Safari/iOS PWA,
   // fetch() dapat berhenti di "Load failed" sebelum request mencapai Supabase.
@@ -1580,7 +1583,7 @@ async function invokeEdge(name,payload={}){
     xhr.open('POST',url,true);
     xhr.timeout=20000;
     xhr.setRequestHeader('apikey',SUPABASE_KEY);
-    xhr.setRequestHeader('Authorization','Bearer '+token);
+    if(needsSession)xhr.setRequestHeader('Authorization','Bearer '+token);
     xhr.setRequestHeader('Content-Type','application/json');
     xhr.setRequestHeader('Accept','application/json');
     xhr.onload=()=>{
