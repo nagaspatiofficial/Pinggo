@@ -1066,6 +1066,8 @@ button, input, select, textarea {
 .story-ring .story-initial{width:100%;height:100%;border-radius:50%;display:grid;place-items:center;background:linear-gradient(135deg,#f6aac9,#d96a9a);color:#fff;font-weight:900;font-size:21px}
 .story-ring .story-add{position:absolute;right:-3px;bottom:-3px;width:22px;height:22px;border:2px solid #fff;border-radius:50%;background:var(--pinggo-pink);color:#fff;font-size:17px;line-height:18px}
 .story-person small{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:5px;font-size:11px}
+.story-source-buttons{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.story-source-buttons .story-gallery{grid-column:1/-1}
 .create-menu{display:grid;gap:8px}.create-menu button{width:100%;border:1px solid rgba(233,79,145,.2);border-radius:15px;padding:14px;text-align:left;background:#fff;font:inherit;font-weight:800;color:#403840}.create-menu small{display:block;margin-top:3px;color:var(--text-muted);font-weight:400;font-size:11px}
 .story-preview{height:160px;border-radius:16px;background:#f4edf1;display:grid;place-items:center;overflow:hidden;margin:10px 0;color:var(--text-muted);font-size:12px}.story-preview img,.story-preview video{width:100%;height:100%;object-fit:contain}
 .story-viewer{position:fixed;z-index:1500;inset:0;background:#171016;color:#fff;display:none;flex-direction:column;padding:env(safe-area-inset-top) 10px env(safe-area-inset-bottom)}
@@ -1408,7 +1410,13 @@ html.pinggo-session-active .auth-screen{opacity:0!important;visibility:hidden!im
     <div class="modal-sheet"><div class="modal-title">Buat Story</div>
       <p style="font-size:12px;color:var(--text-muted)">Terlihat oleh teman selama 24 jam.</p>
       <input id="storyFile" type="file" accept="image/*,video/*" hidden>
-      <button class="btn-secondary" type="button" style="width:100%" onclick="document.getElementById('storyFile').click()">Pilih Foto / Video</button>
+      <input id="storyCameraPhoto" type="file" accept="image/*" capture="environment" hidden>
+      <input id="storyCameraVideo" type="file" accept="video/*" capture="environment" hidden>
+      <div class="story-source-buttons">
+        <button class="btn-secondary" type="button" onclick="document.getElementById('storyCameraPhoto').click()">📷 Ambil Foto</button>
+        <button class="btn-secondary" type="button" onclick="document.getElementById('storyCameraVideo').click()">🎥 Rekam Video</button>
+        <button class="btn-secondary story-gallery" type="button" onclick="document.getElementById('storyFile').click()">Pilih dari Galeri</button>
+      </div>
       <div id="storyPreview" class="story-preview">Belum ada media dipilih</div>
       <input id="storyCaption" class="auth-input" maxlength="200" placeholder="Tulis keterangan (opsional)">
       <button id="storyPublish" type="button" class="btn-primary">Bagikan Story</button>
@@ -2129,14 +2137,15 @@ function preloadFeelings(){if(currentSession()?.loggedIn&&!feelingsLoaded&&!feel
 let storyRows=[],storyFile=null,storyPreviewUrl='',storyGroup=[],storyIndex=0,storyTimer=null,storyLoading=false;
 window.openCreateMenu=()=>{$('createMenuModal').classList.add('show')};
 window.closeCreateMenu=()=>{$('createMenuModal').classList.remove('show')};
-window.openStoryCreate=()=>{storyFile=null;$('storyFile').value='';$('storyCaption').value='';$('storyPreview').textContent='Belum ada media dipilih';$('storyCreateModal').classList.add('show')};
+window.openStoryCreate=()=>{storyFile=null;['storyFile','storyCameraPhoto','storyCameraVideo'].forEach(id=>$(id).value='');$('storyCaption').value='';$('storyPreview').textContent='Belum ada media dipilih';$('storyCreateModal').classList.add('show')};
 window.closeStoryCreate=()=>{$('storyCreateModal').classList.remove('show');if(storyPreviewUrl){URL.revokeObjectURL(storyPreviewUrl);storyPreviewUrl=''}};
-$('storyFile').onchange=()=>{
-  storyFile=$('storyFile').files?.[0]||null;if(!storyFile)return;
-  if(!/^image\/(jpeg|png|webp|gif)$|^video\/(mp4|webm|quicktime)$/.test(storyFile.type)||storyFile.size>30*1024*1024){storyFile=null;$('storyFile').value='';return alert('Gunakan gambar JPG/PNG/WebP/GIF atau video MP4/WebM/MOV, maksimal 30 MB.')}
+function handleStoryFile(input){
+  storyFile=input.files?.[0]||null;if(!storyFile)return;
+  if(!/^image\/(jpeg|png|webp|gif)$|^video\/(mp4|webm|quicktime)$/.test(storyFile.type)||storyFile.size>30*1024*1024){storyFile=null;input.value='';return alert('Gunakan gambar JPG/PNG/WebP/GIF atau video MP4/WebM/MOV, maksimal 30 MB.')}
   if(storyPreviewUrl)URL.revokeObjectURL(storyPreviewUrl);
   storyPreviewUrl=URL.createObjectURL(storyFile);const box=$('storyPreview');box.replaceChildren();const m=document.createElement(storyFile.type.startsWith('video/')?'video':'img');m.src=storyPreviewUrl;if(m.tagName==='VIDEO'){m.controls=true;m.playsInline=true}box.append(m);
-};
+}
+['storyFile','storyCameraPhoto','storyCameraVideo'].forEach(id=>{$(id).onchange=()=>handleStoryFile($(id))});
 function storySeenKey(uid){return userCacheKey('story_seen_'+uid)}
 function renderStoryStrip(){
   const strip=$('storyStrip');if(!strip)return;strip.replaceChildren();
