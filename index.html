@@ -1070,6 +1070,7 @@ button, input, select, textarea {
 .story-source-buttons .story-gallery{grid-column:1/-1}
 .create-menu{display:grid;gap:8px}.create-menu button{width:100%;border:1px solid rgba(233,79,145,.2);border-radius:15px;padding:14px;text-align:left;background:#fff;font:inherit;font-weight:800;color:#403840}.create-menu small{display:block;margin-top:3px;color:var(--text-muted);font-weight:400;font-size:11px}
 .story-preview{height:160px;border-radius:16px;background:#f4edf1;display:grid;place-items:center;overflow:hidden;margin:10px 0;color:var(--text-muted);font-size:12px}.story-preview img,.story-preview video{width:100%;height:100%;object-fit:contain}
+.story-enhanced-video{filter:brightness(1.12) contrast(1.04) saturate(1.08);-webkit-filter:brightness(1.12) contrast(1.04) saturate(1.08)}
 .story-viewer{position:fixed;z-index:1500;inset:0;background:#171016;color:#fff;display:none;flex-direction:column;padding:env(safe-area-inset-top) 10px env(safe-area-inset-bottom)}
 .story-viewer.show{display:flex}.story-progress{display:flex;gap:4px;margin:10px 4px 8px}.story-progress span{height:3px;flex:1;border-radius:3px;background:#666}.story-progress span.done{background:#fff}
 .story-view-head{display:flex;align-items:center;gap:9px;padding:0 6px 8px;font-size:13px}.story-view-head b{flex:1}.story-view-head button{border:0;background:none;color:#fff;font-size:24px;padding:0 7px}
@@ -2134,16 +2135,42 @@ async function loadFeelings(force=false){
 function preloadFeelings(){if(currentSession()?.loggedIn&&!feelingsLoaded&&!feelingsLoading)loadFeelings().catch(()=>{})}
 
 // Stories are separate from Secret Drops. The database policy limits reads to accepted friends.
-let storyRows=[],storyFile=null,storyPreviewUrl='',storyGroup=[],storyIndex=0,storyTimer=null,storyLoading=false;
+let storyRows=[],storyFile=null,storyPreviewUrl='',storyGroup=[],storyIndex=0,storyTimer=null,storyLoading=false,storyEnhanced=false,storyFileGeneration=0;
 window.openCreateMenu=()=>{$('createMenuModal').classList.add('show')};
 window.closeCreateMenu=()=>{$('createMenuModal').classList.remove('show')};
-window.openStoryCreate=()=>{storyFile=null;['storyFile','storyCameraPhoto','storyCameraVideo'].forEach(id=>$(id).value='');$('storyCaption').value='';$('storyPreview').textContent='Belum ada media dipilih';$('storyCreateModal').classList.add('show')};
-window.closeStoryCreate=()=>{$('storyCreateModal').classList.remove('show');if(storyPreviewUrl){URL.revokeObjectURL(storyPreviewUrl);storyPreviewUrl=''}};
-function handleStoryFile(input){
-  storyFile=input.files?.[0]||null;if(!storyFile)return;
-  if(!/^image\/(jpeg|png|webp|gif)$|^video\/(mp4|webm|quicktime)$/.test(storyFile.type)||storyFile.size>30*1024*1024){storyFile=null;input.value='';return alert('Gunakan gambar JPG/PNG/WebP/GIF atau video MP4/WebM/MOV, maksimal 30 MB.')}
-  if(storyPreviewUrl)URL.revokeObjectURL(storyPreviewUrl);
-  storyPreviewUrl=URL.createObjectURL(storyFile);const box=$('storyPreview');box.replaceChildren();const m=document.createElement(storyFile.type.startsWith('video/')?'video':'img');m.src=storyPreviewUrl;if(m.tagName==='VIDEO'){m.controls=true;m.playsInline=true}box.append(m);
+window.openStoryCreate=()=>{storyFileGeneration++;storyFile=null;storyEnhanced=false;['storyFile','storyCameraPhoto','storyCameraVideo'].forEach(id=>$(id).value='');$('storyCaption').value='';$('storyPreview').textContent='Belum ada media dipilih';$('storyCreateModal').classList.add('show')};
+window.closeStoryCreate=()=>{storyFileGeneration++;$('storyCreateModal').classList.remove('show');if(storyPreviewUrl){URL.revokeObjectURL(storyPreviewUrl);storyPreviewUrl=''}};
+async function brightenStoryPhoto(file){
+  const url=URL.createObjectURL(file),img=new Image();
+  try{
+    await new Promise((resolve,reject)=>{img.onload=resolve;img.onerror=reject;img.src=url});
+    const scale=Math.min(1,2560/Math.max(img.naturalWidth,img.naturalHeight));
+    const canvas=document.createElement('canvas');canvas.width=Math.round(img.naturalWidth*scale);canvas.height=Math.round(img.naturalHeight*scale);
+    const ctx=canvas.getContext('2d');if(!ctx||!canvas.width||!canvas.height||!('filter' in ctx))throw new Error('Filter foto tidak didukung');
+    ctx.imageSmoothingQuality='high';ctx.filter='brightness(1.10) contrast(1.035) saturate(1.07)';ctx.drawImage(img,0,0,canvas.width,canvas.height);
+    ctx.globalAlpha=.10;ctx.filter='blur(1px)';ctx.drawImage(img,0,0,canvas.width,canvas.height);ctx.globalAlpha=1;
+    const blob=await new Promise((resolve,reject)=>canvas.toBlob(x=>x?resolve(x):reject(new Error('Foto tidak dapat diproses')),'image/jpeg',.92));
+    if(blob.size>30*1024*1024)throw new Error('Foto hasil filter terlalu besar');
+    return new File([blob],file.name.replace(/\.[^.]+$/,'')+'-pinggo.jpg',{type:'image/jpeg'});
+  }finally{URL.revokeObjectURL(url)}
+}
+async function handleStoryFile(input){
+  const generation=++storyFileGeneration,selected=input.files?.[0];storyFile=null;storyEnhanced=false;if(!selected)return;
+  if(!/^image\/(jpeg|png|webp|gif)$|^video\/(mp4|webm|quicktime)$/.test(selected.type)||selected.size>30*1024*1024){input.value='';return alert('Gunakan gambar JPG/PNG/WebP/GIF atau video MP4/WebM/MOV, maksimal 30 MB.')}
+  const fromCamera=input.id!=='storyFile',photo=selected.type.startsWith('image/');
+  $('storyPreview').textContent=fromCamera&&photo?'Mempercerah foto...':'Menyiapkan Story...';$('storyPublish').disabled=true;
+  try{
+    let file=selected,enhanced=false;
+    if(fromCamera&&photo){try{file=await brightenStoryPhoto(selected);enhanced=true}catch(e){console.warn('Filter foto tidak tersedia; memakai foto asli:',e)}}
+    else if(fromCamera&&!photo)enhanced=true;
+    if(generation!==storyFileGeneration)return;
+    if(storyPreviewUrl)URL.revokeObjectURL(storyPreviewUrl);
+    storyFile=file;storyEnhanced=enhanced;storyPreviewUrl=URL.createObjectURL(file);
+    const box=$('storyPreview');box.replaceChildren();const m=document.createElement(photo?'img':'video');m.src=storyPreviewUrl;
+    if(m.tagName==='VIDEO'){m.controls=true;m.playsInline=true;if(enhanced)m.classList.add('story-enhanced-video')}
+    box.append(m);
+  }catch(e){if(generation===storyFileGeneration){storyFile=selected;storyEnhanced=false;storyPreviewUrl=URL.createObjectURL(selected);const box=$('storyPreview');box.replaceChildren();const m=document.createElement(photo?'img':'video');m.src=storyPreviewUrl;if(!photo){m.controls=true;m.playsInline=true}box.append(m)}console.warn('Pratinjau Story memakai file asli:',e)}
+  finally{if(generation===storyFileGeneration)$('storyPublish').disabled=false}
 }
 ['storyFile','storyCameraPhoto','storyCameraVideo'].forEach(id=>{$(id).onchange=()=>handleStoryFile($(id))});
 function storySeenKey(uid){return userCacheKey('story_seen_'+uid)}
@@ -2165,7 +2192,7 @@ function renderStoryStrip(){
 async function loadStories(){
   if(storyLoading||!currentSession()?.loggedIn)return;storyLoading=true;
   try{
-    const rows=await supabaseRequest('/rest/v1/stories?select=id,user_id,media_path,media_type,caption,created_at,expires_at&expires_at=gt.'+encodeURIComponent(new Date().toISOString())+'&order=created_at.asc&limit=150');
+    const rows=await supabaseRequest('/rest/v1/stories?select=id,user_id,media_path,media_type,caption,created_at,expires_at,enhanced&expires_at=gt.'+encodeURIComponent(new Date().toISOString())+'&order=created_at.asc&limit=150');
     storyRows=rows||[];renderStoryStrip();
     const ids=[...new Set(storyRows.map(x=>x.user_id))].filter(x=>x!==currentUserId());
     if(ids.length)loadProfilesByIds(ids).then(renderStoryStrip).catch(()=>{});
@@ -2180,7 +2207,7 @@ $('storyPublish').onclick=async()=>{
   try{
     const id=crypto.randomUUID(),ext=({ 'image/jpeg':'jpg','image/png':'png','image/webp':'webp','image/gif':'gif','video/mp4':'mp4','video/webm':'webm','video/quicktime':'mov'})[file.type];
     path=uid+'/'+id+'.'+ext;await storageUpload('story-media',path,file);
-    await supabaseRequest('/rest/v1/stories',{method:'POST',headers:{'Content-Type':'application/json','Prefer':'return=minimal'},body:JSON.stringify({id,user_id:uid,media_path:path,media_type:file.type.startsWith('video/')?'video':'image',caption:$('storyCaption').value.trim()})});
+    await supabaseRequest('/rest/v1/stories',{method:'POST',headers:{'Content-Type':'application/json','Prefer':'return=minimal'},body:JSON.stringify({id,user_id:uid,media_path:path,media_type:file.type.startsWith('video/')?'video':'image',caption:$('storyCaption').value.trim(),enhanced:storyEnhanced})});
     closeStoryCreate();await loadStories();
   }catch(e){alert('Story gagal dibagikan: '+e.message)}
   finally{btn.disabled=false;btn.textContent='Bagikan Story'}
@@ -2196,7 +2223,7 @@ async function showStory(){
     const url=await signedStorageUrl('story-media',x.media_path,300);
     if(!$('storyViewer').classList.contains('show')||storyGroup[storyIndex]?.id!==x.id)return;
     const m=document.createElement(x.media_type==='video'?'video':'img');m.src=url;
-    if(m.tagName==='VIDEO'){m.controls=true;m.playsInline=true;m.autoplay=true;m.onended=()=>nextStory()}
+    if(m.tagName==='VIDEO'){m.controls=true;m.playsInline=true;m.autoplay=true;m.onended=()=>nextStory();if(x.enhanced)m.classList.add('story-enhanced-video')}
     $('storyDisplay').replaceChildren(m);if(x.media_type!=='video')storyTimer=setTimeout(()=>nextStory(),7000);
   }catch(e){$('storyDisplay').textContent='Story tidak dapat dibuka. '+e.message}
 }
